@@ -13,7 +13,9 @@ import { DomainStatusBadges } from "@/components/domain-status-badges";
 import { Separator } from "@/components/ui/separator";
 import { formatPeriodDate, listLastNMonths } from "@/lib/period";
 import { getKPIStatus } from "@/lib/kpi-status";
-import { Pin } from "lucide-react";
+import { Pin, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 interface Props {
   searchParams: Promise<{ period?: string; q?: string; status?: string }>;
@@ -74,7 +76,7 @@ export default async function OverviewPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Overview KPI</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -84,10 +86,16 @@ export default async function OverviewPage({ searchParams }: Props) {
             </span>
           </p>
         </div>
-        <div className="flex items-center gap-2 print:hidden">
+        <div className="flex items-center gap-2 flex-wrap print:hidden">
           <Suspense>
             <PeriodSelector defaultValue={selectedPeriod} />
           </Suspense>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/report/all${selectedPeriod ? `?period=${selectedPeriod}` : ""}`}>
+              <FileText className="w-3.5 h-3.5 mr-1.5" />
+              Executive Report
+            </Link>
+          </Button>
           <ExportButtons />
           <QuickEntryModal kpis={allKPIs} kpiLatestPeriods={kpiLatestPeriods} />
         </div>

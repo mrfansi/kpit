@@ -188,6 +188,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
           </Button>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -241,6 +242,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
               )}
             </TableBody>
           </Table>
+          </div>
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-3 text-sm">

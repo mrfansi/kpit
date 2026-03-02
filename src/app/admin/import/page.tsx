@@ -47,9 +47,14 @@ export default function ImportPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Import Data CSV</h1>
-        <p className="text-muted-foreground text-sm mt-1">Upload file CSV untuk memasukkan data KPI secara massal</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Import Data CSV</h1>
+          <p className="text-muted-foreground text-sm mt-1">Upload file CSV untuk memasukkan data KPI secara massal</p>
+        </div>
+        <a href="/admin/import/targets" className="text-sm text-primary underline underline-offset-2 shrink-0">
+          Import Target →
+        </a>
       </div>
 
       {/* Format panduan */}

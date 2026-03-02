@@ -32,7 +32,7 @@ export default async function AdminDomainPage() {
         <CardHeader>
           <CardTitle className="text-base">{domains.length} Domain</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent><div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -91,6 +91,7 @@ export default async function AdminDomainPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

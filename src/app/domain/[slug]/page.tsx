@@ -54,7 +54,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{domain.name}</h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -64,7 +64,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
             </span>
           </p>
         </div>
-        <div className="flex items-center gap-2 print:hidden">
+        <div className="flex items-center gap-2 flex-wrap print:hidden">
           <Suspense>
             <PeriodSelector defaultValue={selectedPeriod} />
           </Suspense>

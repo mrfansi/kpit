@@ -56,7 +56,7 @@ export default async function KPITargetsPage({ params }: Props) {
             <Badge variant="secondary" className="ml-2">{targets.length}</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent><div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -89,6 +89,7 @@ export default async function KPITargetsPage({ params }: Props) {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

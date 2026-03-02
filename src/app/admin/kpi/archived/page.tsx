@@ -24,6 +24,7 @@ export default async function ArchivedKPIPage() {
       {kpis.length === 0 ? (
         <p className="text-sm text-muted-foreground">Tidak ada KPI yang diarsipkan.</p>
       ) : (
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -48,6 +49,7 @@ export default async function ArchivedKPIPage() {
             ))}
           </TableBody>
         </Table>
+        </div>
       )}
     </div>
   );

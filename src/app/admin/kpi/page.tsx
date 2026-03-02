@@ -40,6 +40,7 @@ export default async function AdminKPIPage() {
         </div>
       </div>
 
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -92,6 +93,7 @@ export default async function AdminKPIPage() {
           })}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }
