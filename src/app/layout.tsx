@@ -1,3 +1,4 @@
+import { ThemeProvider } from "@/components/theme-provider";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
@@ -19,8 +20,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const domains = await getAllDomains();
 
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <body className={`${geistSans.variable} antialiased`}>
+        <ThemeProvider>
         {/* Mobile header (hamburger + Sheet) — hanya tampil di < lg */}
         <MobileHeader domains={domains} />
 
@@ -36,6 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
         <Toaster richColors position="top-right" />
         <Suspense><ToastHandler /></Suspense>
+        </ThemeProvider>
       </body>
     </html>
   );

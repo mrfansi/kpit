@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface MobileHeaderProps {
   domains: Domain[];
@@ -94,10 +95,11 @@ export function MobileHeader({ domains }: MobileHeaderProps) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-1">
         <BarChart2 className="w-4 h-4 text-primary" />
         <span className="font-semibold text-sm">KPI Dashboard</span>
       </div>
+      <ThemeToggle />
     </header>
   );
 }
