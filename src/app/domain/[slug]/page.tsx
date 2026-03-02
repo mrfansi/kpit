@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getAllDomains, getDomainBySlug, getKPIsByDomain, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getAllDomains, getDomainBySlug, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
@@ -30,9 +30,8 @@ export default async function DomainPage({ params, searchParams }: Props) {
   const [domain, domains] = await Promise.all([getDomainBySlug(slug), getAllDomains()]);
   if (!domain) notFound();
 
-  const [kpisWithEntries, domainKPIs] = await Promise.all([
+  const [kpisWithEntries] = await Promise.all([
     getKPIsWithLatestEntry(domain.id, selectedPeriod),
-    getKPIsByDomain(domain.id),
   ]);
 
   const filtered = kpisWithEntries.filter(({ kpi, latestEntry, effectiveTarget }) => {
@@ -75,7 +74,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
             </Link>
           </Button>
           <ExportButtons domainSlug={slug} />
-          <QuickEntryModal kpis={domainKPIs} kpiLatestPeriods={kpiLatestPeriods} />
+          <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => kpi)} kpiLatestPeriods={kpiLatestPeriods} />
         </div>
       </div>
 

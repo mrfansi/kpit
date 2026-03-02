@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { deleteKPI } from "@/lib/actions/kpi";
+import { archiveKPI } from "@/lib/actions/kpi";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +28,7 @@ export function DeleteKPIButton({ id, name }: DeleteKPIButtonProps) {
   function handleDelete() {
     startTransition(async () => {
       try {
-        await deleteKPI(id);
+        await archiveKPI(id);
         toast.success(`KPI "${name}" berhasil dihapus`);
       } catch {
         toast.error("Gagal menghapus KPI, coba lagi");

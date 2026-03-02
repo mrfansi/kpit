@@ -34,3 +34,7 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Dependency Notes
+
+**next-auth**: Currently pinned to `^5.0.0-beta.30` (beta). Stable `4.24.13` uses a different API (v4 vs v5). Do **not** upgrade to stable without a migration — the session/auth API differs significantly. Monitor https://authjs.dev for v5 stable release.

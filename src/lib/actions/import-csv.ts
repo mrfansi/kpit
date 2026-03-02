@@ -1,10 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { kpis } from "@/lib/db/schema";
+import { kpis, kpiEntries } from "@/lib/db/schema";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
-import { upsertKPIEntry } from "@/lib/db/entries";
+import { validatePeriodDate, validateNumericValue, buildRowError } from "@/lib/csv-import-utils";
+import { auth } from "@/auth";
 
 export interface ImportRow {
   kpiName: string;
@@ -67,13 +69,13 @@ export async function resolveCSVRows(text: string): Promise<{
     }
 
     const periodDate = row[idx("period_date")] ?? "";
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(periodDate)) {
-      errors.push({ row: rowNum, message: `period_date tidak valid: "${periodDate}" (format: YYYY-MM-DD)` });
+    if (!validatePeriodDate(periodDate)) {
+      errors.push(buildRowError(rowNum, `period_date tidak valid: "${periodDate}" (format: YYYY-MM-DD)`));
       continue;
     }
 
     const value = parseFloat(row[idx("value")] ?? "");
-    if (isNaN(value)) {
+    if (!validateNumericValue(value)) {
       errors.push({ row: rowNum, message: `value tidak valid: "${row[idx("value")]}"` });
       continue;
     }
@@ -87,26 +89,49 @@ export async function resolveCSVRows(text: string): Promise<{
 
 /** Upsert resolved rows into kpi_entries */
 export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   let imported = 0;
   let skipped = 0;
   const errors: { row: number; message: string }[] = [];
 
+  const validRows: (ImportRow & { rowIndex: number; kpiId: number })[] = [];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rowNum = i + 2;
-    try {
-      if (!row.kpiId) {
-        errors.push({ row: rowNum, message: "kpiId tidak ditemukan" });
-        skipped++;
-        continue;
+    if (!row.kpiId) {
+      errors.push(buildRowError(rowNum, "kpiId tidak ditemukan"));
+      skipped++;
+    } else if (!validateNumericValue(row.value) || !validatePeriodDate(row.periodDate)) {
+      errors.push(buildRowError(rowNum, "value atau period_date tidak valid"));
+      skipped++;
+    } else {
+      validRows.push({ ...row, rowIndex: rowNum, kpiId: row.kpiId });
+    }
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      for (const row of validRows) {
+        await tx.delete(kpiEntries).where(
+          and(eq(kpiEntries.kpiId, row.kpiId), eq(kpiEntries.periodDate, row.periodDate))
+        );
+        await tx.insert(kpiEntries).values({
+          kpiId: row.kpiId,
+          periodDate: row.periodDate,
+          value: row.value,
+          note: row.note,
+        });
+        imported++;
       }
-      await upsertKPIEntry({ kpiId: row.kpiId, periodDate: row.periodDate, value: row.value, note: row.note });
-      imported++;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Gagal menyimpan ke database";
-      errors.push({ row: rowNum, message });
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Gagal menyimpan ke database";
+    for (const row of validRows) {
+      errors.push({ row: row.rowIndex, message });
       skipped++;
     }
+    imported = 0;
   }
 
   revalidatePath("/");

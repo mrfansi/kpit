@@ -9,14 +9,17 @@ import { auth } from "@/auth";
 import { logAudit } from "@/lib/db/audit";
 
 export async function createKPI(data: Omit<NewKPI, "createdAt">) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   await db.insert(kpis).values(data);
-  const s = await auth();
-  await logAudit({ userId: s?.user?.id, userEmail: s?.user?.email ?? undefined, action: "create", entity: "kpi", detail: data.name });
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi", detail: data.name });
   revalidatePath("/");
   redirect(`/admin/kpi?success=${encodeURIComponent("KPI berhasil ditambahkan")}`);
 }
 
 export async function updateKPI(id: number, data: Partial<Omit<NewKPI, "id" | "createdAt">>) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   await db.update(kpis).set(data).where(eq(kpis.id, id));
   revalidatePath("/");
   revalidatePath(`/kpi/${id}`);
@@ -24,14 +27,17 @@ export async function updateKPI(id: number, data: Partial<Omit<NewKPI, "id" | "c
 }
 
 export async function archiveKPI(id: number) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   await db.update(kpis).set({ isActive: false }).where(eq(kpis.id, id));
-  const s = await auth();
-  await logAudit({ userId: s?.user?.id, userEmail: s?.user?.email ?? undefined, action: "update", entity: "kpi", entityId: String(id), detail: "archived" });
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi", entityId: String(id), detail: "archived" });
   revalidatePath("/");
   revalidatePath("/admin/kpi");
 }
 
 export async function restoreKPI(id: number) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   await db.update(kpis).set({ isActive: true }).where(eq(kpis.id, id));
   revalidatePath("/");
   revalidatePath("/admin/kpi");
@@ -39,20 +45,25 @@ export async function restoreKPI(id: number) {
 }
 
 export async function hardDeleteKPI(id: number) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   await db.delete(kpis).where(eq(kpis.id, id));
-  const s = await auth();
-  await logAudit({ userId: s?.user?.id, userEmail: s?.user?.email ?? undefined, action: "delete", entity: "kpi", entityId: String(id) });
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "delete", entity: "kpi", entityId: String(id) });
   revalidatePath("/");
   revalidatePath("/admin/kpi/archived");
 }
 
 export async function togglePinKPI(id: number, isPinned: boolean) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   await db.update(kpis).set({ isPinned }).where(eq(kpis.id, id));
   revalidatePath("/");
 }
 
 /** Geser sortOrder KPI ke atas atau bawah dalam domain yang sama */
 export async function reorderKPI(id: number, direction: "up" | "down") {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   const [kpi] = await db.select().from(kpis).where(eq(kpis.id, id)).limit(1);
   if (!kpi) return;
 
@@ -74,7 +85,4 @@ export async function reorderKPI(id: number, direction: "up" | "down") {
   revalidatePath("/admin/kpi");
 }
 
-/** @deprecated gunakan archiveKPI */
-export async function deleteKPI(id: number) {
-  return archiveKPI(id);
-}
+

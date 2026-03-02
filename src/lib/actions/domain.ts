@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { auth } from "@/auth";
 
 const DomainSchema = z.object({
   name: z.string().min(1).max(100),
@@ -16,6 +17,8 @@ const DomainSchema = z.object({
 });
 
 export async function createDomain(data: Omit<NewDomain, "id">) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   DomainSchema.parse(data);
   await db.insert(domains).values(data);
   revalidatePath("/");
@@ -23,6 +26,8 @@ export async function createDomain(data: Omit<NewDomain, "id">) {
 }
 
 export async function updateDomain(id: number, data: Partial<Omit<NewDomain, "id">>) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   DomainSchema.partial().parse(data);
   await db.update(domains).set(data).where(eq(domains.id, id));
   revalidatePath("/");
@@ -30,6 +35,8 @@ export async function updateDomain(id: number, data: Partial<Omit<NewDomain, "id
 }
 
 export async function deleteDomain(id: number) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   await db.delete(domains).where(eq(domains.id, id));
   revalidatePath("/");
 }

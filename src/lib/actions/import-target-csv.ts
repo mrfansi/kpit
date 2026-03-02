@@ -5,6 +5,8 @@ import { kpis, kpiTargets } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
+import { auth } from "@/auth";
+import { validatePeriodDate, buildRowError } from "@/lib/csv-import-utils";
 
 export interface TargetImportRow {
   rowIndex: number;
@@ -56,7 +58,7 @@ export async function resolveTargetCSVRows(text: string): Promise<{
     }
 
     const periodDate = row[idx("period_date")] ?? "";
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(periodDate)) { errors.push({ row: rowNum, message: `period_date tidak valid: "${periodDate}"` }); continue; }
+    if (!validatePeriodDate(periodDate)) { errors.push(buildRowError(rowNum, `period_date tidak valid: "${periodDate}"`)); continue; }
 
     const target = parseFloat(row[idx("target")] ?? "");
     if (isNaN(target)) { errors.push({ row: rowNum, message: `target tidak valid: "${row[idx("target")]}"` }); continue; }
@@ -81,24 +83,29 @@ export async function resolveTargetCSVRows(text: string): Promise<{
 }
 
 export async function importTargetRows(rows: TargetImportRow[]): Promise<{ imported: number; errors: { row: number; message: string }[] }> {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   let imported = 0;
   const errors: { row: number; message: string }[] = [];
 
-  for (const row of rows) {
-    try {
-      const existing = await db.select({ id: kpiTargets.id }).from(kpiTargets)
-        .where(and(eq(kpiTargets.kpiId, row.kpiId), eq(kpiTargets.periodDate, row.periodDate))).limit(1);
+  try {
+    await db.transaction(async (tx) => {
+      for (const row of rows) {
+        const existing = await tx.select({ id: kpiTargets.id }).from(kpiTargets)
+          .where(and(eq(kpiTargets.kpiId, row.kpiId), eq(kpiTargets.periodDate, row.periodDate))).limit(1);
 
-      const data = { target: row.target, thresholdGreen: row.thresholdGreen, thresholdYellow: row.thresholdYellow };
-      if (existing[0]) {
-        await db.update(kpiTargets).set(data).where(eq(kpiTargets.id, existing[0].id));
-      } else {
-        await db.insert(kpiTargets).values({ kpiId: row.kpiId, periodDate: row.periodDate, ...data });
+        const data = { target: row.target, thresholdGreen: row.thresholdGreen, thresholdYellow: row.thresholdYellow };
+        if (existing[0]) {
+          await tx.update(kpiTargets).set(data).where(eq(kpiTargets.id, existing[0].id));
+        } else {
+          await tx.insert(kpiTargets).values({ kpiId: row.kpiId, periodDate: row.periodDate, ...data });
+        }
+        imported++;
       }
-      imported++;
-    } catch (err) {
-      errors.push({ row: row.rowIndex, message: err instanceof Error ? err.message : "Gagal menyimpan" });
-    }
+    });
+  } catch (err) {
+    errors.push({ row: 0, message: err instanceof Error ? err.message : "Gagal menyimpan" });
+    imported = 0;
   }
 
   revalidatePath("/");

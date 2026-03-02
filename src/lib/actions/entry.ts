@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { upsertKPIEntry } from "@/lib/db/entries";
+import { auth } from "@/auth";
 
 const EntrySchema = z.object({
   kpiId: z.number().int().positive(),
@@ -16,6 +17,8 @@ const EntrySchema = z.object({
 });
 
 export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   EntrySchema.parse(data);
   await upsertKPIEntry({ ...data, note: data.note ?? undefined });
   revalidatePath("/");
@@ -23,17 +26,21 @@ export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
 }
 
 export async function updateEntry(id: number, value: number, note?: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   await db.update(kpiEntries).set({ value, note }).where(eq(kpiEntries.id, id));
   revalidatePath("/");
 }
 
 export async function deleteEntry(id: number, kpiId: number) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   await db.delete(kpiEntries).where(eq(kpiEntries.id, id));
   revalidatePath("/");
   revalidatePath(`/kpi/${kpiId}`);
 }
 
-export interface BulkEntryRow {
+interface BulkEntryRow {
   kpiId: number;
   periodDate: string;
   value: number;
@@ -41,6 +48,8 @@ export interface BulkEntryRow {
 }
 
 export async function bulkCreateEntries(rows: BulkEntryRow[]): Promise<{ saved: number }> {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
   if (rows.length === 0) return { saved: 0 };
 
   const periodDate = rows[0].periodDate;

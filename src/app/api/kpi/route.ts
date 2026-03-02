@@ -1,3 +1,9 @@
+/**
+ * GET /api/kpi
+ * Public endpoint — returns all active KPIs with latest entry value.
+ * Intentionally unauthenticated to support external integrations and widgets.
+ * Do NOT add sensitive data to this endpoint.
+ */
 import { NextResponse } from "next/server";
 import { getKPIsWithLatestEntry } from "@/lib/queries";
 import { getKPIStatus } from "@/lib/kpi-status";

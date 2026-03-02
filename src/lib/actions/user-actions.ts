@@ -27,6 +27,8 @@ export async function addUserAction(
   _prev: AddUserState,
   formData: FormData
 ): Promise<AddUserState> {
+  const session = await auth();
+  if (!session?.user) return { error: "Tidak terautentikasi." };
   const parsed = AddUserSchema.safeParse({
     email: formData.get("email"),
     name: formData.get("name"),
