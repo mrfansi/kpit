@@ -5,9 +5,13 @@ import { kpis, type NewKPI } from "@/lib/db/schema";
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { logAudit } from "@/lib/db/audit";
 
 export async function createKPI(data: Omit<NewKPI, "createdAt">) {
   await db.insert(kpis).values(data);
+  const s = await auth();
+  await logAudit({ userId: s?.user?.id, userEmail: s?.user?.email ?? undefined, action: "create", entity: "kpi", detail: data.name });
   revalidatePath("/");
   redirect(`/admin/kpi?success=${encodeURIComponent("KPI berhasil ditambahkan")}`);
 }
@@ -21,6 +25,8 @@ export async function updateKPI(id: number, data: Partial<Omit<NewKPI, "id" | "c
 
 export async function archiveKPI(id: number) {
   await db.update(kpis).set({ isActive: false }).where(eq(kpis.id, id));
+  const s = await auth();
+  await logAudit({ userId: s?.user?.id, userEmail: s?.user?.email ?? undefined, action: "update", entity: "kpi", entityId: String(id), detail: "archived" });
   revalidatePath("/");
   revalidatePath("/admin/kpi");
 }
@@ -34,6 +40,8 @@ export async function restoreKPI(id: number) {
 
 export async function hardDeleteKPI(id: number) {
   await db.delete(kpis).where(eq(kpis.id, id));
+  const s = await auth();
+  await logAudit({ userId: s?.user?.id, userEmail: s?.user?.email ?? undefined, action: "delete", entity: "kpi", entityId: String(id) });
   revalidatePath("/");
   revalidatePath("/admin/kpi/archived");
 }

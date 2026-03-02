@@ -1,10 +1,10 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { kpiEntries, kpis } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { kpis } from "@/lib/db/schema";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
+import { upsertKPIEntry } from "@/lib/db/entries";
 
 export interface ImportRow {
   kpiName: string;
@@ -100,10 +100,7 @@ export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
         skipped++;
         continue;
       }
-      await db.delete(kpiEntries).where(
-        and(eq(kpiEntries.kpiId, row.kpiId), eq(kpiEntries.periodDate, row.periodDate))
-      );
-      await db.insert(kpiEntries).values({ kpiId: row.kpiId, periodDate: row.periodDate, value: row.value, note: row.note });
+      await upsertKPIEntry({ kpiId: row.kpiId, periodDate: row.periodDate, value: row.value, note: row.note });
       imported++;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Gagal menyimpan ke database";

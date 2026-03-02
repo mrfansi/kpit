@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDomainBySlug, getKPIsByDomain, getAllKPIs, getKPIEntries } from "@/lib/queries";
+import { getDomainBySlug, getKPIsByDomain, getAllKPIs, getAllKPIEntriesBatch } from "@/lib/queries";
 import { formatPeriodDate, formatValue } from "@/lib/period";
 
 export async function GET(req: NextRequest) {
@@ -19,8 +19,16 @@ export async function GET(req: NextRequest) {
 
   const rows: string[] = ["KPI,Periode,Nilai Aktual,Target,Unit"];
 
+  const kpiIds = kpis.map((k) => k.id);
+  const allEntries = await getAllKPIEntriesBatch(kpiIds, fromDate ?? undefined, toDate ?? undefined);
+  const entriesByKpi = new Map<number, typeof allEntries>();
+  for (const e of allEntries) {
+    if (!entriesByKpi.has(e.kpiId)) entriesByKpi.set(e.kpiId, []);
+    entriesByKpi.get(e.kpiId)!.push(e);
+  }
+
   for (const kpi of kpis) {
-    const entries = await getKPIEntries(kpi.id, fromDate, toDate);
+    const entries = entriesByKpi.get(kpi.id) ?? [];
     for (const entry of entries) {
       rows.push(`"${kpi.name}","${formatPeriodDate(entry.periodDate, "MMMM yyyy")}",${entry.value},${kpi.target},"${kpi.unit}"`);
     }

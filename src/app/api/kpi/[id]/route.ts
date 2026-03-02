@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getKPIById } from "@/lib/queries";
 import { createEntry } from "@/lib/actions/entry";
+import { auth } from "@/auth";
 
 interface Params {
   params: Promise<{ id: string }>;
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const kpiId = Number(id);
   if (isNaN(kpiId)) return NextResponse.json({ error: "Invalid KPI id" }, { status: 400 });

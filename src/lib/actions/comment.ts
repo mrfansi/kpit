@@ -6,7 +6,8 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function createComment(kpiId: number, periodDate: string, content: string, author = "Admin") {
-  if (!content.trim()) return;
+  if (!content.trim() || content.trim().length > 2000) return;
+  if (!kpiId || !periodDate) return;
   await db.insert(kpiComments).values({ kpiId, periodDate, content: content.trim(), author });
   revalidatePath(`/kpi/${kpiId}`);
 }

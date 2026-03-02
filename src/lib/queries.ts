@@ -171,3 +171,20 @@ export async function getKPIComments(kpiId: number): Promise<KPIComment[]> {
     .where(eq(kpiComments.kpiId, kpiId))
     .orderBy(desc(kpiComments.createdAt));
 }
+
+export async function getAllKPIEntriesBatch(
+  kpiIds: number[],
+  from?: string,
+  to?: string
+) {
+  if (kpiIds.length === 0) return [];
+  const conditions = [inArray(kpiEntries.kpiId, kpiIds)];
+  if (from) conditions.push(gte(kpiEntries.periodDate, from));
+  if (to) conditions.push(lte(kpiEntries.periodDate, to));
+  return db
+    .select()
+    .from(kpiEntries)
+    .where(and(...conditions))
+    .orderBy(kpiEntries.periodDate)
+    .all();
+}

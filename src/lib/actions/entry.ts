@@ -1,15 +1,23 @@
 "use server";
 
-import { db } from "@/lib/db";
-import { kpiEntries, type NewKPIEntry } from "@/lib/db/schema";
+import { type NewKPIEntry } from "@/lib/db/schema";
+import { kpiEntries } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { upsertKPIEntry } from "@/lib/db/entries";
+
+const EntrySchema = z.object({
+  kpiId: z.number().int().positive(),
+  value: z.number().finite(),
+  periodDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  note: z.string().optional(),
+});
 
 export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
-  await db
-    .delete(kpiEntries)
-    .where(and(eq(kpiEntries.kpiId, data.kpiId), eq(kpiEntries.periodDate, data.periodDate)));
-  await db.insert(kpiEntries).values(data);
+  EntrySchema.parse(data);
+  await upsertKPIEntry({ ...data, note: data.note ?? undefined });
   revalidatePath("/");
   revalidatePath(`/kpi/${data.kpiId}`);
 }

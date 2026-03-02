@@ -3,11 +3,8 @@ import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DeleteUserButton } from "@/components/delete-user-button";
-import { addUserAction } from "@/lib/actions/user-actions";
+import { AddUserForm } from "@/components/add-user-form";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { Users } from "lucide-react";
@@ -82,50 +79,7 @@ export default async function AdminUsersPage() {
       </Card>
 
       {/* Form Tambah User */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Tambah User Baru</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={addUserAction} className="space-y-4 max-w-md">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="name">Nama</Label>
-                <Input id="name" name="name" placeholder="John Doe" required />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" name="email" type="email" placeholder="john@example.com" required />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="Min. 8 karakter"
-                  required
-                  minLength={8}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="role">Role</Label>
-                <select
-                  name="role"
-                  defaultValue="admin"
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-              </div>
-            </div>
-            <Button type="submit">Tambah User</Button>
-          </form>
-        </CardContent>
-      </Card>
+      <AddUserForm />
     </div>
   );
 }

@@ -17,24 +17,32 @@ const AddUserSchema = z.object({
 const ChangePasswordSchema = z.object({
   userId: z.string(),
   password: z.string().min(8),
+  confirm: z.string().min(8),
 });
 
-export async function addUserAction(formData: FormData): Promise<void> {
+export type AddUserState = { error?: string; success?: boolean };
+export type ChangePasswordState = { error?: string; success?: boolean };
+
+export async function addUserAction(
+  _prev: AddUserState,
+  formData: FormData
+): Promise<AddUserState> {
   const parsed = AddUserSchema.safeParse({
     email: formData.get("email"),
     name: formData.get("name"),
     password: formData.get("password"),
     role: formData.get("role") ?? "admin",
   });
-  if (!parsed.success) return;
+  if (!parsed.success) return { error: "Data tidak valid. Pastikan semua field terisi dengan benar." };
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   try {
     await createUser({ id: randomUUID(), ...parsed.data, passwordHash });
+    revalidatePath("/admin/users");
+    return { success: true };
   } catch {
-    // email already exists — silently skip
+    return { error: "Email sudah digunakan oleh user lain." };
   }
-  revalidatePath("/admin/users");
 }
 
 export async function deleteUserAction(id: string) {
@@ -44,15 +52,22 @@ export async function deleteUserAction(id: string) {
   revalidatePath("/admin/users");
 }
 
-export async function changePasswordAction(formData: FormData) {
+export async function changePasswordAction(
+  _prev: ChangePasswordState,
+  formData: FormData
+): Promise<ChangePasswordState> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Tidak terautentikasi." };
+
   const parsed = ChangePasswordSchema.safeParse({
-    userId: formData.get("userId"),
+    userId: session.user.id,
     password: formData.get("password"),
+    confirm: formData.get("confirm"),
   });
   if (!parsed.success) return { error: "Password minimal 8 karakter." };
+  if (parsed.data.password !== parsed.data.confirm) return { error: "Konfirmasi password tidak cocok." };
 
   const hash = await bcrypt.hash(parsed.data.password, 12);
   await updateUserPassword(parsed.data.userId, hash);
-  revalidatePath("/admin/users");
   return { success: true };
 }

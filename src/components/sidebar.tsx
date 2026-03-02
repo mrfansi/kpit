@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Globe, Upload, User } from "lucide-react";
+import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Globe, Upload, User, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -60,6 +60,7 @@ export function Sidebar({ domains, user }: SidebarProps) {
         <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
         <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
         <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
+        <NavItem href="/admin/audit" icon={ClipboardList} label="Audit Log" active={pathname.startsWith("/admin/audit")} />
       </nav>
 
       {/* Footer: theme toggle + user info */}
@@ -74,6 +75,12 @@ export function Sidebar({ domains, user }: SidebarProps) {
               <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               <span className="text-xs text-muted-foreground truncate">{user.name ?? user.email}</span>
             </div>
+            <Link
+              href="/admin/account"
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+              Akun Saya
+            </Link>
             <LogoutButton />
           </div>
         )}

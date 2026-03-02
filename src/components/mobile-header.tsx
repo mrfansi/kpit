@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Menu, Globe, Upload } from "lucide-react";
+import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Menu, Globe, Upload, LogIn, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -12,13 +12,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 interface MobileHeaderProps {
   domains: Domain[];
+  isAuthenticated?: boolean;
 }
 
 const domainIconMap: Record<string, React.ElementType> = {
   TrendingUp, Users, Settings, BarChart2,
 };
 
-export function MobileHeader({ domains }: MobileHeaderProps) {
+export function MobileHeader({ domains, isAuthenticated = false }: MobileHeaderProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -37,6 +38,8 @@ export function MobileHeader({ domains }: MobileHeaderProps) {
     { href: "/admin/domain", icon: Globe, label: "Kelola Domain" },
     { href: "/admin/input", icon: PenLine, label: "Input Data" },
     { href: "/admin/import", icon: Upload, label: "Import CSV" },
+    { href: "/admin/users", icon: Users, label: "Pengguna" },
+    { href: "/admin/audit", icon: ClipboardList, label: "Audit Log" },
   ];
 
   return (
@@ -72,26 +75,40 @@ export function MobileHeader({ domains }: MobileHeaderProps) {
               </Link>
             ))}
 
-            <div className="pt-3 pb-1 px-2">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Admin</span>
-            </div>
-
-            {adminItems.map(({ href, icon: Icon, label }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "flex items-center gap-2.5 px-2 py-2 rounded-md text-sm transition-colors",
-                  pathname.startsWith(href)
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{label}</span>
-              </Link>
-            ))}
+            {isAuthenticated ? (
+              <>
+                <div className="pt-3 pb-1 px-2">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Admin</span>
+                </div>
+                {adminItems.map(({ href, icon: Icon, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "flex items-center gap-2.5 px-2 py-2 rounded-md text-sm transition-colors",
+                      pathname.startsWith(href)
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    )}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </Link>
+                ))}
+              </>
+            ) : (
+              <div className="pt-3">
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2.5 px-2 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  <LogIn className="w-4 h-4 shrink-0" />
+                  <span>Login Admin</span>
+                </Link>
+              </div>
+            )}
           </nav>
         </SheetContent>
       </Sheet>

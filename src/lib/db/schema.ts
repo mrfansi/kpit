@@ -71,6 +71,18 @@ export const kpiComments = sqliteTable("kpi_comments", {
     .notNull(),
 });
 
+export const auditLogs = sqliteTable("audit_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id"),
+  userEmail: text("user_email"),
+  action: text("action").notNull(), // 'create' | 'update' | 'delete'
+  entity: text("entity").notNull(), // 'kpi' | 'entry' | 'domain' | 'user'
+  entityId: text("entity_id"),
+  detail: text("detail"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+export type AuditLog = typeof auditLogs.$inferSelect;
+
 // Types
 export type Domain = typeof domains.$inferSelect;
 export type KPI = typeof kpis.$inferSelect;

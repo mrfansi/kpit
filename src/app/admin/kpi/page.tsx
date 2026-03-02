@@ -7,9 +7,15 @@ import { ReorderKPIButtons } from "@/components/reorder-kpi-buttons";
 import Link from "next/link";
 import { Plus, Pencil, Target, Archive } from "lucide-react";
 
-export default async function AdminKPIPage() {
+export default async function AdminKPIPage({ searchParams }: { searchParams: Promise<{ page?: string; success?: string }> }) {
+  const page = Number((await searchParams).page ?? 1);
   const [kpis, domains] = await Promise.all([getAllKPIs(), getAllDomains()]);
   const domainMap = Object.fromEntries(domains.map((d) => [d.id, d]));
+
+  const PAGE_SIZE = 20;
+  const totalPages = Math.ceil(kpis.length / PAGE_SIZE);
+  const currentPage = Math.max(1, Math.min(page, totalPages || 1));
+  const pagedKpis = kpis.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Group by domain for reorder first/last detection
   const kpisByDomain = new Map<number, typeof kpis>();
@@ -55,7 +61,7 @@ export default async function AdminKPIPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {kpis.map((kpi) => {
+          {pagedKpis.map((kpi) => {
             const domainKPIs = kpisByDomain.get(kpi.domainId) ?? [];
             const idx = domainKPIs.findIndex((k) => k.id === kpi.id);
             return (
@@ -93,6 +99,20 @@ export default async function AdminKPIPage() {
           })}
         </TableBody>
       </Table>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-3 border-t text-sm text-muted-foreground">
+          <span>{kpis.length} KPI total</span>
+          <div className="flex gap-2">
+            {currentPage > 1 && (
+              <a href={`?page=${currentPage - 1}`} className="px-3 py-1 border rounded hover:bg-accent">← Sebelumnya</a>
+            )}
+            <span className="px-3 py-1">Hal {currentPage}/{totalPages}</span>
+            {currentPage < totalPages && (
+              <a href={`?page=${currentPage + 1}`} className="px-3 py-1 border rounded hover:bg-accent">Berikutnya →</a>
+            )}
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
