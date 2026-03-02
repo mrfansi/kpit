@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "./db";
-import { domains, kpiEntries, kpiTargets, kpis, type KPI, type KPIEntry, type KPITarget } from "./db/schema";
+import { domains, kpiComments, kpiEntries, kpiTargets, kpis, type KPI, type KPIComment, type KPIEntry, type KPITarget } from "./db/schema";
 
 export async function getAllDomains() {
   return db.select().from(domains).orderBy(domains.name);
@@ -119,4 +119,13 @@ export async function getPeriodComparisonEntries(kpiId: number, currentPeriodDat
   ]);
 
   return { prevMonth, prevYear };
+}
+
+/** Ambil semua komentar untuk satu KPI, terbaru dulu */
+export async function getKPIComments(kpiId: number): Promise<KPIComment[]> {
+  return db
+    .select()
+    .from(kpiComments)
+    .where(eq(kpiComments.kpiId, kpiId))
+    .orderBy(desc(kpiComments.createdAt));
 }

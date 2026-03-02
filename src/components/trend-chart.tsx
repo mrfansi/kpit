@@ -1,6 +1,7 @@
 "use client";
 
 import type { KPIEntry } from "@/lib/db/schema";
+import type { ForecastPoint } from "@/lib/forecast";
 import { formatPeriodDate, formatValue } from "@/lib/period";
 import {
   ChartConfig,
@@ -15,13 +16,15 @@ interface TrendChartProps {
   unit: string;
   target: number;
   color?: string;
+  forecastPoints?: ForecastPoint[];
 }
 
 const chartConfig = {
   value: { label: "Aktual", color: "hsl(var(--chart-1))" },
+  forecast: { label: "Forecast", color: "hsl(var(--chart-3))" },
 } satisfies ChartConfig;
 
-export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))" }: TrendChartProps) {
+export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))", forecastPoints = [] }: TrendChartProps) {
   if (entries.length === 0) {
     return (
       <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
@@ -30,21 +33,32 @@ export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))
     );
   }
 
-  const data = entries.map((e) => ({
+  const actualData = entries.map((e) => ({
     period: formatPeriodDate(e.periodDate),
     value: e.value,
+    forecast: undefined as number | undefined,
   }));
+
+  // Sambung titik terakhir aktual ke forecast agar garis tidak terputus
+  const forecastData = forecastPoints.map((p) => ({
+    period: formatPeriodDate(p.periodDate),
+    value: undefined as number | undefined,
+    forecast: p.value,
+  }));
+
+  if (forecastPoints.length > 0 && actualData.length > 0) {
+    // Bridge: titik terakhir aktual juga jadi titik awal forecast
+    const last = actualData[actualData.length - 1];
+    forecastData.unshift({ period: last.period, value: undefined, forecast: last.value });
+  }
+
+  const data = [...actualData, ...forecastData];
 
   return (
     <ChartContainer config={chartConfig} className="h-[240px] w-full">
       <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis
-          dataKey="period"
-          tick={{ fontSize: 11 }}
-          tickLine={false}
-          axisLine={false}
-        />
+        <XAxis dataKey="period" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
         <YAxis
           tick={{ fontSize: 11 }}
           tickLine={false}
@@ -55,7 +69,10 @@ export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))
         <ChartTooltip
           content={
             <ChartTooltipContent
-              formatter={(value) => [formatValue(Number(value), unit), "Aktual"]}
+              formatter={(value, name) => [
+                formatValue(Number(value), unit),
+                name === "forecast" ? "Forecast" : "Aktual",
+              ]}
             />
           }
         />
@@ -72,7 +89,20 @@ export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))
           strokeWidth={2}
           dot={{ r: 4, fill: color }}
           activeDot={{ r: 6 }}
+          connectNulls={false}
         />
+        {forecastPoints.length > 0 && (
+          <Line
+            type="monotone"
+            dataKey="forecast"
+            stroke="hsl(var(--chart-3))"
+            strokeWidth={2}
+            strokeDasharray="5 3"
+            dot={{ r: 4, fill: "hsl(var(--chart-3))", strokeDasharray: "0" }}
+            activeDot={{ r: 6 }}
+            connectNulls={false}
+          />
+        )}
       </LineChart>
     </ChartContainer>
   );

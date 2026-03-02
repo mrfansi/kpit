@@ -8,15 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Target } from "lucide-react";
+import { ArrowLeft, Target, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
-import { getEffectiveTarget, getKPITargets, getPeriodComparisonEntries } from "@/lib/queries";
+import { getEffectiveTarget, getKPITargets, getPeriodComparisonEntries, getKPIComments } from "@/lib/queries";
 import { PeriodComparison } from "@/components/period-comparison";
+import { KPIComments } from "@/components/kpi-comments";
+import { computeForecast } from "@/lib/forecast";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; forecast?: string }>;
 }
 
 const RANGE_OPTIONS = [
@@ -26,7 +28,7 @@ const RANGE_OPTIONS = [
 ];
 
 export default async function KPIDetailPage({ params, searchParams }: Props) {
-  const [{ id }, { range }] = await Promise.all([params, searchParams]);
+  const [{ id }, { range, forecast: forecastParam }] = await Promise.all([params, searchParams]);
   const kpiId = Number(id);
   if (isNaN(kpiId)) notFound();
 
@@ -35,12 +37,14 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
 
   const rangeMonths = Number(range ?? "6");
   const validRange = [3, 6, 12].includes(rangeMonths) ? rangeMonths : 6;
+  const showForecast = forecastParam === "1";
 
   const { from, to } = getPeriodRange(validRange);
-  const [latestEntry, entries, allTargetOverrides] = await Promise.all([
+  const [latestEntry, entries, allTargetOverrides, comments] = await Promise.all([
     getLatestEntry(kpiId),
     getKPIEntries(kpiId, from, to),
     getKPITargets(kpiId),
+    getKPIComments(kpiId),
   ]);
 
   const comparison = latestEntry
@@ -57,6 +61,8 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   const status = getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget });
   const achievementPct = getAchievementPct(latestEntry?.value, effectiveTarget.target);
   const cfg = statusConfig[status];
+
+  const forecastPoints = showForecast ? computeForecast(entries) : [];
 
   return (
     <div className="space-y-6">
@@ -92,7 +98,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Tren Historis</CardTitle>
-          <div className="flex gap-1 print:hidden">
+          <div className="flex gap-1 print:hidden flex-wrap justify-end">
             {RANGE_OPTIONS.map((opt) => (
               <Button
                 key={opt.value}
@@ -101,13 +107,30 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                 className="text-xs h-7 px-2.5"
                 asChild
               >
-                <Link href={`?range=${opt.value}`}>{opt.label}</Link>
+                <Link href={`?range=${opt.value}${showForecast ? "&forecast=1" : ""}`}>{opt.label}</Link>
               </Button>
             ))}
+            <Button
+              variant={showForecast ? "default" : "outline"}
+              size="sm"
+              className="text-xs h-7 px-2.5 ml-1"
+              asChild
+            >
+              <Link href={`?range=${validRange}${showForecast ? "" : "&forecast=1"}`}>
+                <TrendingUp className="w-3 h-3 mr-1" />
+                Forecast
+              </Link>
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <TrendChart entries={entries} unit={kpi.unit} target={kpi.target} />
+          <TrendChart entries={entries} unit={kpi.unit} target={effectiveTarget.target} forecastPoints={forecastPoints} />
+          {showForecast && forecastPoints.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              <span className="inline-block w-6 border-t-2 border-dashed border-[hsl(var(--chart-3))] mr-1.5 align-middle" />
+              Proyeksi 3 bulan ke depan berdasarkan regresi linear historis
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -174,6 +197,20 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
           )}
         </CardContent>
       </Card>
+
+      {/* Komentar */}
+      {latestEntry && (
+        <Card>
+          <CardContent className="pt-5">
+            <KPIComments
+              kpiId={kpi.id}
+              periodDate={latestEntry.periodDate}
+              periodLabel={formatPeriodDate(latestEntry.periodDate, "MMMM yyyy")}
+              initialComments={comments.filter((c) => c.periodDate === latestEntry.periodDate)}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
