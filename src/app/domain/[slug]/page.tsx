@@ -3,6 +3,8 @@ import { getAllDomains, getDomainBySlug, getKPIsWithLatestEntry } from "@/lib/qu
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
+import { ExportButtons } from "@/components/export-buttons";
+import { EmptyState } from "@/components/empty-state";
 import { Separator } from "@/components/ui/separator";
 
 interface Props {
@@ -23,9 +25,12 @@ export default async function DomainPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{domain.name}</h1>
-        <p className="text-muted-foreground text-sm mt-1">{domain.description ?? "KPI untuk domain ini"}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{domain.name}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{domain.description ?? "KPI untuk domain ini"}</p>
+        </div>
+        <ExportButtons domainSlug={slug} />
       </div>
 
       <StatSummary kpisWithEntries={kpisWithEntries} />
@@ -34,7 +39,7 @@ export default async function DomainPage({ params }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {kpisWithEntries.length === 0 ? (
-          <p className="text-sm text-muted-foreground col-span-full">Belum ada KPI untuk domain ini.</p>
+          <div className="col-span-full"><EmptyState /></div>
         ) : (
           kpisWithEntries.map(({ kpi, latestEntry }) => (
             <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} />

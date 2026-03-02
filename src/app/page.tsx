@@ -2,6 +2,7 @@ import { getAllDomains, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
+import { ExportButtons } from "@/components/export-buttons";
 import { Separator } from "@/components/ui/separator";
 
 export default async function OverviewPage() {
@@ -17,9 +18,12 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Overview KPI</h1>
-        <p className="text-muted-foreground text-sm mt-1">Ringkasan seluruh Key Performance Indicators</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Overview KPI</h1>
+          <p className="text-muted-foreground text-sm mt-1">Ringkasan seluruh Key Performance Indicators</p>
+        </div>
+        <ExportButtons />
       </div>
 
       <StatSummary kpisWithEntries={allKPIsWithEntries} />

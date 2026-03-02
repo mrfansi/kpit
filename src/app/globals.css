@@ -124,3 +124,21 @@
     @apply bg-background text-foreground;
   }
 }
+@media print {
+  aside,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  body {
+    font-size: 12px;
+  }
+
+  .recharts-wrapper {
+    page-break-inside: avoid;
+  }
+}
