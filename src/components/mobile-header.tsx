@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Menu, Globe } from "lucide-react";
+import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Menu, Globe, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -36,6 +36,7 @@ export function MobileHeader({ domains }: MobileHeaderProps) {
     { href: "/admin/kpi", icon: Settings, label: "Kelola KPI" },
     { href: "/admin/domain", icon: Globe, label: "Kelola Domain" },
     { href: "/admin/input", icon: PenLine, label: "Input Data" },
+    { href: "/admin/import", icon: Upload, label: "Import CSV" },
   ];
 
   return (

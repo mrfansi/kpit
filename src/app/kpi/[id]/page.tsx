@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Target } from "lucide-react";
 import Link from "next/link";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
-import { getEffectiveTarget, getKPITargets } from "@/lib/queries";
+import { getEffectiveTarget, getKPITargets, getPeriodComparisonEntries } from "@/lib/queries";
+import { PeriodComparison } from "@/components/period-comparison";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -41,6 +42,10 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
     getKPIEntries(kpiId, from, to),
     getKPITargets(kpiId),
   ]);
+
+  const comparison = latestEntry
+    ? await getPeriodComparisonEntries(kpiId, latestEntry.periodDate)
+    : { prevMonth: null, prevYear: null };
 
   // Build lookup map: periodDate → target override
   const targetOverrideMap = new Map(allTargetOverrides.map((t) => [t.periodDate, t]));
@@ -74,6 +79,14 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
         <StatCard label="Pencapaian" value={achievementPct !== null ? `${achievementPct}%` : "—"} />
         <StatCard label="Tipe Refresh" value={kpi.refreshType === "realtime" ? "Real-time" : "Periodik"} />
       </div>
+
+      {/* Perbandingan periode */}
+      <PeriodComparison
+        kpi={kpi}
+        current={latestEntry}
+        prevMonth={comparison.prevMonth}
+        prevYear={comparison.prevYear}
+      />
 
       {/* Trend Chart dengan range selector */}
       <Card>

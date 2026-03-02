@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Globe } from "lucide-react";
+import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Globe, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -56,6 +56,7 @@ export function Sidebar({ domains }: SidebarProps) {
         <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
         <NavItem href="/admin/domain" icon={Globe} label="Kelola Domain" active={pathname.startsWith("/admin/domain")} />
         <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
+        <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname === "/admin/import"} />
       </nav>
 
       {/* Footer: theme toggle */}

@@ -9,6 +9,9 @@ import { EmptyState } from "@/components/empty-state";
 import { PeriodSelector } from "@/components/period-selector";
 import { Separator } from "@/components/ui/separator";
 import { formatPeriodDate, listLastNMonths } from "@/lib/period";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
+import Link from "next/link";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -42,6 +45,12 @@ export default async function DomainPage({ params, searchParams }: Props) {
           <Suspense>
             <PeriodSelector defaultValue={selectedPeriod} />
           </Suspense>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/report/${slug}${selectedPeriod ? `?period=${selectedPeriod}` : ""}`}>
+              <FileText className="w-3.5 h-3.5 mr-1.5" />
+              Scorecard PDF
+            </Link>
+          </Button>
           <ExportButtons domainSlug={slug} />
         </div>
       </div>

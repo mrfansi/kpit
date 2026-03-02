@@ -101,3 +101,22 @@ export async function getKPITargets(kpiId: number): Promise<KPITarget[]> {
     .where(eq(kpiTargets.kpiId, kpiId))
     .orderBy(desc(kpiTargets.periodDate));
 }
+
+/**
+ * Ambil entry untuk MoM dan YoY comparison.
+ * @param kpiId
+ * @param currentPeriodDate  ISO date awal bulan (YYYY-MM-DD)
+ */
+export async function getPeriodComparisonEntries(kpiId: number, currentPeriodDate: string) {
+  const d = new Date(currentPeriodDate);
+
+  const prevMonthDate = new Date(d.getFullYear(), d.getMonth() - 1, 1).toISOString().slice(0, 10);
+  const prevYearDate  = new Date(d.getFullYear() - 1, d.getMonth(), 1).toISOString().slice(0, 10);
+
+  const [prevMonth, prevYear] = await Promise.all([
+    getLatestEntry(kpiId, prevMonthDate),
+    getLatestEntry(kpiId, prevYearDate),
+  ]);
+
+  return { prevMonth, prevYear };
+}
