@@ -1,25 +1,28 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getAllDomains, getDomainBySlug, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getAllDomains, getDomainBySlug, getKPIsByDomain, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
 import { ExportButtons } from "@/components/export-buttons";
 import { EmptyState } from "@/components/empty-state";
 import { PeriodSelector } from "@/components/period-selector";
+import { KPIFilterBar } from "@/components/kpi-filter-bar";
+import { QuickEntryModal } from "@/components/quick-entry-modal";
 import { Separator } from "@/components/ui/separator";
 import { formatPeriodDate, listLastNMonths } from "@/lib/period";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import Link from "next/link";
+import { getKPIStatus } from "@/lib/kpi-status";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string; q?: string; status?: string }>;
 }
 
 export default async function DomainPage({ params, searchParams }: Props) {
-  const [{ slug }, { period }] = await Promise.all([params, searchParams]);
+  const [{ slug }, { period, q, status }] = await Promise.all([params, searchParams]);
 
   const months = listLastNMonths(12);
   const selectedPeriod = period ?? months[0]?.value;
@@ -27,7 +30,22 @@ export default async function DomainPage({ params, searchParams }: Props) {
   const [domain, domains] = await Promise.all([getDomainBySlug(slug), getAllDomains()]);
   if (!domain) notFound();
 
-  const kpisWithEntries = await getKPIsWithLatestEntry(domain.id, selectedPeriod);
+  const [kpisWithEntries, domainKPIs] = await Promise.all([
+    getKPIsWithLatestEntry(domain.id, selectedPeriod),
+    getKPIsByDomain(domain.id),
+  ]);
+
+  const filtered = kpisWithEntries.filter(({ kpi, latestEntry, effectiveTarget }) => {
+    if (q && !kpi.name.toLowerCase().includes(q.toLowerCase())) return false;
+    if (status) {
+      const kpiWithTarget = effectiveTarget ? { ...kpi, ...effectiveTarget } : kpi;
+      const kpiStatus = getKPIStatus(latestEntry?.value, kpiWithTarget);
+      if (kpiStatus !== status) return false;
+    }
+    return true;
+  });
+
+  const isFiltered = Boolean(q || status);
 
   return (
     <div className="space-y-6">
@@ -52,18 +70,30 @@ export default async function DomainPage({ params, searchParams }: Props) {
             </Link>
           </Button>
           <ExportButtons domainSlug={slug} />
+          <QuickEntryModal kpis={domainKPIs} />
         </div>
       </div>
 
       <StatSummary kpisWithEntries={kpisWithEntries} />
+
+      <Suspense>
+        <KPIFilterBar defaultQ={q} defaultStatus={status} />
+      </Suspense>
+
       <DomainTabs domains={domains} activeSlug={slug} />
       <Separator />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {kpisWithEntries.length === 0 ? (
-          <div className="col-span-full"><EmptyState /></div>
+        {filtered.length === 0 ? (
+          <div className="col-span-full">
+            {isFiltered ? (
+              <p className="text-sm text-muted-foreground">Tidak ada KPI yang cocok dengan filter.</p>
+            ) : (
+              <EmptyState />
+            )}
+          </div>
         ) : (
-          kpisWithEntries.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
+          filtered.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
             <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} />
           ))
         )}

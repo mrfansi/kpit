@@ -1,33 +1,49 @@
 import { Suspense } from "react";
-import { getAllDomains, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getAllDomains, getAllKPIs, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
 import { ExportButtons } from "@/components/export-buttons";
 import { PeriodSelector } from "@/components/period-selector";
+import { KPIFilterBar } from "@/components/kpi-filter-bar";
+import { QuickEntryModal } from "@/components/quick-entry-modal";
 import { Separator } from "@/components/ui/separator";
 import { formatPeriodDate, listLastNMonths } from "@/lib/period";
+import { getKPIStatus } from "@/lib/kpi-status";
 
 interface Props {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string; q?: string; status?: string }>;
 }
 
 export default async function OverviewPage({ searchParams }: Props) {
-  const { period } = await searchParams;
+  const { period, q, status } = await searchParams;
 
-  // Gunakan periode terpilih, fallback ke bulan terkini
   const months = listLastNMonths(12);
   const selectedPeriod = period ?? months[0]?.value;
 
-  const [domains, allKPIsWithEntries] = await Promise.all([
+  const [domains, allKPIsWithEntries, allKPIs] = await Promise.all([
     getAllDomains(),
     getKPIsWithLatestEntry(undefined, selectedPeriod),
+    getAllKPIs(),
   ]);
+
+  // Filter by search query and status
+  const filtered = allKPIsWithEntries.filter(({ kpi, latestEntry, effectiveTarget }) => {
+    if (q && !kpi.name.toLowerCase().includes(q.toLowerCase())) return false;
+    if (status) {
+      const kpiWithTarget = effectiveTarget ? { ...kpi, ...effectiveTarget } : kpi;
+      const kpiStatus = getKPIStatus(latestEntry?.value, kpiWithTarget);
+      if (kpiStatus !== status) return false;
+    }
+    return true;
+  });
+
+  const isFiltered = Boolean(q || status);
 
   const byDomain = domains.map((domain) => ({
     domain,
-    kpisWithEntries: allKPIsWithEntries.filter((k) => k.kpi.domainId === domain.id),
-  }));
+    kpisWithEntries: filtered.filter((k) => k.kpi.domainId === domain.id),
+  })).filter(({ kpisWithEntries }) => !isFiltered || kpisWithEntries.length > 0);
 
   return (
     <div className="space-y-6">
@@ -46,10 +62,16 @@ export default async function OverviewPage({ searchParams }: Props) {
             <PeriodSelector defaultValue={selectedPeriod} />
           </Suspense>
           <ExportButtons />
+          <QuickEntryModal kpis={allKPIs} />
         </div>
       </div>
 
       <StatSummary kpisWithEntries={allKPIsWithEntries} />
+
+      <Suspense>
+        <KPIFilterBar defaultQ={q} defaultStatus={status} />
+      </Suspense>
+
       <DomainTabs domains={domains} />
       <Separator />
 
@@ -62,7 +84,9 @@ export default async function OverviewPage({ searchParams }: Props) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {kpisWithEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground col-span-full">Belum ada KPI untuk domain ini.</p>
+              <p className="text-sm text-muted-foreground col-span-full">
+                {isFiltered ? "Tidak ada KPI yang cocok dengan filter." : "Belum ada KPI untuk domain ini."}
+              </p>
             ) : (
               kpisWithEntries.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
                 <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} />
