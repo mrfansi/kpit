@@ -14,7 +14,7 @@ type PreviewRow = ImportRow & { rowIndex: number };
 export default function ImportPage() {
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [parseErrors, setParseErrors] = useState<{ row: number; message: string }[]>([]);
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; errors: { row: number; message: string }[] } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -141,20 +141,34 @@ Tingkat Keterlambatan,2026-01-01,3.2,`}
 
       {/* Result */}
       {result && (
-        <Card className="border-green-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-6 h-6 text-green-600" />
-              <div>
-                <p className="font-semibold">Import Selesai</p>
-                <p className="text-sm text-muted-foreground">
-                  <Badge variant="secondary" className="mr-1">{result.imported} berhasil</Badge>
-                  {result.skipped > 0 && <Badge variant="outline">{result.skipped} dilewati</Badge>}
-                </p>
+        <div className="space-y-3">
+          <Card className="border-green-500">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-6 h-6 text-green-600" />
+                <div>
+                  <p className="font-semibold">Import Selesai</p>
+                  <p className="text-sm text-muted-foreground">
+                    <Badge variant="secondary" className="mr-1">{result.imported} berhasil</Badge>
+                    {result.skipped > 0 && <Badge variant="outline">{result.skipped} dilewati</Badge>}
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+          {result.errors.length > 0 && (
+            <Card className="border-destructive">
+              <CardHeader><CardTitle className="text-sm text-destructive flex items-center gap-2"><XCircle className="w-4 h-4" />{result.errors.length} Baris Gagal Diimport</CardTitle></CardHeader>
+              <CardContent>
+                <ul className="space-y-1">
+                  {result.errors.map((e, i) => (
+                    <li key={i} className="text-sm text-destructive">Baris {e.row}: {e.message}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
     </div>
   );

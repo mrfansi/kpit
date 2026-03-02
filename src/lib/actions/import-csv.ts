@@ -91,15 +91,23 @@ export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
   let skipped = 0;
   const errors: { row: number; message: string }[] = [];
 
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowNum = i + 2;
     try {
-      if (!row.kpiId) { skipped++; continue; }
+      if (!row.kpiId) {
+        errors.push({ row: rowNum, message: "kpiId tidak ditemukan" });
+        skipped++;
+        continue;
+      }
       await db.delete(kpiEntries).where(
         and(eq(kpiEntries.kpiId, row.kpiId), eq(kpiEntries.periodDate, row.periodDate))
       );
       await db.insert(kpiEntries).values({ kpiId: row.kpiId, periodDate: row.periodDate, value: row.value, note: row.note });
       imported++;
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Gagal menyimpan ke database";
+      errors.push({ row: rowNum, message });
       skipped++;
     }
   }

@@ -27,6 +27,7 @@ export const kpis = sqliteTable("kpis", {
     .notNull()
     .default("monthly"),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),

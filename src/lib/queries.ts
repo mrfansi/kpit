@@ -12,11 +12,15 @@ export async function getDomainBySlug(slug: string) {
 }
 
 export async function getKPIsByDomain(domainId: number): Promise<KPI[]> {
-  return db.select().from(kpis).where(and(eq(kpis.domainId, domainId), eq(kpis.isActive, true)));
+  return db.select().from(kpis).where(and(eq(kpis.domainId, domainId), eq(kpis.isActive, true))).orderBy(kpis.sortOrder, kpis.name);
 }
 
 export async function getAllKPIs(): Promise<KPI[]> {
-  return db.select().from(kpis).where(eq(kpis.isActive, true)).orderBy(kpis.domainId, kpis.name);
+  return db.select().from(kpis).where(eq(kpis.isActive, true)).orderBy(kpis.domainId, kpis.sortOrder, kpis.name);
+}
+
+export async function getArchivedKPIs(): Promise<KPI[]> {
+  return db.select().from(kpis).where(eq(kpis.isActive, false)).orderBy(kpis.domainId, kpis.name);
 }
 
 export async function getKPIById(id: number): Promise<KPI | null> {

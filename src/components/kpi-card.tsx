@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkline } from "@/components/sparkline";
 import Link from "next/link";
-import { TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, Clock } from "lucide-react";
+import { differenceInMonths, parseISO } from "date-fns";
 
 interface KPICardProps {
   kpi: KPI;
@@ -23,6 +24,11 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
   const status = getKPIStatus(value, kpiWithTarget);
   const achievementPct = getAchievementPct(value, targetData.target);
   const cfg = statusConfig[status];
+
+  // Stale: data terbaru > 2 bulan dari sekarang
+  const isStale = latestEntry
+    ? differenceInMonths(new Date(), parseISO(latestEntry.periodDate)) >= 2
+    : false;
 
   // Gunakan entry kedua dari belakang di sparkline sebagai previousEntry jika tidak disediakan
   const prevEntry = previousEntry ?? (sparklineEntries.length >= 2 ? sparklineEntries[sparklineEntries.length - 2] : null);
@@ -42,7 +48,14 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
             <CardTitle className="text-sm font-medium text-muted-foreground leading-tight">
               {kpi.name}
             </CardTitle>
-            <Badge className={`${cfg.bg} ${cfg.color} border-0 shrink-0 text-xs`}>{cfg.label}</Badge>
+            <div className="flex items-center gap-1 shrink-0">
+              {isStale && (
+                <span title="Data sudah lama, belum diperbarui">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                </span>
+              )}
+              <Badge className={`${cfg.bg} ${cfg.color} border-0 text-xs`}>{cfg.label}</Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
