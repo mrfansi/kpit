@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home } from "lucide-react";
+import { BarChart2, Settings, Home, TrendingUp, Users, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 
@@ -10,18 +10,18 @@ interface SidebarProps {
   domains: Domain[];
 }
 
-const navIcons: Record<string, React.ElementType> = {
-  TrendingUp: require("lucide-react").TrendingUp,
-  Users: require("lucide-react").Users,
-  Settings: require("lucide-react").Settings,
-  BarChart2: require("lucide-react").BarChart2,
+const domainIconMap: Record<string, React.ElementType> = {
+  TrendingUp,
+  Users,
+  Settings,
+  BarChart2,
 };
 
 export function Sidebar({ domains }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 shrink-0 border-r bg-background flex flex-col min-h-screen">
+    <aside className="w-56 shrink-0 border-r bg-background flex flex-col min-h-screen print:hidden">
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-4 border-b">
         <BarChart2 className="w-5 h-5 text-primary" />
@@ -36,7 +36,7 @@ export function Sidebar({ domains }: SidebarProps) {
         </div>
 
         {domains.map((d) => {
-          const Icon = navIcons[d.icon] ?? BarChart2;
+          const Icon = domainIconMap[d.icon] ?? BarChart2;
           return (
             <NavItem
               key={d.id}
@@ -52,7 +52,8 @@ export function Sidebar({ domains }: SidebarProps) {
         <div className="pt-3 pb-1 px-2">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Admin</span>
         </div>
-        <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin")} />
+        <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
+        <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
       </nav>
     </aside>
   );
