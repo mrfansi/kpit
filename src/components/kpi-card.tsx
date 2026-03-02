@@ -39,6 +39,11 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
       ? value > prevEntry.value ? "up" : value < prevEntry.value ? "down" : "flat"
       : null;
 
+  const delta = value !== null && prevEntry ? value - prevEntry.value : null;
+  const deltaFormatted = delta !== null
+    ? `${delta >= 0 ? "+" : ""}${Math.abs(delta) >= 1000 ? (delta / 1000).toFixed(1) + "k" : delta % 1 === 0 ? delta : delta.toFixed(1)}`
+    : null;
+
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
 
   return (
@@ -68,9 +73,10 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
                 {value !== null ? formatValue(value, kpi.unit) : "—"}
               </span>
               {trend && (
-                <TrendIcon
-                  className={`w-4 h-4 mb-1 ${trend === "up" ? "text-green-500" : trend === "down" ? "text-red-500" : "text-gray-400"}`}
-                />
+                <div className={`flex items-center gap-0.5 mb-1 text-xs font-medium ${trend === "up" ? "text-green-500" : trend === "down" ? "text-red-500" : "text-gray-400"}`}>
+                  <TrendIcon className="w-3.5 h-3.5" />
+                  {deltaFormatted && <span>{deltaFormatted}</span>}
+                </div>
               )}
             </div>
 

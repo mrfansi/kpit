@@ -4,6 +4,7 @@ import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status"
 import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
 import { BarChart2, TrendingUp, Users, Settings } from "lucide-react";
 import { PrintButton } from "@/components/print-button";
+import { ReportPeriodSelector } from "@/components/report-period-selector";
 import type { Metadata } from "next";
 
 const domainIconMap: Record<string, React.ElementType> = { TrendingUp, Users, Settings, BarChart2 };
@@ -124,6 +125,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
 
       <div className="mt-8 flex gap-3 print:hidden">
         <PrintButton />
+        <ReportPeriodSelector months={listLastNMonths(24)} selectedPeriod={selectedPeriod ?? ""} />
         <a
           href={`/domain/${domain.slug}`}
           className="px-4 py-2 border text-sm rounded hover:bg-gray-50 transition-colors"

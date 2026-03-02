@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { CheckCircle2, Save } from "lucide-react";
-import { formatValue, listLastNMonths, formatPeriodDate } from "@/lib/period";
+import { formatValue, listLastNMonths } from "@/lib/period";
 import { bulkCreateEntries } from "@/lib/actions/entry";
 import type { KPI, KPIEntry, Domain } from "@/lib/db/schema";
 
@@ -21,32 +22,47 @@ interface BulkTableInputProps {
 
 export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }: BulkTableInputProps) {
   const months = listLastNMonths(12);
-  const [period, setPeriod] = useState(initialPeriod);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  // Derive values/notes from existingEntries prop (server-provided, updates on navigation)
   const [values, setValues] = useState<Record<number, string>>(() => {
     const map: Record<number, string> = {};
-    for (const e of existingEntries) {
-      map[e.kpiId] = String(e.value);
-    }
+    for (const e of existingEntries) map[e.kpiId] = String(e.value);
     return map;
   });
   const [notes, setNotes] = useState<Record<number, string>>(() => {
     const map: Record<number, string> = {};
-    for (const e of existingEntries) {
-      if (e.note) map[e.kpiId] = e.note;
-    }
+    for (const e of existingEntries) if (e.note) map[e.kpiId] = e.note;
     return map;
   });
-  const [isPending, startTransition] = useTransition();
-  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  // Re-sync when existingEntries prop changes (after period navigation)
+  useEffect(() => {
+    const newValues: Record<number, string> = {};
+    const newNotes: Record<number, string> = {};
+    for (const e of existingEntries) {
+      newValues[e.kpiId] = String(e.value);
+      if (e.note) newNotes[e.kpiId] = e.note;
+    }
+    setValues(newValues);
+    setNotes(newNotes);
+    setSavedAt(null);
+  }, [initialPeriod]); // re-run when period (URL) changes
 
   const domainMap = Object.fromEntries(domains.map((d) => [d.id, d]));
+
+  function handlePeriodChange(newPeriod: string) {
+    router.push(`/admin/input?period=${newPeriod}`);
+  }
 
   function handleSave() {
     const rows = kpis
       .filter((kpi) => values[kpi.id] !== undefined && values[kpi.id] !== "")
       .map((kpi) => ({
         kpiId: kpi.id,
-        periodDate: period,
+        periodDate: initialPeriod,
         value: parseFloat(values[kpi.id]),
         note: notes[kpi.id] || undefined,
       }))
@@ -68,16 +84,10 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
 
   return (
     <div className="space-y-4">
-      {/* Period selector + save button */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Periode:</span>
-          <Select value={period} onValueChange={(v) => {
-            setPeriod(v);
-            setValues({});
-            setNotes({});
-            setSavedAt(null);
-          }}>
+          <Select value={initialPeriod} onValueChange={handlePeriodChange}>
             <SelectTrigger className="w-44 h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -103,7 +113,6 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
         </div>
       </div>
 
-      {/* Table */}
       <div className="border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
@@ -161,3 +170,4 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
     </div>
   );
 }
+

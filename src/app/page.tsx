@@ -8,6 +8,8 @@ import { PeriodSelector } from "@/components/period-selector";
 import { KPIFilterBar } from "@/components/kpi-filter-bar";
 import { QuickEntryModal } from "@/components/quick-entry-modal";
 import { CompletenessTracker } from "@/components/completeness-tracker";
+import { KPIAlertBanner } from "@/components/kpi-alert-banner";
+import { DomainStatusBadges } from "@/components/domain-status-badges";
 import { Separator } from "@/components/ui/separator";
 import { formatPeriodDate, listLastNMonths } from "@/lib/period";
 import { getKPIStatus } from "@/lib/kpi-status";
@@ -53,6 +55,23 @@ export default async function OverviewPage({ searchParams }: Props) {
     kpisWithEntries: filtered.filter((k) => k.kpi.domainId === domain.id),
   })).filter(({ kpisWithEntries }) => !isFiltered || kpisWithEntries.length > 0);
 
+  // Build kpiLatestPeriods map for smart period suggestion
+  const kpiLatestPeriods: Record<number, string> = {};
+  for (const { kpi, latestEntry } of allKPIsWithEntries) {
+    if (latestEntry) kpiLatestPeriods[kpi.id] = latestEntry.periodDate;
+  }
+  const redKPIs = allKPIsWithEntries
+    .filter(({ kpi, latestEntry, effectiveTarget }) => {
+      const kpiWithTarget = effectiveTarget ? { ...kpi, ...effectiveTarget } : kpi;
+      return getKPIStatus(latestEntry?.value, kpiWithTarget) === "red";
+    })
+    .map(({ kpi, latestEntry, effectiveTarget }) => ({
+      kpi,
+      latestEntry,
+      effectiveTarget,
+      domainName: domains.find((d) => d.id === kpi.domainId)?.name ?? "",
+    }));
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -70,11 +89,13 @@ export default async function OverviewPage({ searchParams }: Props) {
             <PeriodSelector defaultValue={selectedPeriod} />
           </Suspense>
           <ExportButtons />
-          <QuickEntryModal kpis={allKPIs} />
+          <QuickEntryModal kpis={allKPIs} kpiLatestPeriods={kpiLatestPeriods} />
         </div>
       </div>
 
       <StatSummary kpisWithEntries={allKPIsWithEntries} />
+
+      <KPIAlertBanner redKPIs={redKPIs} />
 
       <CompletenessTracker kpis={allKPIs} entriesForPeriod={entriesForPeriod} period={selectedPeriod ?? ""} />
 
@@ -108,6 +129,7 @@ export default async function OverviewPage({ searchParams }: Props) {
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: domain.color }} />
             <h2 className="text-base font-semibold">{domain.name}</h2>
             <span className="text-xs text-muted-foreground">({kpisWithEntries.length} KPI)</span>
+            <DomainStatusBadges kpisWithEntries={kpisWithEntries} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {kpisWithEntries.length === 0 ? (

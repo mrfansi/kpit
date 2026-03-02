@@ -47,6 +47,11 @@ export default async function DomainPage({ params, searchParams }: Props) {
 
   const isFiltered = Boolean(q || status);
 
+  const kpiLatestPeriods: Record<number, string> = {};
+  for (const { kpi, latestEntry } of kpisWithEntries) {
+    if (latestEntry) kpiLatestPeriods[kpi.id] = latestEntry.periodDate;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -70,7 +75,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
             </Link>
           </Button>
           <ExportButtons domainSlug={slug} />
-          <QuickEntryModal kpis={domainKPIs} />
+          <QuickEntryModal kpis={domainKPIs} kpiLatestPeriods={kpiLatestPeriods} />
         </div>
       </div>
 

@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Target, TrendingUp } from "lucide-react";
+import { ArrowLeft, Target, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
+import { EditEntryDialog } from "@/components/edit-entry-dialog";
 import { getEffectiveTarget, getKPITargets, getPeriodComparisonEntries, getKPIComments } from "@/lib/queries";
 import { PeriodComparison } from "@/components/period-comparison";
 import { KPIComments } from "@/components/kpi-comments";
@@ -18,7 +19,7 @@ import { computeForecast } from "@/lib/forecast";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ range?: string; forecast?: string }>;
+  searchParams: Promise<{ range?: string; forecast?: string; page?: string }>;
 }
 
 const RANGE_OPTIONS = [
@@ -28,7 +29,7 @@ const RANGE_OPTIONS = [
 ];
 
 export default async function KPIDetailPage({ params, searchParams }: Props) {
-  const [{ id }, { range, forecast: forecastParam }] = await Promise.all([params, searchParams]);
+  const [{ id }, { range, forecast: forecastParam, page }] = await Promise.all([params, searchParams]);
   const kpiId = Number(id);
   if (isNaN(kpiId)) notFound();
 
@@ -38,11 +39,15 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   const rangeMonths = Number(range ?? "6");
   const validRange = [3, 6, 12].includes(rangeMonths) ? rangeMonths : 6;
   const showForecast = forecastParam === "1";
+  const PAGE_SIZE = 12;
+  const currentPage = Math.max(1, Number(page ?? "1"));
 
   const { from, to } = getPeriodRange(validRange);
-  const [latestEntry, entries, allTargetOverrides, comments] = await Promise.all([
+  // Fetch ALL entries for anomaly detection; range entries for chart
+  const [latestEntry, entries, allEntries, allTargetOverrides, comments] = await Promise.all([
     getLatestEntry(kpiId),
     getKPIEntries(kpiId, from, to),
+    getKPIEntries(kpiId),
     getKPITargets(kpiId),
     getKPIComments(kpiId),
   ]);
@@ -63,6 +68,24 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   const cfg = statusConfig[status];
 
   const forecastPoints = showForecast ? computeForecast(entries) : [];
+
+  // Anomaly detection: flag if latest value deviates > 2 stddev from historical mean
+  const historicalValues = allEntries.slice(0, -1).map((e) => e.value); // exclude latest
+  let isAnomalous = false;
+  let anomalyDir: "high" | "low" = "high";
+  if (historicalValues.length >= 4 && latestEntry) {
+    const mean = historicalValues.reduce((a, b) => a + b, 0) / historicalValues.length;
+    const stdDev = Math.sqrt(historicalValues.map((v) => (v - mean) ** 2).reduce((a, b) => a + b, 0) / historicalValues.length);
+    if (stdDev > 0 && Math.abs(latestEntry.value - mean) > 2 * stdDev) {
+      isAnomalous = true;
+      anomalyDir = latestEntry.value > mean ? "high" : "low";
+    }
+  }
+
+  // Pagination for history table (all entries, newest first)
+  const allEntriesSorted = [...allEntries].reverse();
+  const totalPages = Math.ceil(allEntriesSorted.length / PAGE_SIZE);
+  const pagedEntries = allEntriesSorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -85,6 +108,18 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
         <StatCard label="Pencapaian" value={achievementPct !== null ? `${achievementPct}%` : "—"} />
         <StatCard label="Tipe Refresh" value={kpi.refreshType === "realtime" ? "Real-time" : "Periodik"} />
       </div>
+
+      {/* Anomaly alert */}
+      {isAnomalous && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-orange-300 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 text-orange-700 dark:text-orange-400 text-sm">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            <strong>Anomali terdeteksi:</strong> Nilai terkini secara signifikan lebih{" "}
+            {anomalyDir === "high" ? "tinggi" : "rendah"} dari rata-rata historis (&gt;2 standar deviasi).
+            Pastikan data sudah benar.
+          </span>
+        </div>
+      )}
 
       {/* Perbandingan periode */}
       <PeriodComparison
@@ -137,7 +172,14 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
       {/* Data Table */}
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">Riwayat Data</CardTitle>
+          <CardTitle className="text-base">
+            Riwayat Data
+            {allEntriesSorted.length > 0 && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({allEntriesSorted.length} entri)
+              </span>
+            )}
+          </CardTitle>
           <Button variant="outline" size="sm" asChild className="print:hidden">
             <Link href={`/admin/kpi/${kpi.id}/targets`}>
               <Target className="w-3.5 h-3.5 mr-1.5" />
@@ -158,12 +200,12 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.length === 0 ? (
+              {pagedEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">Belum ada data</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">Belum ada data</TableCell>
                 </TableRow>
               ) : (
-                [...entries].reverse().map((entry) => {
+                pagedEntries.map((entry) => {
                   const override = targetOverrideMap.get(entry.periodDate);
                   const entryTarget = override ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
                   const s = getKPIStatus(entry.value, { ...kpi, ...entryTarget });
@@ -181,8 +223,17 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                       <TableCell>
                         <Badge className={`${c.bg} ${c.color} border-0 text-xs`}>{c.label}</Badge>
                       </TableCell>
-                      <TableCell className="print:hidden text-right">
-                        <DeleteEntryButton id={entry.id} kpiId={kpi.id} period={formatPeriodDate(entry.periodDate, "MMMM yyyy")} />
+                      <TableCell className="print:hidden">
+                        <div className="flex items-center justify-end gap-1">
+                          <EditEntryDialog
+                            id={entry.id}
+                            currentValue={entry.value}
+                            currentNote={entry.note}
+                            unit={kpi.unit}
+                            period={formatPeriodDate(entry.periodDate, "MMMM yyyy")}
+                          />
+                          <DeleteEntryButton id={entry.id} kpiId={kpi.id} period={formatPeriodDate(entry.periodDate, "MMMM yyyy")} />
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -190,6 +241,26 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
               )}
             </TableBody>
           </Table>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-3 text-sm">
+              <span className="text-muted-foreground text-xs">
+                Halaman {currentPage} dari {totalPages}
+              </span>
+              <div className="flex gap-1">
+                <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage <= 1}>
+                  <Link href={`?range=${validRange}&page=${currentPage - 1}${showForecast ? "&forecast=1" : ""}`}>
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Link>
+                </Button>
+                <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage >= totalPages}>
+                  <Link href={`?range=${validRange}&page=${currentPage + 1}${showForecast ? "&forecast=1" : ""}`}>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
           {allTargetOverrides.length > 0 && (
             <p className="text-xs text-muted-foreground mt-2">
               <span className="text-primary font-medium">*</span> Target khusus periode ini (override dari default)
@@ -206,7 +277,11 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
               kpiId={kpi.id}
               periodDate={latestEntry.periodDate}
               periodLabel={formatPeriodDate(latestEntry.periodDate, "MMMM yyyy")}
-              initialComments={comments.filter((c) => c.periodDate === latestEntry.periodDate)}
+              initialComments={comments}
+              availablePeriods={[...allEntries].reverse().map((e) => ({
+                value: e.periodDate,
+                label: formatPeriodDate(e.periodDate, "MMMM yyyy"),
+              }))}
             />
           </CardContent>
         </Card>
