@@ -12,12 +12,16 @@ interface KPICardProps {
   latestEntry: KPIEntry | null;
   sparklineEntries?: KPIEntry[];
   previousEntry?: KPIEntry | null;
+  effectiveTarget?: { target: number; thresholdGreen: number; thresholdYellow: number };
 }
 
-export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry }: KPICardProps) {
+export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry, effectiveTarget }: KPICardProps) {
   const value = latestEntry?.value ?? null;
-  const status = getKPIStatus(value, kpi);
-  const achievementPct = getAchievementPct(value, kpi.target);
+  // Gunakan effectiveTarget (per-periode) jika tersedia, fallback ke nilai default KPI
+  const targetData = effectiveTarget ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+  const kpiWithTarget = { ...kpi, ...targetData };
+  const status = getKPIStatus(value, kpiWithTarget);
+  const achievementPct = getAchievementPct(value, targetData.target);
   const cfg = statusConfig[status];
 
   // Gunakan entry kedua dari belakang di sparkline sebagai previousEntry jika tidak disediakan
@@ -57,7 +61,10 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
 
             {/* Target */}
             <div className="text-xs text-muted-foreground">
-              Target: {formatValue(kpi.target, kpi.unit)}
+              Target: {formatValue(targetData.target, kpi.unit)}
+              {effectiveTarget && effectiveTarget.target !== kpi.target && (
+                <span className="ml-1 text-primary">(periode ini)</span>
+              )}
             </div>
 
             {/* Progress bar */}

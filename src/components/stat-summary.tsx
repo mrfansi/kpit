@@ -3,14 +3,15 @@ import type { KPI, KPIEntry } from "@/lib/db/schema";
 import { CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 
 interface StatSummaryProps {
-  kpisWithEntries: { kpi: KPI; latestEntry: KPIEntry | null }[];
+  kpisWithEntries: { kpi: KPI; latestEntry: KPIEntry | null; effectiveTarget?: { target: number; thresholdGreen: number; thresholdYellow: number } }[];
 }
 
 export function StatSummary({ kpisWithEntries }: StatSummaryProps) {
   const counts: Record<KPIStatus, number> = { green: 0, yellow: 0, red: 0, "no-data": 0 };
 
-  for (const { kpi, latestEntry } of kpisWithEntries) {
-    const status = getKPIStatus(latestEntry?.value, kpi);
+  for (const { kpi, latestEntry, effectiveTarget } of kpisWithEntries) {
+    const kpiWithTarget = effectiveTarget ? { ...kpi, ...effectiveTarget } : kpi;
+    const status = getKPIStatus(latestEntry?.value, kpiWithTarget);
     counts[status]++;
   }
 

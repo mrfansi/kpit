@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Target } from "lucide-react";
 import Link from "next/link";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
+import { getEffectiveTarget, getKPITargets } from "@/lib/queries";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -35,13 +36,21 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   const validRange = [3, 6, 12].includes(rangeMonths) ? rangeMonths : 6;
 
   const { from, to } = getPeriodRange(validRange);
-  const [latestEntry, entries] = await Promise.all([
+  const [latestEntry, entries, allTargetOverrides] = await Promise.all([
     getLatestEntry(kpiId),
     getKPIEntries(kpiId, from, to),
+    getKPITargets(kpiId),
   ]);
 
-  const status = getKPIStatus(latestEntry?.value, kpi);
-  const achievementPct = getAchievementPct(latestEntry?.value, kpi.target);
+  // Build lookup map: periodDate → target override
+  const targetOverrideMap = new Map(allTargetOverrides.map((t) => [t.periodDate, t]));
+
+  const effectiveTarget = latestEntry
+    ? (targetOverrideMap.get(latestEntry.periodDate) ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow })
+    : { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+
+  const status = getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget });
+  const achievementPct = getAchievementPct(latestEntry?.value, effectiveTarget.target);
   const cfg = statusConfig[status];
 
   return (
@@ -61,7 +70,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="Nilai Terkini" value={latestEntry ? formatValue(latestEntry.value, kpi.unit) : "—"} />
-        <StatCard label="Target" value={formatValue(kpi.target, kpi.unit)} />
+        <StatCard label="Target (periode ini)" value={formatValue(effectiveTarget.target, kpi.unit)} />
         <StatCard label="Pencapaian" value={achievementPct !== null ? `${achievementPct}%` : "—"} />
         <StatCard label="Tipe Refresh" value={kpi.refreshType === "realtime" ? "Real-time" : "Periodik"} />
       </div>
@@ -91,8 +100,14 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
 
       {/* Data Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Riwayat Data</CardTitle>
+          <Button variant="outline" size="sm" asChild className="print:hidden">
+            <Link href={`/admin/kpi/${kpi.id}/targets`}>
+              <Target className="w-3.5 h-3.5 mr-1.5" />
+              Atur Target Periode
+            </Link>
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
@@ -113,14 +128,19 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                 </TableRow>
               ) : (
                 [...entries].reverse().map((entry) => {
-                  const s = getKPIStatus(entry.value, kpi);
-                  const pct = getAchievementPct(entry.value, kpi.target);
+                  const override = targetOverrideMap.get(entry.periodDate);
+                  const entryTarget = override ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+                  const s = getKPIStatus(entry.value, { ...kpi, ...entryTarget });
+                  const pct = getAchievementPct(entry.value, entryTarget.target);
                   const c = statusConfig[s];
                   return (
                     <TableRow key={entry.id}>
                       <TableCell>{formatPeriodDate(entry.periodDate, "MMMM yyyy")}</TableCell>
                       <TableCell className="text-right font-medium">{formatValue(entry.value, kpi.unit)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{formatValue(kpi.target, kpi.unit)}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {formatValue(entryTarget.target, kpi.unit)}
+                        {override && <span className="ml-1 text-xs text-primary">*</span>}
+                      </TableCell>
                       <TableCell className="text-right">{pct !== null ? `${pct}%` : "—"}</TableCell>
                       <TableCell>
                         <Badge className={`${c.bg} ${c.color} border-0 text-xs`}>{c.label}</Badge>
@@ -134,6 +154,11 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
               )}
             </TableBody>
           </Table>
+          {allTargetOverrides.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              <span className="text-primary font-medium">*</span> Target khusus periode ini (override dari default)
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

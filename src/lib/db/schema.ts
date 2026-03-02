@@ -45,10 +45,23 @@ export const kpiEntries = sqliteTable("kpi_entries", {
     .notNull(),
 });
 
+export const kpiTargets = sqliteTable("kpi_targets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  kpiId: integer("kpi_id")
+    .notNull()
+    .references(() => kpis.id, { onDelete: "cascade" }),
+  periodDate: text("period_date").notNull(), // ISO date: YYYY-MM-DD (awal bulan)
+  target: real("target").notNull(),
+  thresholdGreen: real("threshold_green").notNull(),
+  thresholdYellow: real("threshold_yellow").notNull(),
+});
+
 // Types
 export type Domain = typeof domains.$inferSelect;
 export type KPI = typeof kpis.$inferSelect;
 export type KPIEntry = typeof kpiEntries.$inferSelect;
+export type KPITarget = typeof kpiTargets.$inferSelect;
 export type NewDomain = typeof domains.$inferInsert;
 export type NewKPI = typeof kpis.$inferInsert;
 export type NewKPIEntry = typeof kpiEntries.$inferInsert;
+export type NewKPITarget = typeof kpiTargets.$inferInsert;

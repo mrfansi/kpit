@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DeleteKPIButton } from "@/components/delete-kpi-button";
 import Link from "next/link";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Target } from "lucide-react";
 
 export default async function AdminKPIPage() {
   const [kpis, domains] = await Promise.all([getAllKPIs(), getAllDomains()]);
@@ -51,6 +51,11 @@ export default async function AdminKPIPage() {
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" size="icon" asChild title="Atur target per periode">
+                    <Link href={`/admin/kpi/${kpi.id}/targets`}>
+                      <Target className="w-4 h-4" />
+                    </Link>
+                  </Button>
                   <Button variant="ghost" size="icon" asChild>
                     <Link href={`/admin/kpi/${kpi.id}/edit`}>
                       <Pencil className="w-4 h-4" />

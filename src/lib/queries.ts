@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "./db";
-import { domains, kpiEntries, kpis, type KPI, type KPIEntry } from "./db/schema";
+import { domains, kpiEntries, kpiTargets, kpis, type KPI, type KPIEntry, type KPITarget } from "./db/schema";
 
 export async function getAllDomains() {
   return db.select().from(domains).orderBy(domains.name);
@@ -64,10 +64,40 @@ export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?:
           .where(and(...conditions))
           .orderBy(desc(kpiEntries.periodDate))
           .limit(6)
-          .then((rows) => rows.reverse()), // oldest → newest untuk chart
+          .then((rows) => rows.reverse()),
       ]);
 
-      return { kpi, latestEntry, sparklineEntries };
+      const effectiveTarget = latestEntry
+        ? await getEffectiveTarget(kpi, latestEntry.periodDate)
+        : { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+
+      return { kpi, latestEntry, sparklineEntries, effectiveTarget };
     })
   );
+}
+
+/** Ambil target override untuk periode tertentu, fallback ke nilai default KPI */
+export async function getEffectiveTarget(
+  kpi: KPI,
+  periodDate: string
+): Promise<{ target: number; thresholdGreen: number; thresholdYellow: number }> {
+  const rows = await db
+    .select()
+    .from(kpiTargets)
+    .where(and(eq(kpiTargets.kpiId, kpi.id), eq(kpiTargets.periodDate, periodDate)))
+    .limit(1);
+
+  if (rows[0]) {
+    return { target: rows[0].target, thresholdGreen: rows[0].thresholdGreen, thresholdYellow: rows[0].thresholdYellow };
+  }
+  return { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+}
+
+/** Ambil semua target override untuk satu KPI, diurutkan terbaru dulu */
+export async function getKPITargets(kpiId: number): Promise<KPITarget[]> {
+  return db
+    .select()
+    .from(kpiTargets)
+    .where(eq(kpiTargets.kpiId, kpiId))
+    .orderBy(desc(kpiTargets.periodDate));
 }
