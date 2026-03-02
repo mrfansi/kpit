@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "./db";
 import { domains, kpiComments, kpiEntries, kpiTargets, kpis, type KPI, type KPIComment, type KPIEntry, type KPITarget } from "./db/schema";
 
@@ -51,29 +51,59 @@ export async function getKPIEntries(kpiId: number, fromDate?: string, toDate?: s
 
 export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?: string) {
   const allKPIs = domainId ? await getKPIsByDomain(domainId) : await getAllKPIs();
-  return Promise.all(
-    allKPIs.map(async (kpi) => {
-      const conditions = [eq(kpiEntries.kpiId, kpi.id)];
-      if (atOrBeforeDate) conditions.push(lte(kpiEntries.periodDate, atOrBeforeDate));
+  if (allKPIs.length === 0) return [];
 
-      const [latestEntry, sparklineEntries] = await Promise.all([
-        getLatestEntry(kpi.id, atOrBeforeDate),
-        db
-          .select()
-          .from(kpiEntries)
-          .where(and(...conditions))
-          .orderBy(desc(kpiEntries.periodDate))
-          .limit(6)
-          .then((rows) => rows.reverse()),
-      ]);
+  const kpiIds = allKPIs.map((k) => k.id);
+  const dateCondition = atOrBeforeDate ? lte(kpiEntries.periodDate, atOrBeforeDate) : undefined;
 
-      const effectiveTarget = latestEntry
-        ? await getEffectiveTarget(kpi, latestEntry.periodDate)
-        : { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+  // Batch 1: latest entry per KPI (single query via row_number window function emulated with MAX)
+  const latestEntriesRaw = await db
+    .select()
+    .from(kpiEntries)
+    .where(and(inArray(kpiEntries.kpiId, kpiIds), ...(dateCondition ? [dateCondition] : [])))
+    .orderBy(kpiEntries.kpiId, desc(kpiEntries.periodDate));
 
-      return { kpi, latestEntry, sparklineEntries, effectiveTarget };
-    })
-  );
+  // Build map: kpiId → latest entry
+  const latestEntryMap = new Map<number, typeof latestEntriesRaw[0]>();
+  for (const entry of latestEntriesRaw) {
+    if (!latestEntryMap.has(entry.kpiId)) {
+      latestEntryMap.set(entry.kpiId, entry);
+    }
+  }
+
+  // Batch 2: last 6 entries per KPI for sparkline (reuse sorted data above)
+  const sparklineMap = new Map<number, typeof latestEntriesRaw>();
+  for (const entry of [...latestEntriesRaw].reverse()) {
+    const arr = sparklineMap.get(entry.kpiId) ?? [];
+    if (arr.length < 6) arr.push(entry);
+    sparklineMap.set(entry.kpiId, arr);
+  }
+
+  // Batch 3: target overrides for all KPIs at their latest period
+  const periodDates = [...latestEntryMap.values()].map((e) => e.periodDate);
+  const targetOverrides = periodDates.length > 0
+    ? await db
+        .select()
+        .from(kpiTargets)
+        .where(and(inArray(kpiTargets.kpiId, kpiIds), inArray(kpiTargets.periodDate, periodDates)))
+    : [];
+
+  const targetOverrideMap = new Map<string, typeof targetOverrides[0]>();
+  for (const t of targetOverrides) {
+    targetOverrideMap.set(`${t.kpiId}:${t.periodDate}`, t);
+  }
+
+  return allKPIs.map((kpi) => {
+    const latestEntry = latestEntryMap.get(kpi.id) ?? null;
+    const sparklineEntries = (sparklineMap.get(kpi.id) ?? []).slice().reverse();
+
+    const override = latestEntry ? targetOverrideMap.get(`${kpi.id}:${latestEntry.periodDate}`) : undefined;
+    const effectiveTarget = override
+      ? { target: override.target, thresholdGreen: override.thresholdGreen, thresholdYellow: override.thresholdYellow }
+      : { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+
+    return { kpi, latestEntry, sparklineEntries, effectiveTarget };
+  });
 }
 
 /** Ambil target override untuk periode tertentu, fallback ke nilai default KPI */
