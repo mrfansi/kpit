@@ -19,23 +19,22 @@ const ChangePasswordSchema = z.object({
   password: z.string().min(8),
 });
 
-export async function addUserAction(formData: FormData) {
+export async function addUserAction(formData: FormData): Promise<void> {
   const parsed = AddUserSchema.safeParse({
     email: formData.get("email"),
     name: formData.get("name"),
     password: formData.get("password"),
     role: formData.get("role") ?? "admin",
   });
-  if (!parsed.success) return { error: "Data tidak valid." };
+  if (!parsed.success) return;
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   try {
     await createUser({ id: randomUUID(), ...parsed.data, passwordHash });
-    revalidatePath("/admin/users");
-    return { success: true };
   } catch {
-    return { error: "Email sudah digunakan." };
+    // email already exists — silently skip
   }
+  revalidatePath("/admin/users");
 }
 
 export async function deleteUserAction(id: string) {

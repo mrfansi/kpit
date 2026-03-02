@@ -87,7 +87,7 @@ export default async function AdminUsersPage() {
           <CardTitle className="text-base">Tambah User Baru</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={async (fd: FormData) => { await addUserAction(fd); }} className="space-y-4 max-w-md">
+          <form action={addUserAction} className="space-y-4 max-w-md">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="name">Nama</Label>
