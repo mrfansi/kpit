@@ -19,6 +19,14 @@ export async function getAllKPIs(): Promise<KPI[]> {
   return db.select().from(kpis).where(eq(kpis.isActive, true)).orderBy(kpis.domainId, kpis.sortOrder, kpis.name);
 }
 
+export async function getPinnedKPIs(): Promise<KPI[]> {
+  return db.select().from(kpis).where(and(eq(kpis.isActive, true), eq(kpis.isPinned, true))).orderBy(kpis.domainId, kpis.sortOrder, kpis.name);
+}
+
+export async function getEntriesForPeriod(periodDate: string): Promise<KPIEntry[]> {
+  return db.select().from(kpiEntries).where(eq(kpiEntries.periodDate, periodDate));
+}
+
 export async function getArchivedKPIs(): Promise<KPI[]> {
   return db.select().from(kpis).where(eq(kpis.isActive, false)).orderBy(kpis.domainId, kpis.name);
 }

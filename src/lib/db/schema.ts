@@ -16,10 +16,10 @@ export const kpis = sqliteTable("kpis", {
     .references(() => domains.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
-  unit: text("unit").notNull().default("%"), // %, Rp, unit, dll
+  unit: text("unit").notNull().default("%"),
   target: real("target").notNull(),
-  thresholdGreen: real("threshold_green").notNull(), // nilai >= green = on track
-  thresholdYellow: real("threshold_yellow").notNull(), // nilai >= yellow = at risk
+  thresholdGreen: real("threshold_green").notNull(),
+  thresholdYellow: real("threshold_yellow").notNull(),
   refreshType: text("refresh_type", { enum: ["realtime", "periodic"] })
     .notNull()
     .default("periodic"),
@@ -27,6 +27,7 @@ export const kpis = sqliteTable("kpis", {
     .notNull()
     .default("monthly"),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  isPinned: integer("is_pinned", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())

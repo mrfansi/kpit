@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getAllDomains, getAllKPIs, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getAllDomains, getAllKPIs, getEntriesForPeriod, getPinnedKPIs, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
@@ -7,9 +7,11 @@ import { ExportButtons } from "@/components/export-buttons";
 import { PeriodSelector } from "@/components/period-selector";
 import { KPIFilterBar } from "@/components/kpi-filter-bar";
 import { QuickEntryModal } from "@/components/quick-entry-modal";
+import { CompletenessTracker } from "@/components/completeness-tracker";
 import { Separator } from "@/components/ui/separator";
 import { formatPeriodDate, listLastNMonths } from "@/lib/period";
 import { getKPIStatus } from "@/lib/kpi-status";
+import { Pin } from "lucide-react";
 
 interface Props {
   searchParams: Promise<{ period?: string; q?: string; status?: string }>;
@@ -21,10 +23,11 @@ export default async function OverviewPage({ searchParams }: Props) {
   const months = listLastNMonths(12);
   const selectedPeriod = period ?? months[0]?.value;
 
-  const [domains, allKPIsWithEntries, allKPIs] = await Promise.all([
+  const [domains, allKPIsWithEntries, allKPIs, entriesForPeriod] = await Promise.all([
     getAllDomains(),
     getKPIsWithLatestEntry(undefined, selectedPeriod),
     getAllKPIs(),
+    getEntriesForPeriod(selectedPeriod ?? ""),
   ]);
 
   // Filter by search query and status
@@ -39,6 +42,11 @@ export default async function OverviewPage({ searchParams }: Props) {
   });
 
   const isFiltered = Boolean(q || status);
+
+  // Pinned KPIs (from filtered set)
+  const pinnedWithEntries = !isFiltered
+    ? allKPIsWithEntries.filter(({ kpi }) => kpi.isPinned)
+    : [];
 
   const byDomain = domains.map((domain) => ({
     domain,
@@ -68,12 +76,31 @@ export default async function OverviewPage({ searchParams }: Props) {
 
       <StatSummary kpisWithEntries={allKPIsWithEntries} />
 
+      <CompletenessTracker kpis={allKPIs} entriesForPeriod={entriesForPeriod} period={selectedPeriod ?? ""} />
+
       <Suspense>
         <KPIFilterBar defaultQ={q} defaultStatus={status} />
       </Suspense>
 
       <DomainTabs domains={domains} />
       <Separator />
+
+      {/* Pinned KPIs section */}
+      {pinnedWithEntries.length > 0 && !isFiltered && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Pin className="w-4 h-4 text-primary" />
+            <h2 className="text-base font-semibold">KPI Dipinned</h2>
+            <span className="text-xs text-muted-foreground">({pinnedWithEntries.length} KPI)</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {pinnedWithEntries.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
+              <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} />
+            ))}
+          </div>
+          <Separator />
+        </section>
+      )}
 
       {byDomain.map(({ domain, kpisWithEntries }) => (
         <section key={domain.id} className="space-y-3">

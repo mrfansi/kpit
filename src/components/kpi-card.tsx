@@ -4,6 +4,7 @@ import type { KPI, KPIEntry } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkline } from "@/components/sparkline";
+import { PinKPIButton } from "@/components/pin-kpi-button";
 import Link from "next/link";
 import { TrendingDown, TrendingUp, Minus, Clock } from "lucide-react";
 import { differenceInMonths, parseISO } from "date-fns";
@@ -49,6 +50,7 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
               {kpi.name}
             </CardTitle>
             <div className="flex items-center gap-1 shrink-0">
+              <PinKPIButton id={kpi.id} isPinned={kpi.isPinned} />
               {isStale && (
                 <span title="Data sudah lama, belum diperbarui">
                   <Clock className="w-3.5 h-3.5 text-muted-foreground" />

@@ -38,6 +38,11 @@ export async function hardDeleteKPI(id: number) {
   revalidatePath("/admin/kpi/archived");
 }
 
+export async function togglePinKPI(id: number, isPinned: boolean) {
+  await db.update(kpis).set({ isPinned }).where(eq(kpis.id, id));
+  revalidatePath("/");
+}
+
 /** Geser sortOrder KPI ke atas atau bawah dalam domain yang sama */
 export async function reorderKPI(id: number, direction: "up" | "down") {
   const [kpi] = await db.select().from(kpis).where(eq(kpis.id, id)).limit(1);
