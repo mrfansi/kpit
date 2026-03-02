@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { kpiSchema, type KPIFormValues } from "@/lib/validations/kpi";
 import { createKPI, updateKPI } from "@/lib/actions/kpi";
 import type { Domain, KPI } from "@/lib/db/schema";
@@ -18,11 +18,10 @@ import { Separator } from "@/components/ui/separator";
 
 interface KPIFormProps {
   domains: Domain[];
-  defaultValues?: KPI; // jika ada, mode edit
+  defaultValues?: KPI;
 }
 
 export function KPIForm({ domains, defaultValues }: KPIFormProps) {
-  const router = useRouter();
   const isEdit = !!defaultValues;
 
   const form = useForm<KPIFormValues>({
@@ -47,12 +46,18 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
   });
 
   async function onSubmit(values: KPIFormValues) {
-    if (isEdit) {
-      await updateKPI(defaultValues.id, values);
-    } else {
-      await createKPI(values);
+    try {
+      if (isEdit) {
+        await updateKPI(defaultValues.id, values);
+      } else {
+        await createKPI(values);
+      }
+      // redirect di server action akan membawa ?success= ke halaman tujuan
+    } catch (err: unknown) {
+      // NEXT_REDIRECT bukan error nyata — biarkan meneruskan
+      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
+      toast.error("Terjadi kesalahan, coba lagi");
     }
-    router.push("/admin/kpi");
   }
 
   return (
@@ -212,8 +217,8 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
           <Button type="submit" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Tambah KPI"}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.push("/admin/kpi")}>
-            Batal
+          <Button type="button" variant="outline" asChild>
+            <a href="/admin/kpi">Batal</a>
           </Button>
         </div>
       </form>

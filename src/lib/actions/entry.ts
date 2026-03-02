@@ -6,7 +6,6 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
-  // Upsert: hapus existing entry untuk kpi + period yang sama
   await db
     .delete(kpiEntries)
     .where(and(eq(kpiEntries.kpiId, data.kpiId), eq(kpiEntries.periodDate, data.periodDate)));

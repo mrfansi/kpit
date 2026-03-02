@@ -1,11 +1,10 @@
 import { getAllDomains, getAllKPIs } from "@/lib/queries";
-import { deleteKPI } from "@/lib/actions/kpi";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { statusConfig } from "@/lib/kpi-status";
+import { DeleteKPIButton } from "@/components/delete-kpi-button";
 import Link from "next/link";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 
 export default async function AdminKPIPage() {
   const [kpis, domains] = await Promise.all([getAllKPIs(), getAllDomains()]);
@@ -57,11 +56,7 @@ export default async function AdminKPIPage() {
                       <Pencil className="w-4 h-4" />
                     </Link>
                   </Button>
-                  <form action={deleteKPI.bind(null, kpi.id)}>
-                    <Button variant="ghost" size="icon" type="submit" className="text-destructive hover:text-destructive">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </form>
+                  <DeleteKPIButton id={kpi.id} name={kpi.name} />
                 </div>
               </TableCell>
             </TableRow>
