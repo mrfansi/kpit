@@ -82,3 +82,15 @@ export type NewKPI = typeof kpis.$inferInsert;
 export type NewKPIEntry = typeof kpiEntries.$inferInsert;
 export type NewKPITarget = typeof kpiTargets.$inferInsert;
 export type NewKPIComment = typeof kpiComments.$inferInsert;
+
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role", { enum: ["admin", "viewer"] }).notNull().default("admin"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;

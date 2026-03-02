@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Globe, Upload } from "lucide-react";
+import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Globe, Upload, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LogoutButton } from "@/components/logout-button";
 
 interface SidebarProps {
   domains: Domain[];
+  user?: { name?: string | null; email?: string | null } | null;
 }
 
 const domainIconMap: Record<string, React.ElementType> = {
@@ -18,7 +20,7 @@ const domainIconMap: Record<string, React.ElementType> = {
   BarChart2,
 };
 
-export function Sidebar({ domains }: SidebarProps) {
+export function Sidebar({ domains, user }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -56,13 +58,25 @@ export function Sidebar({ domains }: SidebarProps) {
         <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
         <NavItem href="/admin/domain" icon={Globe} label="Kelola Domain" active={pathname.startsWith("/admin/domain")} />
         <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
-        <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname === "/admin/import"} />
+        <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
+        <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
       </nav>
 
-      {/* Footer: theme toggle */}
-      <div className="px-3 py-3 border-t flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Tema</span>
-        <ThemeToggle />
+      {/* Footer: theme toggle + user info */}
+      <div className="px-3 py-3 border-t space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">Tema</span>
+          <ThemeToggle />
+        </div>
+        {user && (
+          <div className="space-y-1 pt-1 border-t">
+            <div className="flex items-center gap-2 px-1 py-1">
+              <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">{user.name ?? user.email}</span>
+            </div>
+            <LogoutButton />
+          </div>
+        )}
       </div>
     </aside>
   );

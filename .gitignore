@@ -47,3 +47,4 @@ next-env.d.ts
 
 # Drizzle migrations (keep schema, ignore generated)
 drizzle/meta/
+.env.local
