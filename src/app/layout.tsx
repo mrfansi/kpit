@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
+import { MobileHeader } from "@/components/mobile-header";
 import { getAllDomains } from "@/lib/queries";
 import { Toaster } from "@/components/ui/sonner";
 import { Suspense } from "react";
@@ -20,12 +21,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="id">
       <body className={`${geistSans.variable} antialiased`}>
+        {/* Mobile header (hamburger + Sheet) — hanya tampil di < lg */}
+        <MobileHeader domains={domains} />
+
         <div className="flex min-h-screen">
-          <Sidebar domains={domains} />
-          <main className="flex-1 overflow-auto">
-            <div className="p-6 max-w-7xl mx-auto">{children}</div>
+          {/* Desktop sidebar — hidden di mobile */}
+          <div className="hidden lg:block">
+            <Sidebar domains={domains} />
+          </div>
+          <main className="flex-1 overflow-auto min-w-0">
+            <div className="p-4 lg:p-6 max-w-7xl mx-auto">{children}</div>
           </main>
         </div>
+
         <Toaster richColors position="top-right" />
         <Suspense><ToastHandler /></Suspense>
       </body>

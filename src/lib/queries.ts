@@ -52,9 +52,22 @@ export async function getKPIEntries(kpiId: number, fromDate?: string, toDate?: s
 export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?: string) {
   const allKPIs = domainId ? await getKPIsByDomain(domainId) : await getAllKPIs();
   return Promise.all(
-    allKPIs.map(async (kpi) => ({
-      kpi,
-      latestEntry: await getLatestEntry(kpi.id, atOrBeforeDate),
-    }))
+    allKPIs.map(async (kpi) => {
+      const conditions = [eq(kpiEntries.kpiId, kpi.id)];
+      if (atOrBeforeDate) conditions.push(lte(kpiEntries.periodDate, atOrBeforeDate));
+
+      const [latestEntry, sparklineEntries] = await Promise.all([
+        getLatestEntry(kpi.id, atOrBeforeDate),
+        db
+          .select()
+          .from(kpiEntries)
+          .where(and(...conditions))
+          .orderBy(desc(kpiEntries.periodDate))
+          .limit(6)
+          .then((rows) => rows.reverse()), // oldest → newest untuk chart
+      ]);
+
+      return { kpi, latestEntry, sparklineEntries };
+    })
   );
 }

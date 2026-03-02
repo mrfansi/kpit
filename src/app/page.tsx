@@ -64,8 +64,8 @@ export default async function OverviewPage({ searchParams }: Props) {
             {kpisWithEntries.length === 0 ? (
               <p className="text-sm text-muted-foreground col-span-full">Belum ada KPI untuk domain ini.</p>
             ) : (
-              kpisWithEntries.map(({ kpi, latestEntry }) => (
-                <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} />
+              kpisWithEntries.map(({ kpi, latestEntry, sparklineEntries }) => (
+                <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} />
               ))
             )}
           </div>

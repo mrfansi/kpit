@@ -3,28 +3,29 @@ import { formatValue } from "@/lib/period";
 import type { KPI, KPIEntry } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sparkline } from "@/components/sparkline";
 import Link from "next/link";
 import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 
 interface KPICardProps {
   kpi: KPI;
   latestEntry: KPIEntry | null;
+  sparklineEntries?: KPIEntry[];
   previousEntry?: KPIEntry | null;
 }
 
-export function KPICard({ kpi, latestEntry, previousEntry }: KPICardProps) {
+export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry }: KPICardProps) {
   const value = latestEntry?.value ?? null;
   const status = getKPIStatus(value, kpi);
   const achievementPct = getAchievementPct(value, kpi.target);
   const cfg = statusConfig[status];
 
+  // Gunakan entry kedua dari belakang di sparkline sebagai previousEntry jika tidak disediakan
+  const prevEntry = previousEntry ?? (sparklineEntries.length >= 2 ? sparklineEntries[sparklineEntries.length - 2] : null);
+
   const trend =
-    value !== null && previousEntry
-      ? value > previousEntry.value
-        ? "up"
-        : value < previousEntry.value
-          ? "down"
-          : "flat"
+    value !== null && prevEntry
+      ? value > prevEntry.value ? "up" : value < prevEntry.value ? "down" : "flat"
       : null;
 
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
@@ -72,6 +73,13 @@ export function KPICard({ kpi, latestEntry, previousEntry }: KPICardProps) {
                     style={{ width: `${Math.min(achievementPct, 100)}%` }}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Sparkline */}
+            {sparklineEntries.length >= 2 && (
+              <div className="-mx-1 pt-1">
+                <Sparkline entries={sparklineEntries} status={status} />
               </div>
             )}
           </div>

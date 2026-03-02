@@ -54,8 +54,8 @@ export default async function DomainPage({ params, searchParams }: Props) {
         {kpisWithEntries.length === 0 ? (
           <div className="col-span-full"><EmptyState /></div>
         ) : (
-          kpisWithEntries.map(({ kpi, latestEntry }) => (
-            <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} />
+          kpisWithEntries.map(({ kpi, latestEntry, sparklineEntries }) => (
+            <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} />
           ))
         )}
       </div>
