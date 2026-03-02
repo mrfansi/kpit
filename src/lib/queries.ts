@@ -24,11 +24,14 @@ export async function getKPIById(id: number): Promise<KPI | null> {
   return rows[0] ?? null;
 }
 
-export async function getLatestEntry(kpiId: number): Promise<KPIEntry | null> {
+export async function getLatestEntry(kpiId: number, atOrBeforeDate?: string): Promise<KPIEntry | null> {
+  const conditions = [eq(kpiEntries.kpiId, kpiId)];
+  if (atOrBeforeDate) conditions.push(lte(kpiEntries.periodDate, atOrBeforeDate));
+
   const rows = await db
     .select()
     .from(kpiEntries)
-    .where(eq(kpiEntries.kpiId, kpiId))
+    .where(and(...conditions))
     .orderBy(desc(kpiEntries.periodDate))
     .limit(1);
   return rows[0] ?? null;
@@ -46,12 +49,12 @@ export async function getKPIEntries(kpiId: number, fromDate?: string, toDate?: s
     .orderBy(kpiEntries.periodDate);
 }
 
-export async function getKPIsWithLatestEntry(domainId?: number) {
+export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?: string) {
   const allKPIs = domainId ? await getKPIsByDomain(domainId) : await getAllKPIs();
   return Promise.all(
     allKPIs.map(async (kpi) => ({
       kpi,
-      latestEntry: await getLatestEntry(kpi.id),
+      latestEntry: await getLatestEntry(kpi.id, atOrBeforeDate),
     }))
   );
 }

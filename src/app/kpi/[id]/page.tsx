@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getKPIById, getKPIEntries, getLatestEntry } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
 import { formatPeriodDate, formatValue, getPeriodRange } from "@/lib/period";
 import { TrendChart } from "@/components/trend-chart";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft } from "lucide-react";
@@ -11,17 +13,27 @@ import Link from "next/link";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ range?: string }>;
 }
 
-export default async function KPIDetailPage({ params }: Props) {
-  const { id } = await params;
+const RANGE_OPTIONS = [
+  { label: "3 Bulan", value: "3" },
+  { label: "6 Bulan", value: "6" },
+  { label: "12 Bulan", value: "12" },
+];
+
+export default async function KPIDetailPage({ params, searchParams }: Props) {
+  const [{ id }, { range }] = await Promise.all([params, searchParams]);
   const kpiId = Number(id);
   if (isNaN(kpiId)) notFound();
 
   const kpi = await getKPIById(kpiId);
   if (!kpi) notFound();
 
-  const { from, to } = getPeriodRange(6);
+  const rangeMonths = Number(range ?? "6");
+  const validRange = [3, 6, 12].includes(rangeMonths) ? rangeMonths : 6;
+
+  const { from, to } = getPeriodRange(validRange);
   const [latestEntry, entries] = await Promise.all([
     getLatestEntry(kpiId),
     getKPIEntries(kpiId, from, to),
@@ -33,13 +45,11 @@ export default async function KPIDetailPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Back button */}
       <Link href="/" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" />
         Kembali ke Overview
       </Link>
 
-      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{kpi.name}</h1>
@@ -48,7 +58,6 @@ export default async function KPIDetailPage({ params }: Props) {
         <Badge className={`${cfg.bg} ${cfg.color} border-0 text-sm`}>{cfg.label}</Badge>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="Nilai Terkini" value={latestEntry ? formatValue(latestEntry.value, kpi.unit) : "—"} />
         <StatCard label="Target" value={formatValue(kpi.target, kpi.unit)} />
@@ -56,10 +65,23 @@ export default async function KPIDetailPage({ params }: Props) {
         <StatCard label="Tipe Refresh" value={kpi.refreshType === "realtime" ? "Real-time" : "Periodik"} />
       </div>
 
-      {/* Trend Chart */}
+      {/* Trend Chart dengan range selector */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Tren 6 Bulan Terakhir</CardTitle>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">Tren Historis</CardTitle>
+          <div className="flex gap-1 print:hidden">
+            {RANGE_OPTIONS.map((opt) => (
+              <Button
+                key={opt.value}
+                variant={String(validRange) === opt.value ? "default" : "outline"}
+                size="sm"
+                className="text-xs h-7 px-2.5"
+                asChild
+              >
+                <Link href={`?range=${opt.value}`}>{opt.label}</Link>
+              </Button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent>
           <TrendChart entries={entries} unit={kpi.unit} target={kpi.target} />
@@ -80,7 +102,6 @@ export default async function KPIDetailPage({ params }: Props) {
                 <TableHead className="text-right">Target</TableHead>
                 <TableHead className="text-right">Pencapaian</TableHead>
                 <TableHead>Status</TableHead>
-                {/* note col only if any */}
               </TableRow>
             </TableHeader>
             <TableBody>

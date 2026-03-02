@@ -1,14 +1,27 @@
+import { Suspense } from "react";
 import { getAllDomains, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
 import { ExportButtons } from "@/components/export-buttons";
+import { PeriodSelector } from "@/components/period-selector";
 import { Separator } from "@/components/ui/separator";
+import { formatPeriodDate, listLastNMonths } from "@/lib/period";
 
-export default async function OverviewPage() {
+interface Props {
+  searchParams: Promise<{ period?: string }>;
+}
+
+export default async function OverviewPage({ searchParams }: Props) {
+  const { period } = await searchParams;
+
+  // Gunakan periode terpilih, fallback ke bulan terkini
+  const months = listLastNMonths(12);
+  const selectedPeriod = period ?? months[0]?.value;
+
   const [domains, allKPIsWithEntries] = await Promise.all([
     getAllDomains(),
-    getKPIsWithLatestEntry(),
+    getKPIsWithLatestEntry(undefined, selectedPeriod),
   ]);
 
   const byDomain = domains.map((domain) => ({
@@ -21,9 +34,19 @@ export default async function OverviewPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Overview KPI</h1>
-          <p className="text-muted-foreground text-sm mt-1">Ringkasan seluruh Key Performance Indicators</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Data per{" "}
+            <span className="font-medium text-foreground">
+              {selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "—"}
+            </span>
+          </p>
         </div>
-        <ExportButtons />
+        <div className="flex items-center gap-2 print:hidden">
+          <Suspense>
+            <PeriodSelector defaultValue={selectedPeriod} />
+          </Suspense>
+          <ExportButtons />
+        </div>
       </div>
 
       <StatSummary kpisWithEntries={allKPIsWithEntries} />
