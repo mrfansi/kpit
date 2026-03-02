@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { DeleteEntryButton } from "@/components/delete-entry-button";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -102,6 +103,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                 <TableHead className="text-right">Target</TableHead>
                 <TableHead className="text-right">Pencapaian</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="print:hidden"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -122,6 +124,9 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                       <TableCell className="text-right">{pct !== null ? `${pct}%` : "—"}</TableCell>
                       <TableCell>
                         <Badge className={`${c.bg} ${c.color} border-0 text-xs`}>{c.label}</Badge>
+                      </TableCell>
+                      <TableCell className="print:hidden text-right">
+                        <DeleteEntryButton id={entry.id} kpiId={kpi.id} period={formatPeriodDate(entry.periodDate, "MMMM yyyy")} />
                       </TableCell>
                     </TableRow>
                   );

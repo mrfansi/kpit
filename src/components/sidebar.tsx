@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, TrendingUp, Users, PenLine } from "lucide-react";
+import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 
@@ -53,6 +53,7 @@ export function Sidebar({ domains }: SidebarProps) {
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Admin</span>
         </div>
         <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
+        <NavItem href="/admin/domain" icon={Globe} label="Kelola Domain" active={pathname.startsWith("/admin/domain")} />
         <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
       </nav>
     </aside>
