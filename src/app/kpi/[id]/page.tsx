@@ -64,7 +64,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
     : { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
 
   const status = getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget });
-  const achievementPct = getAchievementPct(latestEntry?.value, effectiveTarget.target);
+  const achievementPct = getAchievementPct(latestEntry?.value, effectiveTarget.target, kpi.direction);
   const cfg = statusConfig[status];
 
   const forecastPoints = showForecast ? computeForecast(entries) : [];
@@ -210,7 +210,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                   const override = targetOverrideMap.get(entry.periodDate);
                   const entryTarget = override ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
                   const s = getKPIStatus(entry.value, { ...kpi, ...entryTarget });
-                  const pct = getAchievementPct(entry.value, entryTarget.target);
+                  const pct = getAchievementPct(entry.value, entryTarget.target, kpi.direction);
                   const c = statusConfig[s];
                   return (
                     <TableRow key={entry.id}>

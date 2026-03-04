@@ -3,21 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Menu, Globe, Upload, LogIn, ClipboardList } from "lucide-react";
+import { BarChart2, Settings, Home, Users, PenLine, Menu, Globe, Upload, LogIn, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { domainIconMap } from "@/lib/domain-icons";
 
 interface MobileHeaderProps {
   domains: Domain[];
   isAuthenticated?: boolean;
 }
-
-const domainIconMap: Record<string, React.ElementType> = {
-  TrendingUp, Users, Settings, BarChart2,
-};
 
 export function MobileHeader({ domains, isAuthenticated = false }: MobileHeaderProps) {
   const pathname = usePathname();

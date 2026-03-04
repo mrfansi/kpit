@@ -2,23 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, TrendingUp, Users, PenLine, Globe, Upload, User, ClipboardList } from "lucide-react";
+import { BarChart2, Settings, Home, PenLine, Globe, Upload, User, ClipboardList, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoutButton } from "@/components/logout-button";
+import { domainIconMap } from "@/lib/domain-icons";
 
 interface SidebarProps {
   domains: Domain[];
   user?: { name?: string | null; email?: string | null } | null;
 }
-
-const domainIconMap: Record<string, React.ElementType> = {
-  TrendingUp,
-  Users,
-  Settings,
-  BarChart2,
-};
 
 export function Sidebar({ domains, user }: SidebarProps) {
   const pathname = usePathname();

@@ -23,7 +23,7 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
   const targetData = effectiveTarget ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
   const kpiWithTarget = { ...kpi, ...targetData };
   const status = getKPIStatus(value, kpiWithTarget);
-  const achievementPct = getAchievementPct(value, targetData.target);
+  const achievementPct = getAchievementPct(value, targetData.target, kpi.direction);
   const cfg = statusConfig[status];
 
   // Stale: data terbaru > 2 bulan dari sekarang
@@ -73,7 +73,10 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
                 {value !== null ? formatValue(value, kpi.unit) : "—"}
               </span>
               {trend && (
-                <div className={`flex items-center gap-0.5 mb-1 text-xs font-medium ${trend === "up" ? "text-green-500" : trend === "down" ? "text-red-500" : "text-gray-400"}`}>
+                <div className={`flex items-center gap-0.5 mb-1 text-xs font-medium ${
+                  trend === "flat" ? "text-gray-400"
+                    : (trend === "up") !== (kpi.direction === "lower_better") ? "text-green-500" : "text-red-500"
+                }`}>
                   <TrendIcon className="w-3.5 h-3.5" />
                   {deltaFormatted && <span>{deltaFormatted}</span>}
                 </div>

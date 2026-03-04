@@ -20,6 +20,9 @@ export const kpis = sqliteTable("kpis", {
   target: real("target").notNull(),
   thresholdGreen: real("threshold_green").notNull(),
   thresholdYellow: real("threshold_yellow").notNull(),
+  direction: text("direction", { enum: ["higher_better", "lower_better"] })
+    .notNull()
+    .default("higher_better"),
   refreshType: text("refresh_type", { enum: ["realtime", "periodic"] })
     .notNull()
     .default("periodic"),

@@ -8,6 +8,7 @@ export const kpiSchema = z.object({
   target: z.number({ error: "Target wajib diisi" }),
   thresholdGreen: z.number({ error: "Threshold hijau wajib diisi" }),
   thresholdYellow: z.number({ error: "Threshold kuning wajib diisi" }),
+  direction: z.enum(["higher_better", "lower_better"]),
   refreshType: z.enum(["realtime", "periodic"]),
   period: z.enum(["daily", "weekly", "monthly"]),
 });

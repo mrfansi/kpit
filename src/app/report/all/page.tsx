@@ -106,7 +106,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                 {kpis.map(({ kpi, latestEntry, effectiveTarget }) => {
                   const tgt = effectiveTarget ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
                   const status = getKPIStatus(latestEntry?.value, { ...kpi, ...tgt });
-                  const pct = getAchievementPct(latestEntry?.value, tgt.target);
+                  const pct = getAchievementPct(latestEntry?.value, tgt.target, kpi.direction);
                   const cfg = statusConfig[status];
                   const dot = status === "green" ? "bg-green-500" : status === "yellow" ? "bg-yellow-400" : status === "red" ? "bg-red-500" : "bg-gray-300";
 

@@ -1,20 +1,14 @@
 export type KPIStatus = "green" | "yellow" | "red" | "no-data";
 
-/**
- * KPI "lower is better" — berlaku untuk turnover, defect rate, dll
- * Deteksi: jika target < thresholdGreen (misal target 2%, threshold_green 2%)
- */
-function isLowerBetter(target: number, thresholdGreen: number): boolean {
-  return target <= thresholdGreen;
-}
+export type KPIDirection = "higher_better" | "lower_better";
 
 export function getKPIStatus(
   value: number | null | undefined,
-  kpi: { target: number; thresholdGreen: number; thresholdYellow: number }
+  kpi: { target: number; thresholdGreen: number; thresholdYellow: number; direction?: KPIDirection }
 ): KPIStatus {
   if (value === null || value === undefined) return "no-data";
 
-  const lowerBetter = isLowerBetter(kpi.target, kpi.thresholdGreen);
+  const lowerBetter = kpi.direction === "lower_better";
 
   if (lowerBetter) {
     if (value <= kpi.thresholdGreen) return "green";
@@ -27,8 +21,19 @@ export function getKPIStatus(
   }
 }
 
-export function getAchievementPct(value: number | null | undefined, target: number): number | null {
+export function getAchievementPct(
+  value: number | null | undefined,
+  target: number,
+  direction?: KPIDirection
+): number | null {
   if (value === null || value === undefined || target === 0) return null;
+
+  if (direction === "lower_better") {
+    // Lower is better: target 2%, actual 1% = 200% achievement (good)
+    // target 2%, actual 4% = 50% achievement (bad)
+    return Math.round((target / value) * 100);
+  }
+
   return Math.round((value / target) * 100);
 }
 

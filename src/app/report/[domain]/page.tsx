@@ -2,12 +2,11 @@ import { notFound } from "next/navigation";
 import { getDomainBySlug, getKPIsWithLatestEntry } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
 import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
-import { BarChart2, TrendingUp, Users, Settings } from "lucide-react";
+import { BarChart2 } from "lucide-react";
 import { PrintButton } from "@/components/print-button";
 import { ReportPeriodSelector } from "@/components/report-period-selector";
 import type { Metadata } from "next";
-
-const domainIconMap: Record<string, React.ElementType> = { TrendingUp, Users, Settings, BarChart2 };
+import { domainIconMap } from "@/lib/domain-icons";
 
 interface Props {
   params: Promise<{ domain: string }>;
@@ -86,7 +85,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
           {kpisWithEntries.map(({ kpi, latestEntry, effectiveTarget }) => {
             const tgt = effectiveTarget;
             const status = getKPIStatus(latestEntry?.value, { ...kpi, ...tgt });
-            const pct = getAchievementPct(latestEntry?.value, tgt.target);
+            const pct = getAchievementPct(latestEntry?.value, tgt.target, kpi.direction);
             const cfg = statusConfig[status];
             const statusDot = status === "green" ? "bg-green-500" : status === "yellow" ? "bg-yellow-400" : status === "red" ? "bg-red-500" : "bg-gray-300";
 

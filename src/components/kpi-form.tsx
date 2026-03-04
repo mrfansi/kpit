@@ -35,13 +35,20 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
           target: defaultValues.target,
           thresholdGreen: defaultValues.thresholdGreen,
           thresholdYellow: defaultValues.thresholdYellow,
+          direction: defaultValues.direction ?? "higher_better",
           refreshType: defaultValues.refreshType,
           period: defaultValues.period,
         }
       : {
+          name: "",
+          description: "",
+          unit: "%",
+          target: 0,
+          thresholdGreen: 0,
+          thresholdYellow: 0,
+          direction: "higher_better",
           refreshType: "periodic",
           period: "monthly",
-          unit: "%",
         },
   });
 
@@ -113,8 +120,8 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
 
         <Separator />
 
-        {/* Unit & Target */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Unit & Target & Direction */}
+        <div className="grid grid-cols-3 gap-4">
           <FormField
             control={form.control}
             name="unit"
@@ -132,7 +139,26 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Target</FormLabel>
-                <FormControl><Input type="number" step="any" placeholder="0" onChange={(e) => field.onChange(e.target.valueAsNumber)} value={isNaN(field.value as number) ? "" : field.value} /></FormControl>
+                <FormControl><Input type="number" step="any" placeholder="0" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="direction"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Arah KPI</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="higher_better">↑ Makin tinggi makin baik</SelectItem>
+                    <SelectItem value="lower_better">↓ Makin rendah makin baik</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -147,8 +173,12 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Threshold Hijau 🟢</FormLabel>
-                <FormControl><Input type="number" step="any" placeholder="Nilai on track" onChange={(e) => field.onChange(e.target.valueAsNumber)} value={isNaN(field.value as number) ? "" : field.value} /></FormControl>
-                <FormDescription className="text-xs">Nilai ≥ ini = On Track</FormDescription>
+                <FormControl><Input type="number" step="any" placeholder="Nilai on track" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                <FormDescription className="text-xs">
+                  {form.watch("direction") === "lower_better"
+                    ? "Nilai ≤ ini = On Track"
+                    : "Nilai ≥ ini = On Track"}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -159,8 +189,12 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Threshold Kuning 🟡</FormLabel>
-                <FormControl><Input type="number" step="any" placeholder="Nilai at risk" onChange={(e) => field.onChange(e.target.valueAsNumber)} value={isNaN(field.value as number) ? "" : field.value} /></FormControl>
-                <FormDescription className="text-xs">Nilai ≥ ini (tapi &lt; hijau) = At Risk</FormDescription>
+                <FormControl><Input type="number" step="any" placeholder="Nilai at risk" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                <FormDescription className="text-xs">
+                  {form.watch("direction") === "lower_better"
+                    ? "Nilai ≤ ini (tapi > hijau) = At Risk"
+                    : "Nilai ≥ ini (tapi < hijau) = At Risk"}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

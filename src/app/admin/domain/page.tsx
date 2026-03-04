@@ -6,9 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Pencil } from "lucide-react";
 import Link from "next/link";
 import { DeleteDomainButton } from "@/components/delete-domain-button";
-import { BarChart2, TrendingUp, Users, Settings } from "lucide-react";
-
-const domainIconMap: Record<string, React.ElementType> = { TrendingUp, Users, Settings, BarChart2 };
+import { domainIconMap } from "@/lib/domain-icons";
+import { BarChart2 } from "lucide-react";
 
 export default async function AdminDomainPage() {
   const domains = await getAllDomains();

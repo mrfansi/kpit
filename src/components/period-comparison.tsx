@@ -9,7 +9,7 @@ interface PeriodComparisonProps {
   prevYear: KPIEntry | null;
 }
 
-function Delta({ current, compare, unit }: { current: number | null; compare: KPIEntry | null; unit: string }) {
+function Delta({ current, compare, unit, lowerBetter }: { current: number | null; compare: KPIEntry | null; unit: string; lowerBetter?: boolean }) {
   if (current === null || compare === null) {
     return <span className="text-muted-foreground text-sm">—</span>;
   }
@@ -19,7 +19,8 @@ function Delta({ current, compare, unit }: { current: number | null; compare: KP
   const isFlat = abs === 0;
 
   const Icon = isFlat ? Minus : isUp ? TrendingUp : TrendingDown;
-  const color = isFlat ? "text-muted-foreground" : isUp ? "text-green-600" : "text-red-600";
+  const isGood = isFlat ? false : lowerBetter ? !isUp : isUp;
+  const color = isFlat ? "text-muted-foreground" : isGood ? "text-green-600" : "text-red-600";
 
   return (
     <span className={`flex items-center gap-1 text-sm font-medium ${color}`}>
@@ -41,7 +42,7 @@ export function PeriodComparison({ kpi, current, prevMonth, prevYear }: PeriodCo
         <p className="text-sm text-muted-foreground">
           {prevMonth ? formatValue(prevMonth.value, kpi.unit) : "—"}
         </p>
-        <Delta current={current.value} compare={prevMonth} unit={kpi.unit} />
+        <Delta current={current.value} compare={prevMonth} unit={kpi.unit} lowerBetter={kpi.direction === "lower_better"} />
       </div>
 
       {/* YoY */}
@@ -50,7 +51,7 @@ export function PeriodComparison({ kpi, current, prevMonth, prevYear }: PeriodCo
         <p className="text-sm text-muted-foreground">
           {prevYear ? formatValue(prevYear.value, kpi.unit) : "—"}
         </p>
-        <Delta current={current.value} compare={prevYear} unit={kpi.unit} />
+        <Delta current={current.value} compare={prevYear} unit={kpi.unit} lowerBetter={kpi.direction === "lower_better"} />
       </div>
     </div>
   );
