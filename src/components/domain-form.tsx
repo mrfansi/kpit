@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Domain } from "@/lib/db/schema";
-import { ICON_OPTIONS } from "@/lib/domain-icons";
+import { ICON_OPTIONS, domainIconMap } from "@/lib/domain-icons";
+import { RefreshCw } from "lucide-react";
+import { generateSoftColor } from "@/lib/colors";
 
 interface DomainFormProps {
   domain?: Domain;
@@ -25,7 +27,7 @@ export function DomainForm({ domain }: DomainFormProps) {
       name: domain?.name ?? "",
       slug: domain?.slug ?? "",
       icon: domain?.icon ?? "BarChart2",
-      color: domain?.color ?? "#6366f1",
+      color: domain?.color ?? generateSoftColor(),
       description: domain?.description ?? "",
     },
   });
@@ -82,22 +84,34 @@ export function DomainForm({ domain }: DomainFormProps) {
           <FormField
             control={form.control}
             name="icon"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Icon</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {ICON_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              return (
+                <FormItem>
+                  <FormLabel>Icon</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {ICON_OPTIONS.map((o) => {
+                        const Icon = domainIconMap[o.value];
+                        return (
+                          <SelectItem key={o.value} value={o.value}>
+                            <span className="flex items-center gap-2">
+                              {Icon && <Icon className="w-4 h-4" />}
+                              {o.label}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <FormField
@@ -105,16 +119,38 @@ export function DomainForm({ domain }: DomainFormProps) {
             name="color"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Warna (hex)</FormLabel>
+                <FormLabel>Warna</FormLabel>
                 <FormControl>
                   <div className="flex gap-2 items-center">
+                    <button
+                      type="button"
+                      className="w-9 h-9 rounded-md border border-input shadow-sm shrink-0"
+                      style={{ backgroundColor: field.value }}
+                      onClick={() => {
+                        const picker = document.getElementById("domain-color-picker") as HTMLInputElement;
+                        picker?.click();
+                      }}
+                      title="Klik untuk pilih warna manual"
+                    />
                     <input
+                      id="domain-color-picker"
                       type="color"
                       value={field.value}
                       onChange={(e) => field.onChange(e.target.value)}
-                      className="h-9 w-10 rounded border cursor-pointer p-0.5"
+                      className="sr-only"
                     />
-                    <Input placeholder="#6366f1" {...field} className="flex-1" />
+                    {!isEdit && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => field.onChange(generateSoftColor())}
+                        title="Generate warna baru"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </FormControl>
                 <FormMessage />

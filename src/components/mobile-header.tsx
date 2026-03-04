@@ -3,25 +3,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, Users, PenLine, Menu, Globe, Upload, LogIn, ClipboardList } from "lucide-react";
+import { BarChart2, Settings, Home, Users, User, PenLine, Menu, Globe, Upload, LogIn, ClipboardList, GanttChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LogoutButton } from "@/components/logout-button";
 import { domainIconMap } from "@/lib/domain-icons";
 
 interface MobileHeaderProps {
   domains: Domain[];
   isAuthenticated?: boolean;
+  userName?: string | null;
 }
 
-export function MobileHeader({ domains, isAuthenticated = false }: MobileHeaderProps) {
+export function MobileHeader({ domains, isAuthenticated = false, userName }: MobileHeaderProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   const navItems: { href: string; icon: React.ElementType; label: string; color?: string }[] = [
     { href: "/", icon: Home, label: "Overview" },
+    { href: "/timeline", icon: GanttChart, label: "Timeline" },
     ...domains.map((d) => ({
       href: `/domain/${d.slug}`,
       icon: domainIconMap[d.icon] ?? BarChart2,
@@ -43,25 +46,26 @@ export function MobileHeader({ domains, isAuthenticated = false }: MobileHeaderP
     <header className="lg:hidden flex items-center gap-3 px-4 py-3 border-b bg-background sticky top-0 z-40">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" className="shrink-0">
             <Menu className="w-5 h-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-56 p-0">
-          <SheetHeader className="px-4 py-4 border-b">
+        <SheetContent side="left" className="w-64 sm:max-w-xs p-0 flex flex-col" showCloseButton={false}>
+          <SheetHeader className="shrink-0 px-4 py-4 border-b">
             <SheetTitle className="flex items-center gap-2 text-sm font-semibold">
               <BarChart2 className="w-5 h-5 text-primary" />
               KPI Dashboard
             </SheetTitle>
           </SheetHeader>
-          <nav className="px-2 py-3 space-y-1">
+
+          <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
             {navItems.map(({ href, icon: Icon, label, color }) => (
               <Link
                 key={href}
                 href={href}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center gap-2.5 px-2 py-2 rounded-md text-sm transition-colors",
+                  "flex items-center gap-2.5 px-2 py-2.5 rounded-md text-sm transition-colors",
                   pathname === href
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -83,7 +87,7 @@ export function MobileHeader({ domains, isAuthenticated = false }: MobileHeaderP
                     href={href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      "flex items-center gap-2.5 px-2 py-2 rounded-md text-sm transition-colors",
+                      "flex items-center gap-2.5 px-2 py-2.5 rounded-md text-sm transition-colors",
                       pathname.startsWith(href)
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -99,7 +103,7 @@ export function MobileHeader({ domains, isAuthenticated = false }: MobileHeaderP
                 <Link
                   href="/login"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2.5 px-2 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="flex items-center gap-2.5 px-2 py-2.5 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
                   <LogIn className="w-4 h-4 shrink-0" />
                   <span>Login Admin</span>
@@ -107,12 +111,38 @@ export function MobileHeader({ domains, isAuthenticated = false }: MobileHeaderP
               </div>
             )}
           </nav>
+
+          {/* Footer: theme + user info */}
+          <SheetFooter className="shrink-0 border-t px-3 py-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Tema</span>
+              <ThemeToggle />
+            </div>
+            {isAuthenticated && (
+              <div className="space-y-1.5 pt-2 border-t">
+                {userName && (
+                  <div className="flex items-center gap-2 px-1 py-1.5">
+                    <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs text-muted-foreground truncate">{userName}</span>
+                  </div>
+                )}
+                <Link
+                  href="/admin/account"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  Akun Saya
+                </Link>
+                <LogoutButton />
+              </div>
+            )}
+          </SheetFooter>
         </SheetContent>
       </Sheet>
 
-      <div className="flex items-center gap-2 flex-1">
-        <BarChart2 className="w-4 h-4 text-primary" />
-        <span className="font-semibold text-sm">KPI Dashboard</span>
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <BarChart2 className="w-4 h-4 text-primary shrink-0" />
+        <span className="font-semibold text-sm truncate">KPI Dashboard</span>
       </div>
       <ThemeToggle />
     </header>

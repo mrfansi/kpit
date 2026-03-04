@@ -40,7 +40,8 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
       : null;
 
   const delta = value !== null && prevEntry ? value - prevEntry.value : null;
-  const deltaFormatted = delta !== null
+  // Tidak tampilkan delta jika nilainya 0 (sudah ditunjukkan oleh icon "—")
+  const deltaFormatted = delta !== null && delta !== 0
     ? `${delta >= 0 ? "+" : ""}${Math.abs(delta) >= 1000 ? (delta / 1000).toFixed(1) + "k" : delta % 1 === 0 ? delta : delta.toFixed(1)}`
     : null;
 

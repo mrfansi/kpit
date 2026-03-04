@@ -5,14 +5,45 @@ import { kpiComments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import sanitizeHtml from "sanitize-html";
+
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    "p", "br", "strong", "em", "s", "u",
+    "h2", "h3",
+    "ul", "ol", "li",
+    "a", "img",
+    "blockquote", "code", "pre",
+  ],
+  allowedAttributes: {
+    a: ["href", "target", "rel"],
+    img: ["src", "alt", "width", "height"],
+  },
+  allowedSchemes: ["http", "https"],
+  transformTags: {
+    a: sanitizeHtml.simpleTransform("a", { target: "_blank", rel: "noopener noreferrer" }),
+  },
+};
+
+function sanitize(html: string): string {
+  return sanitizeHtml(html, SANITIZE_OPTIONS);
+}
+
+function isEmptyHtml(html: string): boolean {
+  const text = html.replace(/<[^>]*>/g, "").trim();
+  return text.length === 0;
+}
 
 export async function createComment(kpiId: number, periodDate: string, content: string) {
   const session = await auth();
   if (!session?.user) return;
   const author = session.user.name ?? session.user.email ?? "Admin";
-  if (!content.trim() || content.trim().length > 2000) return;
   if (!kpiId || !periodDate) return;
-  await db.insert(kpiComments).values({ kpiId, periodDate, content: content.trim(), author });
+
+  const clean = sanitize(content);
+  if (isEmptyHtml(clean) || clean.length > 50000) return;
+
+  await db.insert(kpiComments).values({ kpiId, periodDate, content: clean, author });
   revalidatePath(`/kpi/${kpiId}`);
 }
 

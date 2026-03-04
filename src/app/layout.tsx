@@ -25,7 +25,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${geistSans.variable} antialiased`}>
         <ThemeProvider>
         {/* Mobile header (hamburger + Sheet) — hanya tampil di < lg */}
-        <MobileHeader domains={domains} isAuthenticated={!!session} />
+        <MobileHeader domains={domains} isAuthenticated={!!session} userName={session?.user?.name ?? session?.user?.email} />
 
         <div className="flex min-h-screen">
           {/* Desktop sidebar — hidden di mobile */}

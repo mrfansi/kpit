@@ -20,8 +20,12 @@ function linearRegression(points: [number, number][]): { slope: number; intercep
 }
 
 function addMonths(isoDate: string, n: number): string {
-  const d = new Date(isoDate);
-  return new Date(d.getFullYear(), d.getMonth() + n, 1).toISOString().slice(0, 10);
+  // Parse year/month dari string langsung untuk menghindari timezone issues
+  const [y, m] = isoDate.split("-").map(Number);
+  const date = new Date(y, m - 1 + n, 1);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}-01`;
 }
 
 /**

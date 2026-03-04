@@ -67,7 +67,8 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   const achievementPct = getAchievementPct(latestEntry?.value, effectiveTarget.target, kpi.direction);
   const cfg = statusConfig[status];
 
-  const forecastPoints = showForecast ? computeForecast(entries) : [];
+  // Gunakan semua data historis untuk forecast agar konsisten di semua range
+  const forecastPoints = showForecast ? computeForecast(allEntries) : [];
 
   // Anomaly detection: flag if latest value deviates > 2 stddev from historical mean
   const historicalValues = allEntries.slice(0, -1).map((e) => e.value); // exclude latest

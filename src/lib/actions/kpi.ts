@@ -11,7 +11,15 @@ import { logAudit } from "@/lib/db/audit";
 export async function createKPI(data: Omit<NewKPI, "createdAt">) {
   const session = await auth();
   if (!session?.user) throw new Error("Unauthorized");
-  await db.insert(kpis).values(data);
+
+  // Set sortOrder ke posisi terakhir dalam domain
+  const [maxRow] = await db
+    .select({ max: sql<number>`COALESCE(MAX(sort_order), -1)` })
+    .from(kpis)
+    .where(and(eq(kpis.domainId, data.domainId), eq(kpis.isActive, true)));
+  const nextOrder = (maxRow?.max ?? -1) + 1;
+
+  await db.insert(kpis).values({ ...data, sortOrder: nextOrder });
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi", detail: data.name });
   revalidatePath("/");
   redirect(`/admin/kpi?success=${encodeURIComponent("KPI berhasil ditambahkan")}`);
@@ -60,6 +68,19 @@ export async function togglePinKPI(id: number, isPinned: boolean) {
   revalidatePath("/");
 }
 
+/** Normalize sortOrder untuk domain tertentu agar urut 0, 1, 2, ... */
+async function normalizeSortOrder(domainId: number) {
+  const domainKpis = await db
+    .select({ id: kpis.id })
+    .from(kpis)
+    .where(and(eq(kpis.domainId, domainId), eq(kpis.isActive, true)))
+    .orderBy(kpis.sortOrder, kpis.name);
+
+  for (let i = 0; i < domainKpis.length; i++) {
+    await db.update(kpis).set({ sortOrder: i }).where(eq(kpis.id, domainKpis[i].id));
+  }
+}
+
 /** Geser sortOrder KPI ke atas atau bawah dalam domain yang sama */
 export async function reorderKPI(id: number, direction: "up" | "down") {
   const session = await auth();
@@ -67,22 +88,40 @@ export async function reorderKPI(id: number, direction: "up" | "down") {
   const [kpi] = await db.select().from(kpis).where(eq(kpis.id, id)).limit(1);
   if (!kpi) return;
 
+  // Normalize dulu agar setiap KPI punya sortOrder unik
+  await normalizeSortOrder(kpi.domainId);
+
+  // Re-fetch setelah normalize
+  const [current] = await db.select().from(kpis).where(eq(kpis.id, id)).limit(1);
+  if (!current) return;
+
   const sibling = direction === "up"
     ? await db.select().from(kpis)
-        .where(and(eq(kpis.domainId, kpi.domainId), eq(kpis.isActive, true), lt(kpis.sortOrder, kpi.sortOrder)))
+        .where(and(eq(kpis.domainId, current.domainId), eq(kpis.isActive, true), lt(kpis.sortOrder, current.sortOrder)))
         .orderBy(sql`sort_order DESC`).limit(1)
     : await db.select().from(kpis)
-        .where(and(eq(kpis.domainId, kpi.domainId), eq(kpis.isActive, true), gt(kpis.sortOrder, kpi.sortOrder)))
+        .where(and(eq(kpis.domainId, current.domainId), eq(kpis.isActive, true), gt(kpis.sortOrder, current.sortOrder)))
         .orderBy(sql`sort_order ASC`).limit(1);
 
   if (!sibling[0]) return;
 
   // Swap sortOrder
-  await db.update(kpis).set({ sortOrder: sibling[0].sortOrder }).where(eq(kpis.id, kpi.id));
-  await db.update(kpis).set({ sortOrder: kpi.sortOrder }).where(eq(kpis.id, sibling[0].id));
+  await db.update(kpis).set({ sortOrder: sibling[0].sortOrder }).where(eq(kpis.id, current.id));
+  await db.update(kpis).set({ sortOrder: current.sortOrder }).where(eq(kpis.id, sibling[0].id));
 
   revalidatePath("/");
   revalidatePath("/admin/kpi");
 }
 
+/** Bulk update sortOrder setelah drag-and-drop */
+export async function bulkReorderKPIs(items: { id: number; sortOrder: number }[]) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
 
+  for (const item of items) {
+    await db.update(kpis).set({ sortOrder: item.sortOrder }).where(eq(kpis.id, item.id));
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/kpi");
+}

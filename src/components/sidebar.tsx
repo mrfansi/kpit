@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, PenLine, Globe, Upload, User, ClipboardList, Users } from "lucide-react";
+import { BarChart2, Settings, Home, PenLine, Globe, Upload, User, ClipboardList, Users, GanttChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -18,15 +18,16 @@ export function Sidebar({ domains, user }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 shrink-0 border-r bg-background flex flex-col min-h-screen print:hidden">
+    <aside className="w-56 shrink-0 border-r bg-background flex flex-col h-screen sticky top-0 print:hidden">
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-4 border-b">
         <BarChart2 className="w-5 h-5 text-primary" />
         <span className="font-semibold text-sm">KPI Dashboard</span>
       </div>
 
-      <nav className="flex-1 px-2 py-3 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
         <NavItem href="/" icon={Home} label="Overview" active={pathname === "/"} />
+        <NavItem href="/timeline" icon={GanttChart} label="Timeline" active={pathname.startsWith("/timeline")} />
 
         <div className="pt-3 pb-1 px-2">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Domain</span>
@@ -54,18 +55,19 @@ export function Sidebar({ domains, user }: SidebarProps) {
         <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
         <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
         <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
+        <NavItem href="/admin/timeline" icon={GanttChart} label="Kelola Timeline" active={pathname.startsWith("/admin/timeline")} />
         <NavItem href="/admin/audit" icon={ClipboardList} label="Audit Log" active={pathname.startsWith("/admin/audit")} />
       </nav>
 
       {/* Footer: theme toggle + user info */}
-      <div className="px-3 py-3 border-t space-y-2">
+      <div className="shrink-0 px-3 py-3 border-t space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">Tema</span>
           <ThemeToggle />
         </div>
         {user && (
-          <div className="space-y-1 pt-1 border-t">
-            <div className="flex items-center gap-2 px-1 py-1">
+          <div className="space-y-1.5 pt-2 border-t">
+            <div className="flex items-center gap-2 px-1 py-1.5">
               <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
               <span className="text-xs text-muted-foreground truncate">{user.name ?? user.email}</span>
             </div>

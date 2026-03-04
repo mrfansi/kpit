@@ -39,18 +39,16 @@ export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))
     forecast: undefined as number | undefined,
   }));
 
-  // Sambung titik terakhir aktual ke forecast agar garis tidak terputus
+  // Bridge: titik terakhir aktual juga punya nilai forecast agar garis menyambung
+  if (forecastPoints.length > 0 && actualData.length > 0) {
+    actualData[actualData.length - 1].forecast = actualData[actualData.length - 1].value;
+  }
+
   const forecastData = forecastPoints.map((p) => ({
     period: formatPeriodDate(p.periodDate),
     value: undefined as number | undefined,
     forecast: p.value,
   }));
-
-  if (forecastPoints.length > 0 && actualData.length > 0) {
-    // Bridge: titik terakhir aktual juga jadi titik awal forecast
-    const last = actualData[actualData.length - 1];
-    forecastData.unshift({ period: last.period, value: undefined, forecast: last.value });
-  }
 
   const data = [...actualData, ...forecastData];
 

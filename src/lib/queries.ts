@@ -150,10 +150,13 @@ export async function getKPITargets(kpiId: number): Promise<KPITarget[]> {
  * @param currentPeriodDate  ISO date awal bulan (YYYY-MM-DD)
  */
 export async function getPeriodComparisonEntries(kpiId: number, currentPeriodDate: string) {
-  const d = new Date(currentPeriodDate);
+  // Parse year/month dari string langsung untuk menghindari timezone issues
+  const [y, m] = currentPeriodDate.split("-").map(Number);
 
-  const prevMonthDate = new Date(d.getFullYear(), d.getMonth() - 1, 1).toISOString().slice(0, 10);
-  const prevYearDate  = new Date(d.getFullYear() - 1, d.getMonth(), 1).toISOString().slice(0, 10);
+  const prevMonthD = new Date(y, m - 2, 1); // m-1 (zero-based) - 1 (prev month)
+  const prevMonthDate = `${prevMonthD.getFullYear()}-${String(prevMonthD.getMonth() + 1).padStart(2, "0")}-01`;
+
+  const prevYearDate = `${y - 1}-${String(m).padStart(2, "0")}-01`;
 
   const [prevMonth, prevYear] = await Promise.all([
     getLatestEntry(kpiId, prevMonthDate),

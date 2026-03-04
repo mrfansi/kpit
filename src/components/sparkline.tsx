@@ -1,6 +1,6 @@
 "use client";
 
-import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
 import type { KPIEntry } from "@/lib/db/schema";
 import type { KPIStatus } from "@/lib/kpi-status";
 
@@ -22,9 +22,17 @@ export function Sparkline({ entries, status }: SparklineProps) {
   const data = entries.map((e) => ({ v: e.value }));
   const color = statusColor[status];
 
+  // Pastikan Y-axis punya range minimal agar garis tidak terlalu flat
+  const values = entries.map((e) => e.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min;
+  const padding = range < 1 ? Math.max(min * 0.1, 1) : range * 0.15;
+
   return (
     <ResponsiveContainer width="100%" height={40}>
       <LineChart data={data}>
+        <YAxis hide domain={[min - padding, max + padding]} />
         <Line
           type="monotone"
           dataKey="v"

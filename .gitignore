@@ -48,3 +48,7 @@ next-env.d.ts
 # Drizzle migrations (keep schema, ignore generated)
 drizzle/meta/
 .env.local
+
+# Uploaded files (keep directory, ignore content)
+public/uploads/comments/*
+!public/uploads/comments/.gitkeep
