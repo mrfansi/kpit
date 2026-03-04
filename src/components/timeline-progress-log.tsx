@@ -100,14 +100,14 @@ export function TimelineProgressLog({
         <div className="max-h-72 overflow-y-auto pr-1">
           <div className="relative pl-6">
             {/* Vertical line */}
-            <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border" />
+            <div className="absolute left-2.25 top-2 bottom-2 w-px bg-border" />
 
             {logs.map((log, i) => (
               <div key={log.id} className="relative pb-5 last:pb-0 group">
                 {/* Dot on the line */}
-                <div className="absolute left-[-15px] top-1 z-10">
+                <div className="absolute -left-3.75 top-1 z-10">
                   <Circle
-                    className={`w-[18px] h-[18px] ${i === 0 ? "fill-primary text-primary" : "fill-background text-border"}`}
+                    className={`w-4.5 h-4.5 ${i === 0 ? "fill-primary text-primary" : "fill-background text-border"}`}
                     strokeWidth={2}
                   />
                 </div>

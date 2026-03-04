@@ -27,7 +27,7 @@ const chartConfig = {
 export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))", forecastPoints = [] }: TrendChartProps) {
   if (entries.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
+      <div className="flex items-center justify-center h-50 text-muted-foreground text-sm">
         Belum ada data historis
       </div>
     );
@@ -53,7 +53,7 @@ export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))
   const data = [...actualData, ...forecastData];
 
   return (
-    <ChartContainer config={chartConfig} className="h-[240px] w-full">
+    <ChartContainer config={chartConfig} className="h-60 w-full">
       <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         <XAxis dataKey="period" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />

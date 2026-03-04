@@ -16,7 +16,7 @@ export function GanttGrid({ columns, totalHeight }: GanttGridProps) {
           key={i}
           className={cn(
             "absolute top-0 border-r border-border/30",
-            col.isCurrentPeriod && "bg-primary/[0.03]"
+            col.isCurrentPeriod && "bg-primary/3"
           )}
           style={{ left: col.x, width: col.width, height: totalHeight }}
         />
