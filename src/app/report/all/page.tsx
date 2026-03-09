@@ -19,6 +19,15 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
   const selectedPeriod = period ?? months[0]?.value;
   const periodLabel = selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "—";
 
+  // Previous month label for display
+  const prevMonthLabel = selectedPeriod
+    ? (() => {
+        const [y, m] = selectedPeriod.split("-").map(Number);
+        const d = new Date(y, m - 2, 1);
+        return formatPeriodDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`, "MMM yy");
+      })()
+    : null;
+
   const domains = await getAllDomains();
   const allKPIsWithEntries = await getKPIsWithLatestEntry(undefined, selectedPeriod);
 
@@ -122,31 +131,51 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
 
         {/* Period comparison overview */}
         {(healthDelta !== null || prevTotal > 0) && (
-          <div className="mt-3 flex flex-wrap gap-4 text-xs">
-            {healthDelta !== null && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-500">Health Score:</span>
-                <span className={healthDelta > 0 ? "text-green-600 font-semibold" : healthDelta < 0 ? "text-red-600 font-semibold" : "text-gray-500"}>
-                  {healthDelta > 0 ? "\u2191" : healthDelta < 0 ? "\u2193" : "\u2014"} {healthDelta > 0 ? "+" : ""}{healthDelta}pp vs prev
-                </span>
-              </div>
-            )}
-            {prevTotal > 0 && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-500">Movement:</span>
-                {improved > 0 && <span className="text-green-600 font-semibold">{improved} improved</span>}
-                {declined > 0 && <span className="text-red-600 font-semibold">{declined} declined</span>}
-                {stable > 0 && <span className="text-gray-500">{stable} stable</span>}
-              </div>
-            )}
-            {achievementDelta !== null && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-500">Avg Achievement:</span>
-                <span className={achievementDelta > 0 ? "text-green-600 font-semibold" : achievementDelta < 0 ? "text-red-600 font-semibold" : "text-gray-500"}>
-                  {avgAchievement}% ({achievementDelta > 0 ? "+" : ""}{achievementDelta}pp)
-                </span>
-              </div>
-            )}
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            {/* Health Score Change */}
+            <div className="border border-gray-200 rounded-lg p-3">
+              <p className="text-xs text-gray-500 mb-1">Dibanding {prevMonthLabel}</p>
+              {healthDelta !== null ? (
+                <p className={`text-lg font-bold ${healthDelta > 0 ? "text-green-600" : healthDelta < 0 ? "text-red-600" : "text-gray-500"}`}>
+                  {healthDelta > 0 ? "+" : ""}{healthDelta}%
+                  <span className="text-xs font-normal text-gray-500 ml-1">health score</span>
+                </p>
+              ) : (
+                <p className="text-lg font-bold text-gray-300">—</p>
+              )}
+            </div>
+
+            {/* Status Movement */}
+            <div className="border border-gray-200 rounded-lg p-3">
+              <p className="text-xs text-gray-500 mb-1">Pergerakan Status</p>
+              {prevTotal > 0 ? (
+                <div className="flex items-baseline gap-2">
+                  {improved > 0 && <span className="text-lg font-bold text-green-600">{improved} <span className="text-xs font-normal">naik</span></span>}
+                  {declined > 0 && <span className="text-lg font-bold text-red-600">{declined} <span className="text-xs font-normal">turun</span></span>}
+                  {improved === 0 && declined === 0 && <span className="text-lg font-bold text-gray-500">{stable} <span className="text-xs font-normal">tetap</span></span>}
+                  {(improved > 0 || declined > 0) && stable > 0 && <span className="text-xs text-gray-400">{stable} tetap</span>}
+                </div>
+              ) : (
+                <p className="text-lg font-bold text-gray-300">—</p>
+              )}
+            </div>
+
+            {/* Avg Achievement */}
+            <div className="border border-gray-200 rounded-lg p-3">
+              <p className="text-xs text-gray-500 mb-1">Rata-rata Pencapaian</p>
+              {avgAchievement !== null ? (
+                <p className="text-lg font-bold">
+                  {avgAchievement}%
+                  {achievementDelta !== null && achievementDelta !== 0 && (
+                    <span className={`text-xs font-normal ml-1 ${achievementDelta > 0 ? "text-green-600" : "text-red-600"}`}>
+                      ({achievementDelta > 0 ? "+" : ""}{achievementDelta}%)
+                    </span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-lg font-bold text-gray-300">—</p>
+              )}
+            </div>
           </div>
         )}
       </header>
@@ -176,7 +205,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                   <th className="text-right py-1.5 px-2 font-medium">Target</th>
                   <th className="text-right py-1.5 px-2 font-medium">%</th>
                   <th className="text-center py-1.5 pl-2 font-medium">Status</th>
-                  <th className="text-center py-1.5 px-2 font-medium">MoM</th>
+                  <th className="text-center py-1.5 px-2 font-medium">vs {prevMonthLabel}</th>
                   {hasAnyYoY && <th className="text-center py-1.5 px-2 font-medium">YoY</th>}
                   <th className="text-center py-1.5 pl-2 font-medium">Trend</th>
                 </tr>
