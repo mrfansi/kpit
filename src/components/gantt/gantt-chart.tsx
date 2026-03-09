@@ -303,21 +303,23 @@ export function GanttChart({
                     🚀 {format(parseISO(getEffectiveLaunchDate(project)), "dd MMM yyyy", { locale: idLocale })}
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {project.progress}%
-                </span>
-                {isAuthenticated && (
-                  <button
-                    className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent shrink-0"
-                    onClick={() => {
-                      setEditingProject(project);
-                      setProjectDialogOpen(true);
-                    }}
-                    title="Edit project"
-                  >
-                    <Pencil className="w-3 h-3 text-muted-foreground" />
-                  </button>
-                )}
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-xs text-muted-foreground">
+                    {project.progress}%
+                  </span>
+                  {isAuthenticated && (
+                    <button
+                      className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                      onClick={() => {
+                        setEditingProject(project);
+                        setProjectDialogOpen(true);
+                      }}
+                      title="Edit project"
+                    >
+                      <Pencil className="w-3 h-3 text-muted-foreground" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
