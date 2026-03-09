@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import type { TimelineProject } from "@/lib/db/schema";
+import type { TimelineProject, TimelineProjectStatus } from "@/lib/db/schema";
 import { computeGanttLayout } from "@/lib/gantt-layout";
 import { getEffectiveLaunchDate, isManualLaunchDate } from "@/lib/launch-date";
 import { GanttHeader } from "@/components/gantt/gantt-header";
@@ -14,9 +14,10 @@ import { ROW_HEIGHT } from "@/components/gantt/gantt-types";
 
 interface ReportGanttProps {
   projects: TimelineProject[];
+  statuses: TimelineProjectStatus[];
 }
 
-export function ReportGantt({ projects }: ReportGanttProps) {
+export function ReportGantt({ projects, statuses }: ReportGanttProps) {
   const layout = useMemo(
     () => computeGanttLayout(projects, "month", 0),
     [projects]
@@ -46,6 +47,11 @@ export function ReportGantt({ projects }: ReportGanttProps) {
               const y = rowIndex * ROW_HEIGHT + 8;
               const barHeight = ROW_HEIGHT - 16;
 
+              const status = statuses.find((s) => s.id === project.statusId);
+              const barColor = status?.color ?? project.color;
+              const isNotStarted = status?.slug === "not_started";
+              const isOnHold = status?.slug === "on_hold";
+
               return (
                 <div
                   key={project.id}
@@ -55,8 +61,9 @@ export function ReportGantt({ projects }: ReportGanttProps) {
                     top: y,
                     width: barWidth,
                     height: barHeight,
-                    backgroundColor: `${project.color}20`,
-                    border: `2px solid ${project.color}`,
+                    backgroundColor: `${barColor}20`,
+                    border: `2px ${isNotStarted ? "dashed" : "solid"} ${barColor}`,
+                    opacity: isNotStarted ? 0.5 : isOnHold ? 0.6 : 1,
                   }}
                 >
                   {/* Progress fill */}
@@ -64,7 +71,7 @@ export function ReportGantt({ projects }: ReportGanttProps) {
                     className="absolute inset-0 rounded-md pointer-events-none"
                     style={{
                       width: `${project.progress}%`,
-                      backgroundColor: `${project.color}35`,
+                      backgroundColor: `${barColor}35`,
                     }}
                   />
 
@@ -74,6 +81,24 @@ export function ReportGantt({ projects }: ReportGanttProps) {
                       {project.name}
                     </span>
                   </div>
+
+                  {/* Date labels on bar edges */}
+                  {barWidth > 120 && (
+                    <>
+                      <span
+                        className="absolute left-1.5 bottom-0.5 text-[9px] pointer-events-none select-none"
+                        style={{ color: `${barColor}90` }}
+                      >
+                        {format(parseISO(project.startDate), "dd MMM", { locale: idLocale })}
+                      </span>
+                      <span
+                        className="absolute right-1.5 bottom-0.5 text-[9px] pointer-events-none select-none"
+                        style={{ color: `${barColor}90` }}
+                      >
+                        {format(parseISO(project.endDate), "dd MMM", { locale: idLocale })}
+                      </span>
+                    </>
+                  )}
 
                   {/* Hover tooltip */}
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">

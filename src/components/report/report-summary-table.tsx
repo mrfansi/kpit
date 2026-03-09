@@ -1,13 +1,14 @@
 import { format, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import type { TimelineProject } from "@/lib/db/schema";
+import type { TimelineProject, TimelineProjectStatus } from "@/lib/db/schema";
 import { getEffectiveLaunchDate, isManualLaunchDate } from "@/lib/launch-date";
 
 interface ReportSummaryTableProps {
   projects: TimelineProject[];
+  statuses: TimelineProjectStatus[];
 }
 
-export function ReportSummaryTable({ projects }: ReportSummaryTableProps) {
+export function ReportSummaryTable({ projects, statuses }: ReportSummaryTableProps) {
   return (
     <div className="mb-10">
       <h2 className="text-lg font-semibold mb-4">Executive Summary</h2>
@@ -17,6 +18,7 @@ export function ReportSummaryTable({ projects }: ReportSummaryTableProps) {
             <tr className="bg-muted/50 border-b">
               <th className="text-left px-4 py-2.5 font-medium">Project</th>
               <th className="text-left px-4 py-2.5 font-medium">Progress</th>
+              <th className="text-left px-4 py-2.5 font-medium">Status</th>
               <th className="text-left px-4 py-2.5 font-medium">Mulai</th>
               <th className="text-left px-4 py-2.5 font-medium">Selesai</th>
               <th className="text-left px-4 py-2.5 font-medium">Est. Launch</th>
@@ -59,6 +61,25 @@ export function ReportSummaryTable({ projects }: ReportSummaryTableProps) {
                       </span>
                     </div>
                   </td>
+                  {(() => {
+                    const status = statuses.find((s) => s.id === project.statusId);
+                    if (!status) {
+                      return (
+                        <td className="px-4 py-3 text-muted-foreground">&mdash;</td>
+                      );
+                    }
+                    return (
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: status.color }}
+                          />
+                          {status.name}
+                        </span>
+                      </td>
+                    );
+                  })()}
                   <td className="px-4 py-3 text-muted-foreground">
                     {format(parseISO(project.startDate), "dd MMM yy", {
                       locale: idLocale,

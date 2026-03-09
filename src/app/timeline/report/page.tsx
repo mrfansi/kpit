@@ -1,4 +1,5 @@
 import { getAllTimelineProjects } from "@/lib/queries/timeline";
+import { getAllStatuses } from "@/lib/queries/timeline-statuses";
 import { ReportHeader } from "@/components/report/report-header";
 import { ReportSummaryTable } from "@/components/report/report-summary-table";
 import { ReportGantt } from "@/components/report/report-gantt";
@@ -9,7 +10,10 @@ export const metadata = {
 };
 
 export default async function TimelineReportPage() {
-  const projects = await getAllTimelineProjects();
+  const [projects, statuses] = await Promise.all([
+    getAllTimelineProjects(),
+    getAllStatuses(),
+  ]);
 
   const averageProgress =
     projects.length > 0
@@ -25,11 +29,11 @@ export default async function TimelineReportPage() {
         averageProgress={averageProgress}
       />
       {projects.length > 0 && (
-        <ReportSummaryTable projects={projects} />
+        <ReportSummaryTable projects={projects} statuses={statuses} />
       )}
       {projects.length > 0 && (
         <div className="print-break-before">
-          <ReportGantt projects={projects} />
+          <ReportGantt projects={projects} statuses={statuses} />
         </div>
       )}
       {projects.length === 0 && (
