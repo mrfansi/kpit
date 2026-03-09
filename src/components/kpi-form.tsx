@@ -155,21 +155,23 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
             <FormItem>
               <div className="flex items-center justify-between">
                 <FormLabel>Deskripsi <span className="text-muted-foreground font-normal">(opsional)</span></FormLabel>
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={handleGenerateDescription}
                   disabled={generating}
-                  className="text-xs px-2 py-0.5 rounded border border-gray-300 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  className="h-6 text-xs px-2 gap-1"
                 >
                   {generating ? (
                     <>
-                      <span className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                      <span aria-hidden="true" className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                       Generating...
                     </>
                   ) : (
                     "Generate"
                   )}
-                </button>
+                </Button>
               </div>
               <FormControl><Input placeholder="Penjelasan singkat KPI ini..." {...field} /></FormControl>
               <FormMessage />
