@@ -86,14 +86,14 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
                   {barWidth > 120 && (
                     <>
                       <span
-                        className="absolute left-1.5 bottom-0.5 text-[9px] pointer-events-none select-none"
-                        style={{ color: `${barColor}90` }}
+                        className="absolute left-1 bottom-0.5 text-[9px] font-medium pointer-events-none select-none rounded px-0.5"
+                        style={{ color: "var(--foreground)", backgroundColor: `${barColor}30` }}
                       >
                         {format(parseISO(project.startDate), "dd MMM", { locale: idLocale })}
                       </span>
                       <span
-                        className="absolute right-1.5 bottom-0.5 text-[9px] pointer-events-none select-none"
-                        style={{ color: `${barColor}90` }}
+                        className="absolute right-1 bottom-0.5 text-[9px] font-medium pointer-events-none select-none rounded px-0.5"
+                        style={{ color: "var(--foreground)", backgroundColor: `${barColor}30` }}
                       >
                         {format(parseISO(project.endDate), "dd MMM", { locale: idLocale })}
                       </span>
