@@ -336,7 +336,7 @@ export function GanttChart({
                       height: barHeight,
                       backgroundColor: `${barColor}20`,
                       border: `2px ${isNotStarted ? "dashed" : "solid"} ${barColor}`,
-                      opacity: isNotStarted ? 0.5 : isOnHold ? 0.6 : 1,
+                      opacity: 1,
                     }}
                   >
                     {/* Progress fill */}
