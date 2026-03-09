@@ -120,14 +120,18 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
     declined,
     stable,
     avgAchievement,
+    domains: domains.map((d) => ({ name: d.name, description: d.description ?? "" })),
     kpis: allKPIsWithEntries.map(({ kpi, latestEntry, effectiveTarget }) => {
       const comparison = comparisonMap.get(kpi.id);
       const prevEntry = comparison?.prevMonth ?? null;
       const tgt = effectiveTarget ?? { target: kpi.target };
       const pct = getAchievementPct(latestEntry?.value, tgt.target, kpi.direction);
       const status = getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget });
+      const domain = domains.find((d) => d.id === kpi.domainId);
       return {
         name: kpi.name,
+        description: kpi.description ?? "",
+        domain: domain?.name ?? "",
         actual: latestEntry ? formatValue(latestEntry.value, kpi.unit) : "N/A",
         target: formatValue(tgt.target, kpi.unit),
         achievement: pct !== null ? `${pct}%` : "N/A",

@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 
 interface KPIDataItem {
   name: string;
+  description: string;
+  domain: string;
   actual: string;
   target: string;
   achievement: string;
@@ -21,6 +23,7 @@ interface NarrativeRequest {
   declined: number;
   stable: number;
   avgAchievement: number | null;
+  domains: { name: string; description: string }[];
   kpis: KPIDataItem[];
 }
 
@@ -43,7 +46,7 @@ export async function POST(request: NextRequest) {
   const kpiSummary = body.kpis
     .map(
       (k) =>
-        `- ${k.name}: aktual ${k.actual}, target ${k.target}, pencapaian ${k.achievement}, status ${k.status}, perubahan ${k.momDelta} (sebelumnya ${k.prevValue}), arah: ${k.direction}`
+        `- ${k.name} [${k.domain}]${k.description ? ` (${k.description})` : ""}: aktual ${k.actual}, target ${k.target}, pencapaian ${k.achievement}, status ${k.status}, perubahan ${k.momDelta} (sebelumnya ${k.prevValue}), arah: ${k.direction}`
     )
     .join("\n");
 
