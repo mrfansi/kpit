@@ -57,10 +57,10 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
 
     if (prevEntry) {
       prevTotal++;
-      const prevStatus = getKPIStatus(prevEntry.value, { ...kpi, ...effectiveTarget });
+      const prevStatus = getKPIStatus(prevEntry.value, kpi);
       if (prevStatus === "green") prevGreen++;
 
-      const prevAch = getAchievementPct(prevEntry.value, effectiveTarget.target, kpi.direction);
+      const prevAch = getAchievementPct(prevEntry.value, kpi.target, kpi.direction);
       if (prevAch !== null) { prevTotalAchievement += prevAch; prevAchievementCount++; }
 
       const statusOrder: Record<string, number> = { "green": 3, "yellow": 2, "red": 1, "no-data": 0 };
@@ -118,7 +118,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
         </div>
 
         {/* Period comparison overview */}
-        {(healthDelta !== null || improved > 0 || declined > 0) && (
+        {(healthDelta !== null || prevTotal > 0) && (
           <div className="mt-3 flex flex-wrap gap-4 text-xs">
             {healthDelta !== null && (
               <div className="flex items-center gap-1.5">
