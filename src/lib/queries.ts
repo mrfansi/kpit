@@ -11,6 +11,11 @@ export async function getDomainBySlug(slug: string) {
   return rows[0] ?? null;
 }
 
+export async function getDomainById(id: number) {
+  const rows = await db.select().from(domains).where(eq(domains.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function getKPIsByDomain(domainId: number): Promise<KPI[]> {
   return db.select().from(kpis).where(and(eq(kpis.domainId, domainId), eq(kpis.isActive, true))).orderBy(kpis.sortOrder, kpis.name);
 }

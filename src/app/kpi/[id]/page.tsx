@@ -12,10 +12,11 @@ import { ArrowLeft, Target, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight
 import Link from "next/link";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
 import { EditEntryDialog } from "@/components/edit-entry-dialog";
-import { getEffectiveTarget, getKPITargets, getPeriodComparisonEntries, getKPIComments } from "@/lib/queries";
+import { getEffectiveTarget, getKPITargets, getPeriodComparisonEntries, getKPIComments, getDomainById, getKPIsWithLatestEntry } from "@/lib/queries";
 import { PeriodComparison } from "@/components/period-comparison";
 import { KPIComments } from "@/components/kpi-comments";
 import { computeForecast } from "@/lib/forecast";
+import { KPIAIAnalysis } from "@/components/kpi-ai-analysis";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -48,6 +49,12 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
     getKPIEntries(kpiId),
     getKPITargets(kpiId),
     getKPIComments(kpiId),
+  ]);
+
+  // Fetch domain and sibling KPIs for AI analysis
+  const [domain, siblingKPIs] = await Promise.all([
+    getDomainById(kpi.domainId),
+    getKPIsWithLatestEntry(kpi.domainId),
   ]);
 
   const entries = allEntries.filter((e) => e.periodDate >= from && e.periodDate <= to);
@@ -83,6 +90,40 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
       anomalyDir = latestEntry.value > mean ? "high" : "low";
     }
   }
+
+  // Build AI analysis request data
+  const analysisRequestData = {
+    name: kpi.name,
+    description: kpi.description || "",
+    domain: domain?.name || "Umum",
+    unit: kpi.unit,
+    direction: kpi.direction,
+    history: allEntries.map((e) => {
+      const override = targetOverrideMap.get(e.periodDate);
+      const entryTarget = override ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+      const pct = getAchievementPct(e.value, entryTarget.target, kpi.direction);
+      return {
+        periodDate: e.periodDate,
+        value: e.value,
+        target: entryTarget.target,
+        achievement: pct !== null ? `${pct}%` : "N/A",
+      };
+    }),
+    siblings: siblingKPIs
+      .filter(({ kpi: s }) => s.id !== kpi.id)
+      .map(({ kpi: s, latestEntry: sLatest, effectiveTarget: sTarget }) => {
+        const sStatus = getKPIStatus(sLatest?.value, { ...s, ...sTarget });
+        const pct = sLatest
+          ? getAchievementPct(sLatest.value, sTarget.target, s.direction)
+          : null;
+        return {
+          name: s.name,
+          status: statusConfig[sStatus].label,
+          achievement: pct !== null ? `${pct}%` : "N/A",
+          trend: "stabil",
+        };
+      }),
+  };
 
   // Pagination for history table (all entries, newest first)
   const allEntriesSorted = [...allEntries].reverse();
@@ -170,6 +211,9 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Root Cause Analysis */}
+      <KPIAIAnalysis requestData={analysisRequestData} />
 
       {/* Data Table */}
       <Card>
