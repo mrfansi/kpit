@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { auth } from "@/auth";
+import {
+  getAIService,
+  sanitizeInput,
+  cleanAIOutput,
+} from "@/lib/ai";
+import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
 
 const MAX_DESCRIPTION_LENGTH = 200;
 
@@ -14,23 +18,9 @@ interface GenerateDescriptionRequest {
   domain: string;
 }
 
-function sanitize(input: string, maxLength: number): string {
-  return input.replace(/[\r\n]+/g, " ").trim().slice(0, maxLength);
-}
-
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const apiKey = process.env.GOOGLE_AI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "AI tidak tersedia. GOOGLE_AI_API_KEY belum dikonfigurasi." },
-      { status: 503 }
-    );
-  }
+  const { session, error: authError } = await requireAuth();
+  if (authError) return authError;
 
   let body: GenerateDescriptionRequest;
   try {
@@ -61,7 +51,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!VALID_DIRECTIONS.includes(body.direction as (typeof VALID_DIRECTIONS)[number])) {
+  if (
+    !VALID_DIRECTIONS.includes(
+      body.direction as (typeof VALID_DIRECTIONS)[number]
+    )
+  ) {
     return NextResponse.json(
       { error: "Direction harus 'higher_better' atau 'lower_better'." },
       { status: 400 }
@@ -82,9 +76,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const name = sanitize(body.name, 100);
-  const unit = sanitize(body.unit, 50);
-  const domain = sanitize(body.domain, 100);
+  const name = sanitizeInput(body.name, 100);
+  const unit = sanitizeInput(body.unit, 50);
+  const domain = sanitizeInput(body.domain, 100);
 
   const directionText =
     body.direction === "lower_better"
@@ -106,31 +100,12 @@ Instruksi:
 - Maksimal ${MAX_DESCRIPTION_LENGTH} karakter`;
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.1-flash-lite-preview",
-    });
-    const result = await model.generateContent(prompt);
-    let text = result.response.text();
-
-    // Strip markdown formatting (bold/italic asterisks)
-    text = text.replace(/\*{1,2}([^*]+)\*{1,2}/g, "$1");
-
-    // Remove common prefix patterns the model might add
-    text = text.replace(
-      /^(Deskripsi\s*:\s*|KPI ini\s+|Indikator ini\s+)/i,
-      ""
-    );
-
-    // Trim whitespace and enforce max length
-    text = text.trim().slice(0, MAX_DESCRIPTION_LENGTH);
+    const ai = getAIService();
+    const result = await ai.generateText(prompt);
+    const text = cleanAIOutput(result.text).slice(0, MAX_DESCRIPTION_LENGTH);
 
     return NextResponse.json({ description: text });
   } catch (error) {
-    console.error("Gemini API error:", error);
-    return NextResponse.json(
-      { error: "Gagal menghasilkan deskripsi. Silakan coba lagi." },
-      { status: 500 }
-    );
+    return handleAIError(error);
   }
 }
