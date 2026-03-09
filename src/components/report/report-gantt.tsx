@@ -48,7 +48,7 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
               const barHeight = ROW_HEIGHT - 16;
 
               const status = statuses.find((s) => s.id === project.statusId);
-              const barColor = status?.color ?? project.color;
+              const barColor = project.color;
               const isNotStarted = status?.slug === "not_started";
               const isOnHold = status?.slug === "on_hold";
 

@@ -222,8 +222,8 @@ export function GanttChart({
                   style={{ color: project.color }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium truncate">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-medium truncate min-w-0">
                       {project.name}
                     </span>
                     {(() => {
@@ -231,7 +231,7 @@ export function GanttChart({
                       if (!status) return null;
                       return (
                         <span
-                          className="shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full"
+                          className="shrink-0 text-[8px] font-medium px-1 py-px rounded"
                           style={{ backgroundColor: `${status.color}20`, color: status.color }}
                         >
                           {status.name}
@@ -301,7 +301,7 @@ export function GanttChart({
                 const barHeight = ROW_HEIGHT - 16;
 
                 const status = statuses.find((s) => s.id === project.statusId);
-                const barColor = status?.color ?? project.color;
+                const barColor = project.color;
                 const isNotStarted = status?.slug === "not_started";
                 const isOnHold = status?.slug === "on_hold";
 
