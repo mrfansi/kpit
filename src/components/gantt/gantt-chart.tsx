@@ -321,6 +321,24 @@ export function GanttChart({
                       </span>
                     </div>
 
+                    {/* Date labels on bar edges */}
+                    {adjustedWidth > 120 && (
+                      <>
+                        <span
+                          className="absolute left-1.5 bottom-0.5 text-[9px] pointer-events-none select-none"
+                          style={{ color: `${project.color}90` }}
+                        >
+                          {format(parseISO(project.startDate), "dd MMM", { locale: idLocale })}
+                        </span>
+                        <span
+                          className="absolute right-1.5 bottom-0.5 text-[9px] pointer-events-none select-none"
+                          style={{ color: `${project.color}90` }}
+                        >
+                          {format(parseISO(project.endDate), "dd MMM", { locale: idLocale })}
+                        </span>
+                      </>
+                    )}
+
                     {/* Move handle (rendered first, lowest z) */}
                     <div
                       className="absolute inset-0 cursor-grab active:cursor-grabbing z-10"
