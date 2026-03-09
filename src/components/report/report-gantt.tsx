@@ -75,30 +75,19 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
                     }}
                   />
 
-                  {/* Project name */}
-                  <div className="absolute inset-0 flex items-center px-2.5">
-                    <span className="text-xs font-medium truncate text-foreground">
+                  {/* Project name + date labels */}
+                  <div className="absolute inset-0 flex flex-col justify-center px-2.5 overflow-hidden">
+                    <span className="text-xs font-medium truncate text-foreground leading-tight">
                       {project.name}
                     </span>
-                  </div>
-
-                  {/* Date labels on bar edges */}
-                  {barWidth > 120 && (
-                    <>
-                      <span
-                        className="absolute left-1 bottom-0.5 text-[9px] font-medium pointer-events-none select-none rounded px-0.5"
-                        style={{ color: "var(--foreground)", backgroundColor: `${barColor}30` }}
-                      >
+                    {barWidth > 120 && (
+                      <span className="text-[9px] text-muted-foreground leading-tight mt-0.5">
                         {format(parseISO(project.startDate), "dd MMM", { locale: idLocale })}
-                      </span>
-                      <span
-                        className="absolute right-1 bottom-0.5 text-[9px] font-medium pointer-events-none select-none rounded px-0.5"
-                        style={{ color: "var(--foreground)", backgroundColor: `${barColor}30` }}
-                      >
+                        {" — "}
                         {format(parseISO(project.endDate), "dd MMM", { locale: idLocale })}
                       </span>
-                    </>
-                  )}
+                    )}
+                  </div>
 
                   {/* Hover tooltip */}
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">

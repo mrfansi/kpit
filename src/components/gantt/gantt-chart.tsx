@@ -348,30 +348,19 @@ export function GanttChart({
                       }}
                     />
 
-                    {/* Project name - pointer-events-none so it doesn't block handles */}
-                    <div className="absolute inset-0 flex items-center px-2.5 pointer-events-none">
-                      <span className="text-xs font-medium truncate text-foreground">
+                    {/* Project name + date labels */}
+                    <div className="absolute inset-0 flex flex-col justify-center px-2.5 pointer-events-none overflow-hidden">
+                      <span className="text-xs font-medium truncate text-foreground leading-tight">
                         {project.name}
                       </span>
-                    </div>
-
-                    {/* Date labels on bar edges */}
-                    {adjustedWidth > 120 && (
-                      <>
-                        <span
-                          className="absolute left-1 bottom-0.5 text-[9px] font-medium pointer-events-none select-none rounded px-0.5"
-                          style={{ color: "var(--foreground)", backgroundColor: `${barColor}30` }}
-                        >
+                      {adjustedWidth > 120 && (
+                        <span className="text-[9px] text-muted-foreground leading-tight mt-0.5">
                           {format(parseISO(project.startDate), "dd MMM", { locale: idLocale })}
-                        </span>
-                        <span
-                          className="absolute right-1 bottom-0.5 text-[9px] font-medium pointer-events-none select-none rounded px-0.5"
-                          style={{ color: "var(--foreground)", backgroundColor: `${barColor}30` }}
-                        >
+                          {" — "}
                           {format(parseISO(project.endDate), "dd MMM", { locale: idLocale })}
                         </span>
-                      </>
-                    )}
+                      )}
+                    </div>
 
                     {/* Move handle (rendered first, lowest z) */}
                     <div
