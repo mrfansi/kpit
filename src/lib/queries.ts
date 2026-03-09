@@ -166,6 +166,48 @@ export async function getPeriodComparisonEntries(kpiId: number, currentPeriodDat
   return { prevMonth, prevYear };
 }
 
+/**
+ * Batch-fetch previous month and previous year entries for multiple KPIs.
+ * Returns a Map<kpiId, { prevMonth, prevYear }>.
+ */
+export async function getBatchPeriodComparison(
+  kpiIds: number[],
+  currentPeriodDate: string
+): Promise<Map<number, { prevMonth: KPIEntry | null; prevYear: KPIEntry | null }>> {
+  if (kpiIds.length === 0) return new Map();
+
+  const [y, m] = currentPeriodDate.split("-").map(Number);
+  const prevMonthD = new Date(y, m - 2, 1);
+  const prevMonthDate = `${prevMonthD.getFullYear()}-${String(prevMonthD.getMonth() + 1).padStart(2, "0")}-01`;
+  const prevYearDate = `${y - 1}-${String(m).padStart(2, "0")}-01`;
+
+  const [prevMonthEntries, prevYearEntries] = await Promise.all([
+    db
+      .select()
+      .from(kpiEntries)
+      .where(and(inArray(kpiEntries.kpiId, kpiIds), eq(kpiEntries.periodDate, prevMonthDate))),
+    db
+      .select()
+      .from(kpiEntries)
+      .where(and(inArray(kpiEntries.kpiId, kpiIds), eq(kpiEntries.periodDate, prevYearDate))),
+  ]);
+
+  const prevMonthMap = new Map<number, KPIEntry>();
+  for (const e of prevMonthEntries) prevMonthMap.set(e.kpiId, e);
+
+  const prevYearMap = new Map<number, KPIEntry>();
+  for (const e of prevYearEntries) prevYearMap.set(e.kpiId, e);
+
+  const result = new Map<number, { prevMonth: KPIEntry | null; prevYear: KPIEntry | null }>();
+  for (const id of kpiIds) {
+    result.set(id, {
+      prevMonth: prevMonthMap.get(id) ?? null,
+      prevYear: prevYearMap.get(id) ?? null,
+    });
+  }
+  return result;
+}
+
 /** Ambil semua komentar untuk satu KPI, terbaru dulu */
 export async function getKPIComments(kpiId: number): Promise<KPIComment[]> {
   return db
