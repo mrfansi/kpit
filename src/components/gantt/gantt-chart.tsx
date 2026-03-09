@@ -222,28 +222,29 @@ export function GanttChart({
                   style={{ color: project.color }}
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium truncate block">
-                    {project.name}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium truncate">
+                      {project.name}
+                    </span>
+                    {(() => {
+                      const status = statuses.find((s) => s.id === project.statusId);
+                      if (!status) return null;
+                      return (
+                        <span
+                          className="shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full"
+                          style={{ backgroundColor: `${status.color}20`, color: status.color }}
+                        >
+                          {status.name}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <span className="text-[10px] text-muted-foreground truncate block">
                     {project.startDate} — {project.endDate}
                   </span>
                   <span className="text-[10px] text-emerald-600 truncate block">
                     🚀 {format(parseISO(getEffectiveLaunchDate(project)), "dd MMM yyyy", { locale: idLocale })}
                   </span>
-                  {(() => {
-                    const status = statuses.find((s) => s.id === project.statusId);
-                    if (!status) return null;
-                    return (
-                      <span className="inline-flex items-center gap-1 text-[10px]">
-                        <span
-                          className="w-1.5 h-1.5 rounded-full shrink-0"
-                          style={{ backgroundColor: status.color }}
-                        />
-                        <span style={{ color: status.color }}>{status.name}</span>
-                      </span>
-                    );
-                  })()}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <span className="text-xs text-muted-foreground">
