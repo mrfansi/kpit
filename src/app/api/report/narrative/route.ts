@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { auth } from "@/auth";
+import { getAIService, cleanAIOutput } from "@/lib/ai";
+import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
 
 interface KPIDataItem {
   name: string;
@@ -28,18 +28,8 @@ interface NarrativeRequest {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const apiKey = process.env.GOOGLE_AI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "AI tidak tersedia. GOOGLE_AI_API_KEY belum dikonfigurasi." },
-      { status: 503 }
-    );
-  }
+  const { session, error: authError } = await requireAuth();
+  if (authError) return authError;
 
   const body: NarrativeRequest = await request.json();
 
@@ -77,23 +67,12 @@ Instruksi:
 - Jangan gunakan bullet points, tulis dalam paragraf naratif`;
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-    const result = await model.generateContent(prompt);
-    let text = result.response.text();
+    const ai = getAIService();
+    const result = await ai.generateText(prompt);
+    const text = cleanAIOutput(result.text);
 
-    // Strip markdown formatting (bold/italic asterisks)
-    text = text.replace(/\*{1,2}([^*]+)\*{1,2}/g, "$1");
-
-    // Remove meta-text opening line if model adds it
-    text = text.replace(/^(Berikut|Di bawah ini|Ini adalah)[^\n]*:\s*\n+/i, "");
-
-    return NextResponse.json({ narrative: text.trim() });
+    return NextResponse.json({ narrative: text });
   } catch (error) {
-    console.error("Gemini API error:", error);
-    return NextResponse.json(
-      { error: "Gagal menghasilkan narasi. Silakan coba lagi." },
-      { status: 500 }
-    );
+    return handleAIError(error);
   }
 }
