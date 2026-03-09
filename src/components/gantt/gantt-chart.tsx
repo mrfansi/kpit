@@ -296,11 +296,11 @@ export function GanttChart({
                   <span className="text-sm font-medium truncate block">
                     {project.name}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[10px] text-muted-foreground truncate block">
                     {project.startDate} — {project.endDate}
-                    <span className="text-emerald-600 ml-1">
-                      🚀 {getEffectiveLaunchDate(project)}
-                    </span>
+                  </span>
+                  <span className="text-[10px] text-emerald-600 truncate block">
+                    🚀 {format(parseISO(getEffectiveLaunchDate(project)), "dd MMM yyyy", { locale: idLocale })}
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0">
