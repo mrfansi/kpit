@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, PenLine, Globe, Upload, User, ClipboardList, Users, GanttChart } from "lucide-react";
+import { BarChart2, Settings, Home, PenLine, Globe, Upload, User, ClipboardList, Users, GanttChart, Tags } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -55,7 +55,8 @@ export function Sidebar({ domains, user }: SidebarProps) {
         <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
         <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
         <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
-        <NavItem href="/admin/timeline" icon={GanttChart} label="Kelola Timeline" active={pathname.startsWith("/admin/timeline")} />
+        <NavItem href="/admin/timeline" icon={GanttChart} label="Kelola Timeline" active={pathname === "/admin/timeline"} />
+        <NavItem href="/admin/timeline/statuses" icon={Tags} label="Status Timeline" active={pathname.startsWith("/admin/timeline/statuses")} />
         <NavItem href="/admin/audit" icon={ClipboardList} label="Audit Log" active={pathname.startsWith("/admin/audit")} />
       </nav>
 
