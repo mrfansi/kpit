@@ -5,6 +5,7 @@ import { PrintButton } from "@/components/print-button";
 import { ReportPeriodSelector } from "@/components/report-period-selector";
 import { ReportSparkline } from "@/components/report/report-sparkline";
 import { ReportDelta } from "@/components/report/report-delta";
+import { ReportAINarrative } from "@/components/report/report-ai-narrative";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Executive Report — Semua Domain" };
@@ -110,6 +111,36 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
   if (improved > 0) summaryParts.push(`${improved} KPI mengalami peningkatan`);
   const executiveSummary = summaryParts.join(". ") + ".";
 
+  // Build AI narrative request data
+  const aiRequestData = {
+    period: periodLabel,
+    healthScore: healthPct,
+    healthDelta,
+    improved,
+    declined,
+    stable,
+    avgAchievement,
+    kpis: allKPIsWithEntries.map(({ kpi, latestEntry, effectiveTarget }) => {
+      const comparison = comparisonMap.get(kpi.id);
+      const prevEntry = comparison?.prevMonth ?? null;
+      const tgt = effectiveTarget ?? { target: kpi.target };
+      const pct = getAchievementPct(latestEntry?.value, tgt.target, kpi.direction);
+      const status = getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget });
+      return {
+        name: kpi.name,
+        actual: latestEntry ? formatValue(latestEntry.value, kpi.unit) : "N/A",
+        target: formatValue(tgt.target, kpi.unit),
+        achievement: pct !== null ? `${pct}%` : "N/A",
+        status: statusConfig[status].label,
+        momDelta: prevEntry && latestEntry
+          ? `${((latestEntry.value - prevEntry.value) / (prevEntry.value || 1) * 100).toFixed(1)}%`
+          : "N/A",
+        prevValue: prevEntry ? formatValue(prevEntry.value, kpi.unit) : "N/A",
+        direction: kpi.direction === "lower_better" ? "semakin rendah semakin baik" : "semakin tinggi semakin baik",
+      };
+    }),
+  };
+
   const byDomain = domains.map((domain) => ({
     domain,
     kpis: allKPIsWithEntries.filter((k) => k.kpi.domainId === domain.id),
@@ -201,11 +232,8 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
         )}
       </header>
 
-      {/* Executive Summary */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h2 className="font-bold text-sm mb-1">Ringkasan</h2>
-        <p className="text-sm text-gray-700">{executiveSummary}</p>
-      </div>
+      {/* Executive Summary — AI Narrative or static fallback */}
+      <ReportAINarrative staticSummary={executiveSummary} requestData={aiRequestData} />
 
       {/* KPIs that need attention */}
       {attentionKpis.length > 0 && (
