@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { auth } from "@/auth";
 
+const MAX_DESCRIPTION_LENGTH = 200;
+
+const VALID_DIRECTIONS = ["higher_better", "lower_better"] as const;
+
 interface GenerateDescriptionRequest {
   name: string;
   unit: string;
   target: number;
   direction: string;
   domain: string;
+}
+
+function sanitize(input: string, maxLength: number): string {
+  return input.replace(/[\r\n]+/g, " ").trim().slice(0, maxLength);
 }
 
 export async function POST(request: NextRequest) {
@@ -24,7 +32,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body: GenerateDescriptionRequest = await request.json();
+  let body: GenerateDescriptionRequest;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Request body tidak valid." },
+      { status: 400 }
+    );
+  }
+
+  if (
+    typeof body.name !== "string" ||
+    typeof body.unit !== "string" ||
+    typeof body.direction !== "string" ||
+    typeof body.domain !== "string"
+  ) {
+    return NextResponse.json(
+      { error: "Field name, unit, direction, dan domain harus berupa string." },
+      { status: 400 }
+    );
+  }
 
   if (!body.name || body.name.trim().length < 3) {
     return NextResponse.json(
@@ -33,16 +61,41 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!VALID_DIRECTIONS.includes(body.direction as (typeof VALID_DIRECTIONS)[number])) {
+    return NextResponse.json(
+      { error: "Direction harus 'higher_better' atau 'lower_better'." },
+      { status: 400 }
+    );
+  }
+
+  if (!body.unit.trim() || !body.domain.trim()) {
+    return NextResponse.json(
+      { error: "Field unit dan domain tidak boleh kosong." },
+      { status: 400 }
+    );
+  }
+
+  if (typeof body.target !== "number" || !isFinite(body.target)) {
+    return NextResponse.json(
+      { error: "Target harus berupa angka yang valid." },
+      { status: 400 }
+    );
+  }
+
+  const name = sanitize(body.name, 100);
+  const unit = sanitize(body.unit, 50);
+  const domain = sanitize(body.domain, 100);
+
   const directionText =
     body.direction === "lower_better"
       ? "semakin rendah semakin baik"
       : "semakin tinggi semakin baik";
 
-  const prompt = `Tulis 1 kalimat deskripsi singkat dalam Bahasa Indonesia untuk KPI berikut. Maksimal 200 karakter.
+  const prompt = `Tulis 1 kalimat deskripsi singkat dalam Bahasa Indonesia untuk KPI berikut. Maksimal ${MAX_DESCRIPTION_LENGTH} karakter.
 
-Nama KPI: ${body.name}
-Domain: ${body.domain}
-Satuan: ${body.unit}
+Nama KPI: ${name}
+Domain: ${domain}
+Satuan: ${unit}
 Target: ${body.target}
 Arah: ${directionText}
 
@@ -50,7 +103,7 @@ Instruksi:
 - Langsung tulis deskripsinya, JANGAN buka dengan label seperti "Deskripsi:" atau "KPI ini"
 - Hanya 1 kalimat, padat dan jelas
 - Jangan gunakan markdown formatting (bold, italic, asterisks)
-- Maksimal 200 karakter`;
+- Maksimal ${MAX_DESCRIPTION_LENGTH} karakter`;
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -70,7 +123,7 @@ Instruksi:
     );
 
     // Trim whitespace and enforce max length
-    text = text.trim().slice(0, 255);
+    text = text.trim().slice(0, MAX_DESCRIPTION_LENGTH);
 
     return NextResponse.json({ description: text });
   } catch (error) {
