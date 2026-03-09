@@ -112,6 +112,20 @@ export type NewUser = typeof users.$inferInsert;
 
 // --- Timeline / Gantt Tables ---
 
+export const timelineProjectStatuses = sqliteTable("timeline_project_statuses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  color: text("color").notNull().default("#9ca3af"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});
+
+export type TimelineProjectStatus = typeof timelineProjectStatuses.$inferSelect;
+export type NewTimelineProjectStatus = typeof timelineProjectStatuses.$inferInsert;
+
 export const timelineProjects = sqliteTable("timeline_projects", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -123,6 +137,7 @@ export const timelineProjects = sqliteTable("timeline_projects", {
   launchBufferDays: integer("launch_buffer_days").notNull().default(7),
   estimatedLaunchDate: text("estimated_launch_date"),
   sortOrder: integer("sort_order").notNull().default(0),
+  statusId: integer("status_id").references(() => timelineProjectStatuses.id),
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
