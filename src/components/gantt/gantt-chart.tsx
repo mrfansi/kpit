@@ -25,8 +25,9 @@ import { GanttLaunchMarker } from "./gantt-launch-marker";
 import { getEffectiveLaunchDate, isManualLaunchDate } from "@/lib/launch-date";
 import { TimelineProjectFormDialog } from "@/components/timeline-project-form";
 import { updateProjectDates } from "@/lib/actions/timeline";
-import { CalendarDays, FolderOpen, Pencil } from "lucide-react";
+import { CalendarDays, ClipboardList, FolderOpen, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GanttLogPanel } from "./gantt-log-panel";
 
 interface GanttChartProps {
   projects: TimelineProject[];
@@ -46,6 +47,7 @@ export function GanttChart({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<TimelineProject | null>(null);
+  const [logPanelProject, setLogPanelProject] = useState<TimelineProject | null>(null);
 
   // Drag state
   const [dragState, setDragState] = useState<{
@@ -248,16 +250,25 @@ export function GanttChart({
                     {project.progress}%
                   </span>
                   {isAuthenticated && (
-                    <button
-                      className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
-                      onClick={() => {
-                        setEditingProject(project);
-                        setProjectDialogOpen(true);
-                      }}
-                      title="Edit project"
-                    >
-                      <Pencil className="w-3 h-3 text-muted-foreground" />
-                    </button>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button
+                        className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                        onClick={() => setLogPanelProject(project)}
+                        title="Progress Log"
+                      >
+                        <ClipboardList className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                      <button
+                        className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                        onClick={() => {
+                          setEditingProject(project);
+                          setProjectDialogOpen(true);
+                        }}
+                        title="Edit project"
+                      >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -424,6 +435,19 @@ export function GanttChart({
         project={editingProject}
         statuses={statuses}
       />
+
+      {logPanelProject && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setLogPanelProject(null)}
+          />
+          <GanttLogPanel
+            project={logPanelProject}
+            onClose={() => setLogPanelProject(null)}
+          />
+        </>
+      )}
     </div>
   );
 }
