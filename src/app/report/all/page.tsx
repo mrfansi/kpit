@@ -89,6 +89,27 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
   // Check if any KPI has YoY data
   const hasAnyYoY = allKPIsWithEntries.some(({ kpi }) => comparisonMap.get(kpi.id)?.prevYear !== null);
 
+  // Build list of KPIs that need attention (off track OR significantly declined)
+  const attentionKpis = allKPIsWithEntries
+    .map(({ kpi, latestEntry, effectiveTarget }) => {
+      const status = getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget });
+      const comparison = comparisonMap.get(kpi.id);
+      const prevEntry = comparison?.prevMonth ?? null;
+      const prevStatus = prevEntry ? getKPIStatus(prevEntry.value, kpi) : null;
+      const statusOrder: Record<string, number> = { "green": 3, "yellow": 2, "red": 1, "no-data": 0 };
+      const statusDeclined = prevStatus !== null && statusOrder[status] < statusOrder[prevStatus];
+      return { kpi, latestEntry, prevEntry, status, statusDeclined, effectiveTarget };
+    })
+    .filter(({ status, statusDeclined }) => status === "red" || statusDeclined);
+
+  // Auto-generate executive summary
+  const summaryParts: string[] = [];
+  if (totalRed > 0) summaryParts.push(`${totalRed} KPI berada di bawah target (Off Track)`);
+  if (declined > 0) summaryParts.push(`${declined} KPI mengalami penurunan status dibanding bulan sebelumnya`);
+  if (totalRed === 0 && declined === 0) summaryParts.push("Semua KPI stabil atau membaik bulan ini");
+  if (improved > 0) summaryParts.push(`${improved} KPI mengalami peningkatan`);
+  const executiveSummary = summaryParts.join(". ") + ".";
+
   const byDomain = domains.map((domain) => ({
     domain,
     kpis: allKPIsWithEntries.filter((k) => k.kpi.domainId === domain.id),
@@ -180,6 +201,39 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
         )}
       </header>
 
+      {/* Executive Summary */}
+      <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h2 className="font-bold text-sm mb-1">Ringkasan</h2>
+        <p className="text-sm text-gray-700">{executiveSummary}</p>
+      </div>
+
+      {/* KPIs that need attention */}
+      {attentionKpis.length > 0 && (
+        <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
+          <h2 className="font-bold text-sm text-red-800 mb-2">Perlu Perhatian</h2>
+          <div className="space-y-2">
+            {attentionKpis.map(({ kpi, latestEntry, prevEntry, status, statusDeclined, effectiveTarget }) => {
+              const tgt = effectiveTarget ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+              return (
+                <div key={kpi.id} className="flex items-start gap-2 text-sm">
+                  <span className={`inline-block w-2 h-2 rounded-full mt-1.5 shrink-0 ${status === "red" ? "bg-red-500" : "bg-yellow-400"}`} />
+                  <div>
+                    <span className="font-medium">{kpi.name}</span>
+                    <span className="text-gray-500">
+                      {" — "}aktual {latestEntry ? formatValue(latestEntry.value, kpi.unit) : "—"}
+                      {" "}dari target {formatValue(tgt.target, kpi.unit)}
+                      {prevEntry && (
+                        <span> (bulan lalu: {formatValue(prevEntry.value, kpi.unit)})</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Per-domain sections */}
       {byDomain.map(({ domain, kpis }) => {
         const dGreen = kpis.filter(({ kpi, latestEntry, effectiveTarget }) => getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget }) === "green").length;
@@ -240,6 +294,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                           compareEntry={comparisonMap.get(kpi.id)?.prevMonth ?? null}
                           unit={kpi.unit}
                           lowerBetter={kpi.direction === "lower_better"}
+                          showPrevValue
                         />
                       </td>
                       {hasAnyYoY && (

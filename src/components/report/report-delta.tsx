@@ -1,3 +1,4 @@
+import { formatValue } from "@/lib/period";
 import type { KPIEntry } from "@/lib/db/schema";
 
 interface ReportDeltaProps {
@@ -5,9 +6,11 @@ interface ReportDeltaProps {
   compareEntry: KPIEntry | null;
   unit: string;
   lowerBetter?: boolean;
+  /** Show previous value alongside delta: "66% (dari 94%)" */
+  showPrevValue?: boolean;
 }
 
-export function ReportDelta({ currentValue, compareEntry, unit, lowerBetter }: ReportDeltaProps) {
+export function ReportDelta({ currentValue, compareEntry, unit, lowerBetter, showPrevValue }: ReportDeltaProps) {
   if (currentValue === null || !compareEntry) {
     return <span className="text-gray-300">—</span>;
   }
@@ -29,6 +32,9 @@ export function ReportDelta({ currentValue, compareEntry, unit, lowerBetter }: R
   return (
     <span className={`whitespace-nowrap ${color}`}>
       {arrow} {pct !== null ? `${isUp ? "+" : ""}${pct}%` : `${isUp ? "+" : ""}${diff}`}
+      {showPrevValue && (
+        <span className="text-gray-400 font-normal"> (dari {formatValue(compareEntry.value, unit)})</span>
+      )}
     </span>
   );
 }
