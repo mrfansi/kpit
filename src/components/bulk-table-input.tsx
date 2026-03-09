@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { CheckCircle2, Save } from "lucide-react";
 import { formatValue, listLastNMonths } from "@/lib/period";
 import { bulkCreateEntries } from "@/lib/actions/entry";
+import { DataEntryValidator } from "@/components/data-entry-validator";
 import type { KPI, KPIEntry, Domain } from "@/lib/db/schema";
 
 interface BulkTableInputProps {
@@ -167,7 +168,29 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
           </TableBody>
         </Table>
       </div>
+
+      <DataEntryValidator
+        period={initialPeriod}
+        getEntries={() =>
+          kpis
+            .filter((kpi) => values[kpi.id] !== undefined && values[kpi.id] !== "")
+            .map((kpi) => {
+              const recentValues = existingEntries
+                .filter((e) => e.kpiId === kpi.id)
+                .map((e) => e.value);
+              return {
+                kpiId: String(kpi.id),
+                kpiName: kpi.name,
+                unit: kpi.unit,
+                inputValue: parseFloat(values[kpi.id]),
+                recentValues,
+                target: kpi.target,
+                direction: kpi.direction,
+              };
+            })
+            .filter((e) => !isNaN(e.inputValue))
+        }
+      />
     </div>
   );
 }
-

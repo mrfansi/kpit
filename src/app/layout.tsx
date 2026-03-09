@@ -8,6 +8,7 @@ import { getAllDomains } from "@/lib/queries";
 import { Toaster } from "@/components/ui/sonner";
 import { Suspense } from "react";
 import { ToastHandler } from "@/components/toast-handler";
+import { AIChat } from "@/components/ai-chat";
 import { auth } from "@/auth";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -39,6 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
         <Toaster richColors position="top-right" />
         <Suspense><ToastHandler /></Suspense>
+        {session && <AIChat />}
         </ThemeProvider>
       </body>
     </html>
