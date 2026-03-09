@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createProject, updateProject, deleteProject, fetchProjectLogs } from "@/lib/actions/timeline";
 import { format, addMonths } from "date-fns";
-import type { TimelineProject, TimelineProjectLog } from "@/lib/db/schema";
+import type { TimelineProject, TimelineProjectLog, TimelineProjectStatus } from "@/lib/db/schema";
 import { Trash2, ClipboardList, RefreshCw, Rocket } from "lucide-react";
 import { getEffectiveLaunchDate } from "@/lib/launch-date";
 import { TimelineProgressLog } from "@/components/timeline-progress-log";
@@ -35,12 +35,14 @@ interface TimelineProjectFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project?: TimelineProject | null;
+  statuses: TimelineProjectStatus[];
 }
 
 export function TimelineProjectFormDialog({
   open,
   onOpenChange,
   project,
+  statuses,
 }: TimelineProjectFormDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const isEdit = !!project;
@@ -179,6 +181,22 @@ export function TimelineProjectFormDialog({
                   defaultValue={project?.progress ?? 0}
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="statusId">Status</Label>
+              <select
+                id="statusId"
+                name="statusId"
+                defaultValue={project?.statusId ?? ""}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">— Pilih status —</option>
+                {statuses.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Deskripsi</Label>

@@ -177,6 +177,7 @@ export function GanttChart({
             if (!open) setEditingProject(null);
           }}
           project={editingProject}
+          statuses={statuses}
         />
       </div>
     );
@@ -421,6 +422,7 @@ export function GanttChart({
           if (!open) setEditingProject(null);
         }}
         project={editingProject}
+        statuses={statuses}
       />
     </div>
   );
