@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { kpiComments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { requireAuth } from "@/lib/auth-utils";
 import sanitizeHtml from "sanitize-html";
 
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
@@ -29,14 +29,10 @@ function sanitize(html: string): string {
   return sanitizeHtml(html, SANITIZE_OPTIONS);
 }
 
-function isEmptyHtml(html: string): boolean {
-  const text = html.replace(/<[^>]*>/g, "").trim();
-  return text.length === 0;
-}
+import { isEmptyHtml } from "@/lib/html-utils";
 
 export async function createComment(kpiId: number, periodDate: string, content: string) {
-  const session = await auth();
-  if (!session?.user) return;
+  const session = await requireAuth();
   const author = session.user.name ?? session.user.email ?? "Admin";
   if (!kpiId || !periodDate) return;
 
@@ -48,8 +44,7 @@ export async function createComment(kpiId: number, periodDate: string, content: 
 }
 
 export async function deleteComment(id: number, kpiId: number) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAuth();
   await db.delete(kpiComments).where(eq(kpiComments.id, id));
   revalidatePath(`/kpi/${kpiId}`);
 }

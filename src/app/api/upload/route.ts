@@ -4,6 +4,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp"]);
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const UPLOAD_DIR = path.join(process.cwd(), "public/uploads/comments");
 
@@ -29,6 +30,9 @@ export async function POST(req: NextRequest) {
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "png";
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    return NextResponse.json({ error: "File extension not allowed. Use jpg, jpeg, png, gif, or webp." }, { status: 400 });
+  }
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   await mkdir(UPLOAD_DIR, { recursive: true });

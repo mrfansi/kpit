@@ -1,4 +1,4 @@
-import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 
 export type PeriodType = "monthly" | "quarterly" | "yearly";
@@ -8,7 +8,7 @@ export function getCurrentPeriod(): string {
 }
 
 export function formatPeriodDate(dateStr: string, fmt = "MMM yyyy"): string {
-  return format(new Date(dateStr), fmt, { locale: localeId });
+  return format(parseISO(dateStr), fmt, { locale: localeId });
 }
 
 export function getPeriodRange(months: number): { from: string; to: string } {

@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { upsertTarget } from "@/lib/actions/target";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +59,7 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
         thresholdYellow: values.thresholdYellow,
       });
     } catch (err) {
-      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
+      if (isRedirectError(err)) throw err;
       toast.error("Gagal menyimpan target, coba lagi");
     }
   }
@@ -133,7 +134,9 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
           <Button type="submit" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Target"}
           </Button>
-          <Button type="button" variant="outline" onClick={() => history.back()}>Batal</Button>
+          <Button type="button" variant="outline" asChild>
+            <a href="/admin/kpi">Batal</a>
+          </Button>
         </div>
       </form>
     </Form>

@@ -88,6 +88,11 @@ export function RichTextEditor({ content = "", onChange, placeholder = "Tulis ca
     if (url === "") {
       editor!.chain().focus().extendMarkRange("link").unsetLink().run();
     } else {
+      // Hanya izinkan http/https URLs
+      if (!/^https?:\/\//i.test(url)) {
+        toast.error("URL harus dimulai dengan http:// atau https://");
+        return;
+      }
       editor!.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
     }
   }

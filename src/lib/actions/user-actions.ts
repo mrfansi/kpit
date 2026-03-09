@@ -5,7 +5,8 @@ import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import { createUser, deleteUser, updateUserPassword } from "@/lib/db/users";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireAdmin, requireAuth } from "@/lib/auth-utils";
+import { logAudit } from "@/lib/db/audit";
 
 const AddUserSchema = z.object({
   email: z.string().email(),
@@ -27,8 +28,7 @@ export async function addUserAction(
   _prev: AddUserState,
   formData: FormData
 ): Promise<AddUserState> {
-  const session = await auth();
-  if (!session?.user) return { error: "Tidak terautentikasi." };
+  const session = await requireAdmin();
   const parsed = AddUserSchema.safeParse({
     email: formData.get("email"),
     name: formData.get("name"),
@@ -40,6 +40,7 @@ export async function addUserAction(
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   try {
     await createUser({ id: randomUUID(), ...parsed.data, passwordHash });
+    await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "user", detail: parsed.data.email });
     revalidatePath("/admin/users");
     return { success: true };
   } catch {
@@ -48,9 +49,10 @@ export async function addUserAction(
 }
 
 export async function deleteUserAction(id: string) {
-  const session = await auth();
-  if (session?.user?.id === id) return { error: "Tidak bisa menghapus akun sendiri." };
+  const session = await requireAdmin();
+  if (session.user.id === id) return { error: "Tidak bisa menghapus akun sendiri." };
   await deleteUser(id);
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "delete", entity: "user", entityId: id });
   revalidatePath("/admin/users");
 }
 
@@ -58,8 +60,7 @@ export async function changePasswordAction(
   _prev: ChangePasswordState,
   formData: FormData
 ): Promise<ChangePasswordState> {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "Tidak terautentikasi." };
+  const session = await requireAuth();
 
   const parsed = ChangePasswordSchema.safeParse({
     userId: session.user.id,
@@ -71,5 +72,6 @@ export async function changePasswordAction(
 
   const hash = await bcrypt.hash(parsed.data.password, 12);
   await updateUserPassword(parsed.data.userId, hash);
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "user", entityId: session.user.id, detail: "password changed" });
   return { success: true };
 }

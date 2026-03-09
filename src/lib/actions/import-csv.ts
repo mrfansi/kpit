@@ -6,7 +6,8 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
 import { validatePeriodDate, validateNumericValue, buildRowError } from "@/lib/csv-import-utils";
-import { auth } from "@/auth";
+import { requireAdmin, requireAuth } from "@/lib/auth-utils";
+import { logAudit } from "@/lib/db/audit";
 
 export interface ImportRow {
   kpiName: string;
@@ -27,6 +28,7 @@ export async function resolveCSVRows(text: string): Promise<{
   resolved: (ImportRow & { rowIndex: number })[];
   errors: { row: number; message: string }[];
 }> {
+  await requireAuth();
   const { headers, rows } = parseCSV(text);
   const errors: { row: number; message: string }[] = [];
   const resolved: (ImportRow & { rowIndex: number })[] = [];
@@ -89,8 +91,7 @@ export async function resolveCSVRows(text: string): Promise<{
 
 /** Upsert resolved rows into kpi_entries */
 export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAdmin();
   let imported = 0;
   let skipped = 0;
   const errors: { row: number; message: string }[] = [];
@@ -134,6 +135,7 @@ export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
     imported = 0;
   }
 
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", detail: `CSV import: ${imported} entri` });
   revalidatePath("/");
   return { imported, skipped, errors };
 }

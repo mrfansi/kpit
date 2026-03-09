@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { auditLogs } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 
 export async function logAudit(data: {
   userId?: string;
@@ -16,6 +16,11 @@ export async function logAudit(data: {
   });
 }
 
-export async function getRecentAuditLogs(limit = 50) {
-  return db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit).all();
+export async function getRecentAuditLogs(limit = 50, offset = 0) {
+  return db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit).offset(offset).all();
+}
+
+export async function getAuditLogCount() {
+  const [row] = await db.select({ count: sql<number>`COUNT(*)` }).from(auditLogs);
+  return row?.count ?? 0;
 }

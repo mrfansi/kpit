@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { MessageCircle, Trash2, Send } from "lucide-react";
+import { isEmptyHtml, sanitizeHtmlClient } from "@/lib/html-utils";
 
 interface Period {
   value: string;
@@ -32,10 +33,6 @@ function formatRelative(date: Date) {
   return date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function isEmptyHtml(html: string): boolean {
-  return html.replace(/<[^>]*>/g, "").trim().length === 0;
-}
-
 export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, availablePeriods = [] }: KPICommentsProps) {
   const [comments, setComments] = useState<KPIComment[]>(initialComments);
   const [selectedPeriod, setSelectedPeriod] = useState(periodDate);
@@ -52,8 +49,9 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
     startTransition(async () => {
       try {
         await createComment(kpiId, selectedPeriod, html);
+        const sanitized = sanitizeHtmlClient(html);
         setComments((prev) => [
-          { id: Date.now(), kpiId, periodDate: selectedPeriod, content: html, author: "Admin", createdAt: new Date() },
+          { id: Date.now(), kpiId, periodDate: selectedPeriod, content: sanitized, author: "Admin", createdAt: new Date() },
           ...prev,
         ]);
         setHtml("");

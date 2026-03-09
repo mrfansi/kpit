@@ -26,9 +26,9 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
   const achievementPct = getAchievementPct(value, targetData.target, kpi.direction);
   const cfg = statusConfig[status];
 
-  // Stale: data terbaru > 2 bulan dari sekarang
+  const STALE_THRESHOLD_MONTHS = 2;
   const isStale = latestEntry
-    ? differenceInMonths(new Date(), parseISO(latestEntry.periodDate)) >= 2
+    ? differenceInMonths(new Date(), parseISO(latestEntry.periodDate)) >= STALE_THRESHOLD_MONTHS
     : false;
 
   // Gunakan entry kedua dari belakang di sparkline sebagai previousEntry jika tidak disediakan

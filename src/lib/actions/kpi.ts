@@ -5,12 +5,11 @@ import { kpis, type NewKPI } from "@/lib/db/schema";
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
 
 export async function createKPI(data: Omit<NewKPI, "createdAt">) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAdmin();
 
   // Set sortOrder ke posisi terakhir dalam domain
   const [maxRow] = await db
@@ -26,17 +25,16 @@ export async function createKPI(data: Omit<NewKPI, "createdAt">) {
 }
 
 export async function updateKPI(id: number, data: Partial<Omit<NewKPI, "id" | "createdAt">>) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAdmin();
   await db.update(kpis).set(data).where(eq(kpis.id, id));
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi", entityId: String(id), detail: data.name });
   revalidatePath("/");
   revalidatePath(`/kpi/${id}`);
   redirect(`/admin/kpi?success=${encodeURIComponent("KPI berhasil diperbarui")}`);
 }
 
 export async function archiveKPI(id: number) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAdmin();
   await db.update(kpis).set({ isActive: false }).where(eq(kpis.id, id));
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi", entityId: String(id), detail: "archived" });
   revalidatePath("/");
@@ -44,17 +42,16 @@ export async function archiveKPI(id: number) {
 }
 
 export async function restoreKPI(id: number) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAdmin();
   await db.update(kpis).set({ isActive: true }).where(eq(kpis.id, id));
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi", entityId: String(id), detail: "restored" });
   revalidatePath("/");
   revalidatePath("/admin/kpi");
   revalidatePath("/admin/kpi/archived");
 }
 
 export async function hardDeleteKPI(id: number) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAdmin();
   await db.delete(kpis).where(eq(kpis.id, id));
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "delete", entity: "kpi", entityId: String(id) });
   revalidatePath("/");
@@ -62,9 +59,9 @@ export async function hardDeleteKPI(id: number) {
 }
 
 export async function togglePinKPI(id: number, isPinned: boolean) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAdmin();
   await db.update(kpis).set({ isPinned }).where(eq(kpis.id, id));
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi", entityId: String(id), detail: isPinned ? "pinned" : "unpinned" });
   revalidatePath("/");
 }
 
@@ -76,15 +73,16 @@ async function normalizeSortOrder(domainId: number) {
     .where(and(eq(kpis.domainId, domainId), eq(kpis.isActive, true)))
     .orderBy(kpis.sortOrder, kpis.name);
 
-  for (let i = 0; i < domainKpis.length; i++) {
-    await db.update(kpis).set({ sortOrder: i }).where(eq(kpis.id, domainKpis[i].id));
-  }
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < domainKpis.length; i++) {
+      await tx.update(kpis).set({ sortOrder: i }).where(eq(kpis.id, domainKpis[i].id));
+    }
+  });
 }
 
 /** Geser sortOrder KPI ke atas atau bawah dalam domain yang sama */
 export async function reorderKPI(id: number, direction: "up" | "down") {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAdmin();
   const [kpi] = await db.select().from(kpis).where(eq(kpis.id, id)).limit(1);
   if (!kpi) return;
 
@@ -115,12 +113,13 @@ export async function reorderKPI(id: number, direction: "up" | "down") {
 
 /** Bulk update sortOrder setelah drag-and-drop */
 export async function bulkReorderKPIs(items: { id: number; sortOrder: number }[]) {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  await requireAdmin();
 
-  for (const item of items) {
-    await db.update(kpis).set({ sortOrder: item.sortOrder }).where(eq(kpis.id, item.id));
-  }
+  await db.transaction(async (tx) => {
+    for (const item of items) {
+      await tx.update(kpis).set({ sortOrder: item.sortOrder }).where(eq(kpis.id, item.id));
+    }
+  });
 
   revalidatePath("/");
   revalidatePath("/admin/kpi");

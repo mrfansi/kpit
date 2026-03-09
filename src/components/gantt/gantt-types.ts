@@ -1,5 +1,3 @@
-import type { TimelineProject } from "@/lib/db/schema";
-
 export type ViewMode = "week" | "month";
 
 export const VIEW_MODE_CONFIG: Record<
@@ -19,11 +17,6 @@ export interface GanttColumn {
   x: number;
   width: number;
   isCurrentPeriod?: boolean;
-}
-
-export interface GanttChartProps {
-  projects: TimelineProject[];
-  isAuthenticated: boolean;
 }
 
 export type DragMode = "move" | "resize-start" | "resize-end";

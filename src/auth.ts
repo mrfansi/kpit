@@ -1,7 +1,5 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { getUserByEmail } from "@/lib/db/users";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -14,6 +12,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = credentials?.email as string;
         const password = credentials?.password as string;
         if (!email || !password) return null;
+
+        // Dynamic imports to avoid pulling Node.js modules into Edge Runtime
+        const { getUserByEmail } = await import("@/lib/db/users");
+        const bcrypt = await import("bcryptjs");
 
         const user = await getUserByEmail(email);
         if (!user) return null;

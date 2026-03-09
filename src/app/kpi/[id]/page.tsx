@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getKPIById, getKPIEntries, getLatestEntry } from "@/lib/queries";
+import { getKPIById, getKPIEntries } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
 import { formatPeriodDate, formatValue, getPeriodRange } from "@/lib/period";
 import { TrendChart } from "@/components/trend-chart";
@@ -43,14 +43,15 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   const currentPage = Math.max(1, Number(page ?? "1"));
 
   const { from, to } = getPeriodRange(validRange);
-  // Fetch ALL entries for anomaly detection; range entries for chart
-  const [latestEntry, entries, allEntries, allTargetOverrides, comments] = await Promise.all([
-    getLatestEntry(kpiId),
-    getKPIEntries(kpiId, from, to),
+  // Fetch all entries once; derive range entries and latest from this
+  const [allEntries, allTargetOverrides, comments] = await Promise.all([
     getKPIEntries(kpiId),
     getKPITargets(kpiId),
     getKPIComments(kpiId),
   ]);
+
+  const entries = allEntries.filter((e) => e.periodDate >= from && e.periodDate <= to);
+  const latestEntry = allEntries.length > 0 ? allEntries[allEntries.length - 1] : null;
 
   const comparison = latestEntry
     ? await getPeriodComparisonEntries(kpiId, latestEntry.periodDate)

@@ -5,7 +5,8 @@ import { kpis, kpiTargets } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
-import { auth } from "@/auth";
+import { requireAdmin, requireAuth } from "@/lib/auth-utils";
+import { logAudit } from "@/lib/db/audit";
 import { validatePeriodDate, buildRowError } from "@/lib/csv-import-utils";
 
 export interface TargetImportRow {
@@ -33,6 +34,7 @@ export async function resolveTargetCSVRows(text: string): Promise<{
   if (!headers.includes("period_date")) return { resolved: [], errors: [{ row: 0, message: "Header wajib mengandung 'period_date'" }] };
   if (!headers.includes("target")) return { resolved: [], errors: [{ row: 0, message: "Header wajib mengandung 'target'" }] };
 
+  await requireAuth();
   const allKPIs = await db.select({ id: kpis.id, name: kpis.name }).from(kpis);
   const kpiByName = new Map(allKPIs.map((k) => [k.name.toLowerCase(), k]));
   const kpiById = new Map(allKPIs.map((k) => [k.id, k.name]));
@@ -83,8 +85,7 @@ export async function resolveTargetCSVRows(text: string): Promise<{
 }
 
 export async function importTargetRows(rows: TargetImportRow[]): Promise<{ imported: number; errors: { row: number; message: string }[] }> {
-  const session = await auth();
-  if (!session?.user) throw new Error("Unauthorized");
+  const session = await requireAdmin();
   let imported = 0;
   const errors: { row: number; message: string }[] = [];
 
@@ -108,6 +109,7 @@ export async function importTargetRows(rows: TargetImportRow[]): Promise<{ impor
     imported = 0;
   }
 
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_target", detail: `CSV import: ${imported} target` });
   revalidatePath("/");
   return { imported, errors };
 }

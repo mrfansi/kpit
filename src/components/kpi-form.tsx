@@ -3,6 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { kpiSchema, type KPIFormValues } from "@/lib/validations/kpi";
 import { createKPI, updateKPI } from "@/lib/actions/kpi";
 import type { Domain, KPI } from "@/lib/db/schema";
@@ -61,8 +62,7 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
       }
       // redirect di server action akan membawa ?success= ke halaman tujuan
     } catch (err: unknown) {
-      // NEXT_REDIRECT bukan error nyata — biarkan meneruskan
-      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
+      if (isRedirectError(err)) throw err;
       toast.error("Terjadi kesalahan, coba lagi");
     }
   }

@@ -3,6 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { domainSchema, type DomainFormValues } from "@/lib/validations/domain";
 import { createDomain, updateDomain } from "@/lib/actions/domain";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ export function DomainForm({ domain }: DomainFormProps) {
         await createDomain(values);
       }
     } catch (err) {
-      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
+      if (isRedirectError(err)) throw err;
       toast.error("Gagal menyimpan domain, coba lagi");
     }
   }
@@ -175,8 +176,8 @@ export function DomainForm({ domain }: DomainFormProps) {
           <Button type="submit" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Tambah Domain"}
           </Button>
-          <Button type="button" variant="outline" onClick={() => history.back()}>
-            Batal
+          <Button type="button" variant="outline" asChild>
+            <a href="/admin/domain">Batal</a>
           </Button>
         </div>
       </form>

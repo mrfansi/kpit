@@ -1,26 +1,46 @@
 import bcrypt from "bcryptjs";
-import Database from "better-sqlite3";
 import { randomUUID } from "crypto";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
+import { users } from "../lib/db/schema";
+import { eq } from "drizzle-orm";
+import path from "path";
 
-const db = new Database("./kpit.db");
+const email = process.env.SEED_ADMIN_EMAIL;
+const password = process.env.SEED_ADMIN_PASSWORD;
 
-const email = process.env.SEED_ADMIN_EMAIL ?? "admin@kpit.local";
-const password = process.env.SEED_ADMIN_PASSWORD ?? "changeme123";
-const name = "Administrator";
+if (!email || !password) {
+  console.error("ERROR: SEED_ADMIN_EMAIL dan SEED_ADMIN_PASSWORD wajib diisi.");
+  console.error("Set environment variables sebelum menjalankan seed:admin.");
+  process.exit(1);
+}
 
-const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
-if (existing) {
+if (password.length < 8) {
+  console.error("ERROR: SEED_ADMIN_PASSWORD minimal 8 karakter.");
+  process.exit(1);
+}
+
+const sqlite = new Database(path.join(process.cwd(), "kpit.db"));
+const db = drizzle(sqlite);
+
+const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+if (existing.length > 0) {
   console.log(`User ${email} sudah ada, skip.`);
-  db.close();
+  sqlite.close();
   process.exit(0);
 }
 
 const hash = bcrypt.hashSync(password, 12);
 const id = randomUUID();
 
-db.prepare(
-  "INSERT INTO users (id, email, name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-).run(id, email, name, hash, "admin", Date.now());
+await db.insert(users).values({
+  id,
+  email,
+  name: "Administrator",
+  passwordHash: hash,
+  role: "admin",
+  createdAt: new Date(),
+});
 
-console.log(`✅ Admin user dibuat: ${email}`);
-db.close();
+console.log(`Admin user dibuat: ${email}`);
+sqlite.close();

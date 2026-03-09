@@ -1,18 +1,36 @@
-import { getRecentAuditLogs } from "@/lib/db/audit";
+import { getRecentAuditLogs, getAuditLogCount } from "@/lib/db/audit";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
-export default async function AdminAuditPage() {
-  const logs = await getRecentAuditLogs();
+const PAGE_SIZE = 50;
+
+interface Props {
+  searchParams: Promise<{ page?: string }>;
+}
+
+export default async function AdminAuditPage({ searchParams }: Props) {
+  const { page } = await searchParams;
+  const currentPage = Math.max(1, Number(page ?? "1"));
+  const offset = (currentPage - 1) * PAGE_SIZE;
+
+  const [logs, totalCount] = await Promise.all([
+    getRecentAuditLogs(PAGE_SIZE, offset),
+    getAuditLogCount(),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2"><ClipboardList className="w-6 h-6" /> Audit Log</h1>
-        <p className="text-muted-foreground text-sm mt-1">50 aktivitas terakhir</p>
+        <p className="text-muted-foreground text-sm mt-1">{totalCount} total aktivitas</p>
       </div>
       <Card>
         <CardContent className="pt-4">
@@ -48,6 +66,25 @@ export default async function AdminAuditPage() {
               </TableBody>
             </Table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-3 text-sm">
+              <span className="text-muted-foreground text-xs">
+                Halaman {currentPage} dari {totalPages}
+              </span>
+              <div className="flex gap-1">
+                <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage <= 1}>
+                  <Link href={`?page=${currentPage - 1}`}>
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Link>
+                </Button>
+                <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage >= totalPages}>
+                  <Link href={`?page=${currentPage + 1}`}>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
