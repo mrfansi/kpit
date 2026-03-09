@@ -1,0 +1,46 @@
+@media print {
+  /* Force background colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Landscape for better Gantt readability */
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
+  }
+
+  /* Hide interactive elements */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Remove shadows for cleaner print */
+  .shadow-sm,
+  .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  /* Ensure Gantt chart starts on new page if needed */
+  .print-break-before {
+    break-before: page;
+  }
+
+  /* Hide hover tooltips in print */
+  .group-hover\:opacity-100 {
+    opacity: 0 !important;
+  }
+
+  /* Adjust body padding */
+  body {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide navigation sidebar if present */
+  nav,
+  aside {
+    display: none !important;
+  }
+}

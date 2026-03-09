@@ -2,6 +2,7 @@ import { getAllTimelineProjects } from "@/lib/queries/timeline";
 import { ReportHeader } from "@/components/report/report-header";
 import { ReportSummaryTable } from "@/components/report/report-summary-table";
 import { ReportGantt } from "@/components/report/report-gantt";
+import "./report-print.css";
 
 export const metadata = {
   title: "Timeline Report - KPI Dashboard",
@@ -27,7 +28,9 @@ export default async function TimelineReportPage() {
         <ReportSummaryTable projects={projects} />
       )}
       {projects.length > 0 && (
-        <ReportGantt projects={projects} />
+        <div className="print-break-before">
+          <ReportGantt projects={projects} />
+        </div>
       )}
       {projects.length === 0 && (
         <p className="text-muted-foreground text-center py-12">
