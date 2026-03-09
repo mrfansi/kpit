@@ -19,6 +19,7 @@ export const projectSchema = z
     sortOrder: z.coerce.number().int().default(0),
     launchBufferDays: z.coerce.number().int().min(0).max(365).default(7),
     estimatedLaunchDate: isoDate.optional().or(z.literal("")),
+    statusId: z.coerce.number().int().positive().optional(),
   })
   .refine((data) => data.endDate >= data.startDate, {
     message: "Tanggal selesai harus setelah atau sama dengan tanggal mulai",

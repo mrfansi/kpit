@@ -32,6 +32,7 @@ export async function createProject(formData: FormData) {
     sortOrder: parsed.data.sortOrder,
     launchBufferDays: parsed.data.launchBufferDays,
     estimatedLaunchDate: launchDate,
+    statusId: parsed.data.statusId ?? null,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -66,6 +67,7 @@ export async function updateProject(id: number, formData: FormData) {
       sortOrder: parsed.data.sortOrder,
       launchBufferDays: parsed.data.launchBufferDays,
       estimatedLaunchDate: launchDate,
+      statusId: parsed.data.statusId ?? null,
       updatedAt: new Date(),
     })
     .where(eq(timelineProjects.id, id));
