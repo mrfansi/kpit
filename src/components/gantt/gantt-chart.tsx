@@ -5,22 +5,13 @@ import {
   addDays,
   parseISO,
   format,
-  differenceInDays,
-  startOfMonth,
-  startOfWeek,
-  eachMonthOfInterval,
-  eachWeekOfInterval,
-  subDays,
-  addMonths,
-  isThisMonth,
-  isThisWeek,
 } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { computeGanttLayout } from "@/lib/gantt-layout";
 import type { TimelineProject } from "@/lib/db/schema";
 import {
   type ViewMode,
   type DragMode,
-  type GanttColumn,
   VIEW_MODE_CONFIG,
   ROW_HEIGHT,
   HEADER_HEIGHT,
@@ -66,77 +57,10 @@ export function GanttChart({
   useEffect(() => setLocalProjects(initialProjects), [initialProjects]);
 
   // Compute layout
-  const layout = useMemo(() => {
-    const config = VIEW_MODE_CONFIG[viewMode];
-
-    let minDate: Date;
-    let maxDate: Date;
-
-    if (localProjects.length > 0) {
-      const starts = localProjects.map((p) => parseISO(p.startDate));
-      const ends = localProjects.map((p) => parseISO(p.endDate));
-      const launches = localProjects.map((p) =>
-        parseISO(getEffectiveLaunchDate(p))
-      );
-      minDate = new Date(Math.min(...starts.map((d) => d.getTime())));
-      maxDate = new Date(
-        Math.max(
-          ...ends.map((d) => d.getTime()),
-          ...launches.map((d) => d.getTime())
-        )
-      );
-    } else {
-      minDate = new Date();
-      maxDate = addMonths(new Date(), 6);
-    }
-
-    const paddedStart = subDays(minDate, 14 + panOffset);
-    const paddedEnd = addDays(maxDate, 30 + Math.abs(Math.min(0, panOffset)));
-
-    let snapStart: Date;
-    let intervals: Date[];
-
-    if (viewMode === "week") {
-      snapStart = startOfWeek(paddedStart, { weekStartsOn: 1 });
-      const snapEnd = startOfWeek(addDays(paddedEnd, 7), { weekStartsOn: 1 });
-      intervals = eachWeekOfInterval(
-        { start: snapStart, end: snapEnd },
-        { weekStartsOn: 1 }
-      );
-    } else {
-      snapStart = startOfMonth(paddedStart);
-      const snapEnd = startOfMonth(addMonths(paddedEnd, 1));
-      intervals = eachMonthOfInterval({ start: snapStart, end: snapEnd });
-    }
-
-    const columns: GanttColumn[] = intervals.map((date, i) => ({
-      label: format(date, config.headerFormat, { locale: idLocale }),
-      x: i * config.colWidth,
-      width: config.colWidth,
-      isCurrentPeriod:
-        viewMode === "month"
-          ? isThisMonth(date)
-          : isThisWeek(date, { weekStartsOn: 1 }),
-    }));
-
-    const totalWidth = columns.length * config.colWidth;
-    const totalHeight = localProjects.length * ROW_HEIGHT;
-
-    function dateToX(dateStr: string): number {
-      const days = differenceInDays(parseISO(dateStr), snapStart);
-      return (days / config.unitDays) * config.colWidth;
-    }
-
-    return {
-      viewMode,
-      config,
-      snapStart,
-      columns,
-      totalWidth,
-      totalHeight,
-      dateToX,
-    };
-  }, [viewMode, localProjects, panOffset]);
+  const layout = useMemo(
+    () => computeGanttLayout(localProjects, viewMode, panOffset),
+    [viewMode, localProjects, panOffset]
+  );
 
   // Pan
   const handlePan = useCallback(
