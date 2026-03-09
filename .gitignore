@@ -54,3 +54,6 @@ drizzle/meta/
 # Uploaded files (keep directory, ignore content)
 public/uploads/comments/*
 !public/uploads/comments/.gitkeep
+
+# Worktrees
+.worktrees/
