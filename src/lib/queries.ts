@@ -83,11 +83,11 @@ export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?:
     }
   }
 
-  // Batch 2: last 6 entries per KPI for sparkline (reuse sorted data above)
+  // Batch 2: last 12 entries per KPI for sparkline (reuse sorted data above)
   const sparklineMap = new Map<number, typeof latestEntriesRaw>();
   for (const entry of [...latestEntriesRaw].reverse()) {
     const arr = sparklineMap.get(entry.kpiId) ?? [];
-    if (arr.length < 6) arr.push(entry);
+    if (arr.length < 12) arr.push(entry);
     sparklineMap.set(entry.kpiId, arr);
   }
 
