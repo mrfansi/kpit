@@ -77,6 +77,9 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
   const prevAvgAchievement = prevAchievementCount > 0 ? Math.round(prevTotalAchievement / prevAchievementCount) : null;
   const achievementDelta = avgAchievement !== null && prevAvgAchievement !== null ? avgAchievement - prevAvgAchievement : null;
 
+  // Check if any KPI has YoY data
+  const hasAnyYoY = allKPIsWithEntries.some(({ kpi }) => comparisonMap.get(kpi.id)?.prevYear !== null);
+
   const byDomain = domains.map((domain) => ({
     domain,
     kpis: allKPIsWithEntries.filter((k) => k.kpi.domainId === domain.id),
@@ -174,7 +177,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                   <th className="text-right py-1.5 px-2 font-medium">%</th>
                   <th className="text-center py-1.5 pl-2 font-medium">Status</th>
                   <th className="text-center py-1.5 px-2 font-medium">MoM</th>
-                  <th className="text-center py-1.5 px-2 font-medium">YoY</th>
+                  {hasAnyYoY && <th className="text-center py-1.5 px-2 font-medium">YoY</th>}
                   <th className="text-center py-1.5 pl-2 font-medium">Trend</th>
                 </tr>
               </thead>
@@ -210,14 +213,16 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                           lowerBetter={kpi.direction === "lower_better"}
                         />
                       </td>
-                      <td className="py-1.5 px-2 text-center">
-                        <ReportDelta
-                          currentValue={latestEntry?.value ?? null}
-                          compareEntry={comparisonMap.get(kpi.id)?.prevYear ?? null}
-                          unit={kpi.unit}
-                          lowerBetter={kpi.direction === "lower_better"}
-                        />
-                      </td>
+                      {hasAnyYoY && (
+                        <td className="py-1.5 px-2 text-center">
+                          <ReportDelta
+                            currentValue={latestEntry?.value ?? null}
+                            compareEntry={comparisonMap.get(kpi.id)?.prevYear ?? null}
+                            unit={kpi.unit}
+                            lowerBetter={kpi.direction === "lower_better"}
+                          />
+                        </td>
+                      )}
                       <td className="py-1.5 pl-2 text-center">
                         <ReportSparkline entries={sparklineEntries} status={status} />
                       </td>

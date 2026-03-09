@@ -15,7 +15,7 @@ const statusColor: Record<KPIStatus, string> = {
   "no-data": "#94a3b8",
 };
 
-export function ReportSparkline({ entries, status, width = 80, height = 24 }: ReportSparklineProps) {
+export function ReportSparkline({ entries, status, width = 100, height = 28 }: ReportSparklineProps) {
   if (entries.length < 2) return <span className="text-gray-300 text-xs">—</span>;
 
   const values = entries.map((e) => e.value);

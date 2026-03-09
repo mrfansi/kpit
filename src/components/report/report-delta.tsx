@@ -1,4 +1,3 @@
-import { formatValue } from "@/lib/period";
 import type { KPIEntry } from "@/lib/db/schema";
 
 interface ReportDeltaProps {
@@ -14,18 +13,22 @@ export function ReportDelta({ currentValue, compareEntry, unit, lowerBetter }: R
   }
 
   const diff = currentValue - compareEntry.value;
-  const pct = compareEntry.value !== 0 ? ((diff / compareEntry.value) * 100).toFixed(1) : null;
-  const isUp = diff > 0;
-  const isFlat = diff === 0;
 
-  const arrow = isFlat ? "—" : isUp ? "\u2191" : "\u2193";
-  const isGood = isFlat ? false : lowerBetter ? !isUp : isUp;
-  const color = isFlat ? "text-gray-400" : isGood ? "text-green-600" : "text-red-600";
+  if (diff === 0) {
+    return <span className="text-gray-400">—</span>;
+  }
+
+  const pct = compareEntry.value !== 0
+    ? ((diff / compareEntry.value) * 100).toFixed(1)
+    : null;
+  const isUp = diff > 0;
+  const isGood = lowerBetter ? !isUp : isUp;
+  const color = isGood ? "text-green-600" : "text-red-600";
+  const arrow = isUp ? "\u2191" : "\u2193";
 
   return (
     <span className={`whitespace-nowrap ${color}`}>
-      {arrow} {diff > 0 ? "+" : ""}{formatValue(diff, unit)}
-      {pct !== null && <span className="text-gray-400 ml-0.5">({diff > 0 ? "+" : ""}{pct}%)</span>}
+      {arrow} {pct !== null ? `${isUp ? "+" : ""}${pct}%` : `${isUp ? "+" : ""}${diff}`}
     </span>
   );
 }
