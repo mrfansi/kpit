@@ -63,21 +63,29 @@ Detail KPI:
 ${kpiSummary}
 
 Instruksi:
-- Tulis 2-3 paragraf ringkas
+- Langsung tulis narasinya, JANGAN buka dengan kalimat pengantar seperti "Berikut adalah..."
+- Tulis tepat 3 paragraf pendek (masing-masing 2-3 kalimat saja)
 - Paragraf 1: Gambaran umum performa bulan ini
 - Paragraf 2: Sorot KPI yang memburuk dan jelaskan dampaknya
-- Paragraf 3: Rekomendasi tindakan yang perlu diambil
+- Paragraf 3: Satu rekomendasi tindakan prioritas
 - Gunakan bahasa yang mudah dipahami oleh eksekutif non-teknis
 - Jangan mengulang angka mentah, fokus pada insight dan konteks
+- Jangan gunakan markdown formatting (bold, italic, asterisks)
 - Jangan gunakan bullet points, tulis dalam paragraf naratif`;
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    let text = result.response.text();
 
-    return NextResponse.json({ narrative: text });
+    // Strip markdown formatting (bold/italic asterisks)
+    text = text.replace(/\*{1,2}([^*]+)\*{1,2}/g, "$1");
+
+    // Remove meta-text opening line if model adds it
+    text = text.replace(/^(Berikut|Di bawah ini|Ini adalah)[^\n]*:\s*\n+/i, "");
+
+    return NextResponse.json({ narrative: text.trim() });
   } catch (error) {
     console.error("Gemini API error:", error);
     return NextResponse.json(
