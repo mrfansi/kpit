@@ -17,6 +17,7 @@ import { PeriodComparison } from "@/components/period-comparison";
 import { KPIComments } from "@/components/kpi-comments";
 import { computeForecast } from "@/lib/forecast";
 import { KPIAIAnalysis } from "@/components/kpi-ai-analysis";
+import { KPITargetSuggestion } from "@/components/kpi-target-suggestion";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -214,6 +215,27 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
 
       {/* AI Root Cause Analysis */}
       <KPIAIAnalysis requestData={analysisRequestData} />
+
+      {/* AI Target Suggestion */}
+        <KPITargetSuggestion
+          kpiName={kpi.name}
+          unit={kpi.unit}
+          direction={kpi.direction}
+          currentTarget={effectiveTarget.target}
+          thresholdGreen={effectiveTarget.thresholdGreen}
+          thresholdYellow={effectiveTarget.thresholdYellow}
+          history={allEntries.map((e) => {
+            const override = targetOverrideMap.get(e.periodDate);
+            const entryTarget = override ?? { target: kpi.target };
+            const pct = getAchievementPct(e.value, entryTarget.target, kpi.direction);
+            return {
+              periodDate: e.periodDate,
+              value: e.value,
+              target: entryTarget.target,
+              achievementPct: pct ?? 0,
+            };
+          })}
+        />
 
       {/* Data Table */}
       <Card>
