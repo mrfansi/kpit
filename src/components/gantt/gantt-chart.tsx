@@ -25,7 +25,7 @@ import { GanttLaunchMarker } from "./gantt-launch-marker";
 import { getEffectiveLaunchDate, isManualLaunchDate } from "@/lib/launch-date";
 import { TimelineProjectFormDialog } from "@/components/timeline-project-form";
 import { updateProjectDates } from "@/lib/actions/timeline";
-import { CalendarDays, ClipboardList, FolderOpen, Pencil } from "lucide-react";
+import { CalendarDays, ClipboardList, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GanttLogPanel } from "./gantt-log-panel";
 
@@ -200,7 +200,7 @@ export function GanttChart({
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel: project names */}
         <div
-          className="shrink-0 bg-background z-30"
+          className="shrink-0 bg-background z-30 overflow-hidden"
           style={{ width: listWidth }}
         >
           <div
@@ -215,41 +215,16 @@ export function GanttChart({
             {localProjects.map((project) => (
               <div
                 key={project.id}
-                className="flex items-center gap-2.5 px-3 border-b hover:bg-accent/50 transition-colors group/row"
+                className="flex flex-col justify-center px-3 border-b hover:bg-accent/50 transition-colors group/row"
                 style={{ height: ROW_HEIGHT }}
               >
-                <FolderOpen
-                  className="w-4 h-4 shrink-0"
-                  style={{ color: project.color }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-medium truncate min-w-0">
-                      {project.name}
-                    </span>
-                    {(() => {
-                      const status = statuses.find((s) => s.id === project.statusId);
-                      if (!status) return null;
-                      return (
-                        <span
-                          className="shrink-0 text-[8px] font-medium px-1 py-px rounded"
-                          style={{ backgroundColor: `${status.color}20`, color: status.color }}
-                        >
-                          {status.name}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground truncate block">
-                    {project.startDate} — {project.endDate}
-                  </span>
-                  <span className="text-[10px] text-emerald-600 truncate block">
-                    🚀 {format(parseISO(getEffectiveLaunchDate(project)), "dd MMM yyyy", { locale: idLocale })}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-xs text-muted-foreground">
-                    {project.progress}%
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: project.color }}
+                  />
+                  <span className="text-sm font-medium truncate flex-1 min-w-0">
+                    {project.name}
                   </span>
                   {isAuthenticated && (
                     <div className="flex items-center gap-0.5 shrink-0">
@@ -272,6 +247,29 @@ export function GanttChart({
                       </button>
                     </div>
                   )}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1 pl-3.5">
+                  {(() => {
+                    const status = statuses.find((s) => s.id === project.statusId);
+                    if (!status) return null;
+                    return (
+                      <span
+                        className="text-[8px] font-medium px-1 py-px rounded shrink-0"
+                        style={{ backgroundColor: `${status.color}20`, color: status.color }}
+                      >
+                        {status.name}
+                      </span>
+                    );
+                  })()}
+                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${project.progress}%`, backgroundColor: project.color }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                    {project.progress}%
+                  </span>
                 </div>
               </div>
             ))}
@@ -318,8 +316,8 @@ export function GanttChart({
                 const x = layout.dateToX(project.startDate);
                 const xEnd = layout.dateToX(project.endDate);
                 const barWidth = Math.max(xEnd - x + layout.config.colWidth * 0.15, 24);
-                const y = rowIndex * ROW_HEIGHT + 8;
-                const barHeight = ROW_HEIGHT - 16;
+                const y = rowIndex * ROW_HEIGHT + 4;
+                const barHeight = ROW_HEIGHT - 8;
 
                 const status = statuses.find((s) => s.id === project.statusId);
                 const barColor = project.color;
@@ -418,8 +416,8 @@ export function GanttChart({
               {localProjects.map((project, rowIndex) => {
                 const launchDate = getEffectiveLaunchDate(project);
                 const launchX = layout.dateToX(launchDate);
-                const y = rowIndex * ROW_HEIGHT + 8;
-                const markerHeight = ROW_HEIGHT - 16;
+                const y = rowIndex * ROW_HEIGHT + 4;
+                const markerHeight = ROW_HEIGHT - 8;
 
                 return (
                   <GanttLaunchMarker

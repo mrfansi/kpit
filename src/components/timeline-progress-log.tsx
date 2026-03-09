@@ -6,7 +6,7 @@ import { createProgressLog, deleteProgressLog } from "@/lib/actions/timeline";
 import type { TimelineProjectLog } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, Send, ArrowRight, Circle } from "lucide-react";
+import { Trash2, Send, ArrowRight } from "lucide-react";
 
 interface TimelineProgressLogProps {
   projectId: number;
@@ -98,22 +98,21 @@ export function TimelineProgressLog({
         <p className="text-sm text-muted-foreground italic">Belum ada progress log.</p>
       ) : (
         <div className="max-h-72 overflow-y-auto pr-1">
-          <div className="relative pl-6">
-            {/* Vertical line */}
-            <div className="absolute left-2.25 top-2 bottom-2 w-px bg-border" />
+          <div className="relative" style={{ paddingLeft: 28 }}>
+            {/* Vertical line - centered at 11px from left */}
+            <div className="absolute top-2 bottom-2 w-px bg-border" style={{ left: 11 }} />
 
             {logs.map((log, i) => (
               <div key={log.id} className="relative pb-5 last:pb-0 group">
-                {/* Dot on the line */}
-                <div className="absolute -left-3.75 top-1 z-10">
-                  <Circle
-                    className={`w-4.5 h-4.5 ${i === 0 ? "fill-primary text-primary" : "fill-background text-border"}`}
-                    strokeWidth={2}
+                {/* Dot - 12px wide, centered on line at 11px: 11 - 6 = 5 */}
+                <div className="absolute z-10" style={{ left: -23, top: 4 }}>
+                  <div
+                    className={`w-3 h-3 rounded-full border-2 ${i === 0 ? "bg-primary border-primary" : "bg-background border-border"}`}
                   />
                 </div>
 
                 {/* Content */}
-                <div className="ml-2">
+                <div>
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-xs text-muted-foreground">
                       {formatDateTime(new Date(log.createdAt))}

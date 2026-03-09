@@ -44,8 +44,8 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
               const x = layout.dateToX(project.startDate);
               const xEnd = layout.dateToX(project.endDate);
               const barWidth = Math.max(xEnd - x + layout.config.colWidth * 0.15, 24);
-              const y = rowIndex * ROW_HEIGHT + 8;
-              const barHeight = ROW_HEIGHT - 16;
+              const y = rowIndex * ROW_HEIGHT + 4;
+              const barHeight = ROW_HEIGHT - 8;
 
               const status = statuses.find((s) => s.id === project.statusId);
               const barColor = project.color;
@@ -114,8 +114,8 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
             {projects.map((project, rowIndex) => {
               const launchDate = getEffectiveLaunchDate(project);
               const launchX = layout.dateToX(launchDate);
-              const y = rowIndex * ROW_HEIGHT + 8;
-              const markerHeight = ROW_HEIGHT - 16;
+              const y = rowIndex * ROW_HEIGHT + 4;
+              const markerHeight = ROW_HEIGHT - 8;
 
               return (
                 <GanttLaunchMarker

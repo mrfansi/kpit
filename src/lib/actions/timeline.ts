@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { timelineProjects, timelineProjectLogs } from "@/lib/db/schema";
+import { timelineProjects, timelineProjectLogs, timelineProjectStatuses } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
@@ -55,6 +55,12 @@ export async function updateProject(id: number, formData: FormData) {
 
   const launchDate = parsed.data.estimatedLaunchDate || null;
 
+  // Fetch old values for change detection
+  const oldProject = await db.query.timelineProjects.findFirst({
+    where: eq(timelineProjects.id, id),
+    columns: { progress: true, statusId: true, startDate: true, endDate: true, estimatedLaunchDate: true },
+  });
+
   await db
     .update(timelineProjects)
     .set({
@@ -71,6 +77,60 @@ export async function updateProject(id: number, formData: FormData) {
       updatedAt: new Date(),
     })
     .where(eq(timelineProjects.id, id));
+
+  // Auto-log progress and status changes
+  if (oldProject) {
+    const author = session.user.name ?? session.user.email ?? "Admin";
+    const newProgress = parsed.data.progress;
+    const newStatusId = parsed.data.statusId ?? null;
+    const logParts: string[] = [];
+
+    if (oldProject.startDate !== parsed.data.startDate) {
+      logParts.push(`Start: ${oldProject.startDate} → ${parsed.data.startDate}`);
+    }
+
+    if (oldProject.endDate !== parsed.data.endDate) {
+      logParts.push(`End: ${oldProject.endDate} → ${parsed.data.endDate}`);
+    }
+
+    if ((oldProject.estimatedLaunchDate ?? null) !== (launchDate ?? null)) {
+      logParts.push(`Est. Launch: ${oldProject.estimatedLaunchDate ?? "—"} → ${launchDate ?? "auto"}`);
+    }
+
+    if (oldProject.progress !== newProgress) {
+      logParts.push(`Progress: ${oldProject.progress}% → ${newProgress}%`);
+    }
+
+    if (oldProject.statusId !== newStatusId) {
+      const [oldStatus, newStatus] = await Promise.all([
+        oldProject.statusId
+          ? db.query.timelineProjectStatuses.findFirst({
+              where: eq(timelineProjectStatuses.id, oldProject.statusId),
+              columns: { name: true },
+            })
+          : null,
+        newStatusId
+          ? db.query.timelineProjectStatuses.findFirst({
+              where: eq(timelineProjectStatuses.id, newStatusId),
+              columns: { name: true },
+            })
+          : null,
+      ]);
+      logParts.push(`Status: ${oldStatus?.name ?? "—"} → ${newStatus?.name ?? "—"}`);
+    }
+
+    if (logParts.length > 0) {
+      await db.insert(timelineProjectLogs).values({
+        projectId: id,
+        content: logParts.join(", "),
+        progressBefore: oldProject.progress,
+        progressAfter: newProgress,
+        author,
+        createdAt: new Date(),
+      });
+    }
+  }
+
   await logAudit({
     userId: session.user.id,
     userEmail: session.user.email ?? undefined,
@@ -91,13 +151,15 @@ export async function updateProjectDates(
 
   if (endDate < startDate) return;
 
-  // Clear manual launch date if new endDate would exceed it
+  // Fetch old values for change detection
   const existing = await db.query.timelineProjects.findFirst({
     where: eq(timelineProjects.id, id),
-    columns: { estimatedLaunchDate: true },
+    columns: { startDate: true, endDate: true, estimatedLaunchDate: true, progress: true },
   });
+  if (!existing) return;
+
   const clearLaunch =
-    existing?.estimatedLaunchDate && existing.estimatedLaunchDate < endDate;
+    existing.estimatedLaunchDate && existing.estimatedLaunchDate < endDate;
 
   await db
     .update(timelineProjects)
@@ -108,6 +170,27 @@ export async function updateProjectDates(
       updatedAt: new Date(),
     })
     .where(eq(timelineProjects.id, id));
+
+  // Auto-log date changes from drag
+  const logParts: string[] = [];
+  if (existing.startDate !== startDate) {
+    logParts.push(`Start: ${existing.startDate} → ${startDate}`);
+  }
+  if (existing.endDate !== endDate) {
+    logParts.push(`End: ${existing.endDate} → ${endDate}`);
+  }
+  if (logParts.length > 0) {
+    const author = session.user.name ?? session.user.email ?? "Admin";
+    await db.insert(timelineProjectLogs).values({
+      projectId: id,
+      content: logParts.join(", "),
+      progressBefore: existing.progress,
+      progressAfter: existing.progress,
+      author,
+      createdAt: new Date(),
+    });
+  }
+
   await logAudit({
     userId: session.user.id,
     userEmail: session.user.email ?? undefined,
