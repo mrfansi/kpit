@@ -292,11 +292,12 @@ export function TimelineProjectFormDialog({
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   onClick={() => onOpenChange(false)}
                 >
                   Batal
                 </Button>
-                <Button type="submit">{isEdit ? "Simpan" : "Tambah"}</Button>
+                <Button type="submit" size="sm">{isEdit ? "Simpan" : "Tambah"}</Button>
               </div>
             </div>
           </form>
