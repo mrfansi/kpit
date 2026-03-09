@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, CalendarDays, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Plus, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ViewMode } from "./gantt-types";
 
@@ -78,17 +79,25 @@ export function GanttToolbar({
         </div>
       </div>
 
-      {isAuthenticated && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs"
-          onClick={onAddProject}
-        >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          Project
-        </Button>
-      )}
+      <div className="flex items-center gap-2">
+        <Link href="/timeline/report" target="_blank">
+          <Button variant="outline" size="sm" className="h-7 text-xs">
+            <FileText className="w-3.5 h-3.5 mr-1" />
+            Report
+          </Button>
+        </Link>
+        {isAuthenticated && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={onAddProject}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Project
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
