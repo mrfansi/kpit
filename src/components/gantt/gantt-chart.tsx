@@ -8,7 +8,7 @@ import {
 } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { computeGanttLayout } from "@/lib/gantt-layout";
-import type { TimelineProject } from "@/lib/db/schema";
+import type { TimelineProject, TimelineProjectStatus } from "@/lib/db/schema";
 import {
   type ViewMode,
   type DragMode,
@@ -30,11 +30,13 @@ import { cn } from "@/lib/utils";
 
 interface GanttChartProps {
   projects: TimelineProject[];
+  statuses: TimelineProjectStatus[];
   isAuthenticated: boolean;
 }
 
 export function GanttChart({
   projects: initialProjects,
+  statuses,
   isAuthenticated,
 }: GanttChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -226,6 +228,19 @@ export function GanttChart({
                   <span className="text-[10px] text-emerald-600 truncate block">
                     🚀 {format(parseISO(getEffectiveLaunchDate(project)), "dd MMM yyyy", { locale: idLocale })}
                   </span>
+                  {(() => {
+                    const status = statuses.find((s) => s.id === project.statusId);
+                    if (!status) return null;
+                    return (
+                      <span className="inline-flex items-center gap-1 text-[10px]">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: status.color }}
+                        />
+                        <span style={{ color: status.color }}>{status.name}</span>
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <span className="text-xs text-muted-foreground">
@@ -272,6 +287,11 @@ export function GanttChart({
                 const y = rowIndex * ROW_HEIGHT + 8;
                 const barHeight = ROW_HEIGHT - 16;
 
+                const status = statuses.find((s) => s.id === project.statusId);
+                const barColor = status?.color ?? project.color;
+                const isNotStarted = status?.slug === "not_started";
+                const isOnHold = status?.slug === "on_hold";
+
                 const isDragging = dragState?.projectId === project.id;
                 const deltaX = isDragging
                   ? dragState!.currentX - dragState!.startX
@@ -301,8 +321,9 @@ export function GanttChart({
                       top: y,
                       width: adjustedWidth,
                       height: barHeight,
-                      backgroundColor: `${project.color}20`,
-                      border: `2px solid ${project.color}`,
+                      backgroundColor: `${barColor}20`,
+                      border: `2px ${isNotStarted ? "dashed" : "solid"} ${barColor}`,
+                      opacity: isNotStarted ? 0.5 : isOnHold ? 0.6 : 1,
                     }}
                   >
                     {/* Progress fill */}
@@ -310,7 +331,7 @@ export function GanttChart({
                       className="absolute inset-0 rounded-md pointer-events-none"
                       style={{
                         width: `${project.progress}%`,
-                        backgroundColor: `${project.color}35`,
+                        backgroundColor: `${barColor}35`,
                       }}
                     />
 
@@ -326,13 +347,13 @@ export function GanttChart({
                       <>
                         <span
                           className="absolute left-1.5 bottom-0.5 text-[9px] pointer-events-none select-none"
-                          style={{ color: `${project.color}90` }}
+                          style={{ color: `${barColor}90` }}
                         >
                           {format(parseISO(project.startDate), "dd MMM", { locale: idLocale })}
                         </span>
                         <span
                           className="absolute right-1.5 bottom-0.5 text-[9px] pointer-events-none select-none"
-                          style={{ color: `${project.color}90` }}
+                          style={{ color: `${barColor}90` }}
                         >
                           {format(parseISO(project.endDate), "dd MMM", { locale: idLocale })}
                         </span>

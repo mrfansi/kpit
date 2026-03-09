@@ -8,7 +8,7 @@ export const VIEW_MODE_CONFIG: Record<
   month: { colWidth: 180, headerFormat: "MMM yy", unitDays: 30 },
 };
 
-export const ROW_HEIGHT = 56;
+export const ROW_HEIGHT = 68;
 export const HEADER_HEIGHT = 48;
 export const ROW_LIST_WIDTH = 280;
 
