@@ -8,6 +8,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +26,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { createProject, updateProject, deleteProject, fetchProjectLogs } from "@/lib/actions/timeline";
 import { format, addMonths } from "date-fns";
 import type { TimelineProject, TimelineProjectLog } from "@/lib/db/schema";
-import { Trash2, ClipboardList, RefreshCw } from "lucide-react";
+import { Trash2, ClipboardList, RefreshCw, Rocket } from "lucide-react";
+import { getEffectiveLaunchDate } from "@/lib/launch-date";
 import { TimelineProgressLog } from "@/components/timeline-progress-log";
 import { generateSoftColor } from "@/lib/colors";
 
@@ -39,10 +51,15 @@ export function TimelineProjectFormDialog({
   const [logs, setLogs] = useState<TimelineProjectLog[]>([]);
   const autoColor = useMemo(() => generateSoftColor(), []);
   const [selectedColor, setSelectedColor] = useState(project?.color ?? autoColor);
+  const [manualLaunch, setManualLaunch] = useState(!!project?.estimatedLaunchDate);
 
   // Sync color when project changes
   useEffect(() => {
     setSelectedColor(project?.color ?? generateSoftColor());
+  }, [project?.id]);
+
+  useEffect(() => {
+    setManualLaunch(!!project?.estimatedLaunchDate);
   }, [project?.id]);
 
   // Fetch logs when opening log dialog
@@ -64,7 +81,6 @@ export function TimelineProjectFormDialog({
 
   async function handleDelete() {
     if (!project) return;
-    if (!confirm(`Hapus project "${project.name}"?`)) return;
     await deleteProject(project.id);
     onOpenChange(false);
   }
@@ -175,17 +191,89 @@ export function TimelineProjectFormDialog({
                 defaultValue={project?.description ?? ""}
               />
             </div>
+            {/* Launch Estimation Section */}
+            <div className="space-y-2 rounded-lg border p-3 bg-muted/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Rocket className="w-3.5 h-3.5 text-emerald-600" />
+                <Label className="text-sm font-medium">Estimasi Launching</Label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="launchBufferDays" className="text-xs text-muted-foreground">
+                    Buffer (hari setelah selesai)
+                  </Label>
+                  <Input
+                    id="launchBufferDays"
+                    name="launchBufferDays"
+                    type="number"
+                    min={0}
+                    max={365}
+                    defaultValue={project?.launchBufferDays ?? 7}
+                    readOnly={manualLaunch}
+                    tabIndex={manualLaunch ? -1 : undefined}
+                    className={manualLaunch ? "opacity-50" : ""}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Tanggal Launch
+                  </Label>
+                  {manualLaunch ? (
+                    <Input
+                      name="estimatedLaunchDate"
+                      type="date"
+                      defaultValue={project?.estimatedLaunchDate ?? ""}
+                    />
+                  ) : (
+                    <>
+                      <input type="hidden" name="estimatedLaunchDate" value="" />
+                      <div className="h-9 flex items-center px-3 rounded-md border bg-muted text-sm text-muted-foreground">
+                        {project
+                          ? getEffectiveLaunchDate({
+                              endDate: project.endDate,
+                              launchBufferDays: project.launchBufferDays ?? 7,
+                              estimatedLaunchDate: null,
+                            })
+                          : "Auto dari tanggal selesai + buffer"}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={manualLaunch}
+                  onChange={(e) => setManualLaunch(e.target.checked)}
+                  className="rounded border-input"
+                />
+                <span className="text-xs text-muted-foreground">Override manual</span>
+              </label>
+            </div>
             <div className="flex justify-between">
               {isEdit ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1" />
-                  Hapus
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="destructive" size="sm">
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      Hapus
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Hapus Project</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Apakah Anda yakin ingin menghapus project &quot;{project?.name}&quot;? Tindakan ini tidak dapat dibatalkan.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Hapus
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               ) : (
                 <div />
               )}

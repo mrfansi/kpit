@@ -17,11 +17,23 @@ export const projectSchema = z
     endDate: isoDate,
     progress: z.coerce.number().int().min(0).max(100).default(0),
     sortOrder: z.coerce.number().int().default(0),
+    launchBufferDays: z.coerce.number().int().min(0).max(365).default(7),
+    estimatedLaunchDate: isoDate.optional().or(z.literal("")),
   })
   .refine((data) => data.endDate >= data.startDate, {
     message: "Tanggal selesai harus setelah atau sama dengan tanggal mulai",
     path: ["endDate"],
-  });
+  })
+  .refine(
+    (data) => {
+      if (!data.estimatedLaunchDate) return true;
+      return data.estimatedLaunchDate >= data.endDate;
+    },
+    {
+      message: "Tanggal launching harus setelah atau sama dengan tanggal selesai",
+      path: ["estimatedLaunchDate"],
+    }
+  );
 
 export type ProjectFormValues = z.infer<typeof projectSchema>;
 

@@ -30,6 +30,8 @@ import { GanttToolbar } from "./gantt-toolbar";
 import { GanttHeader } from "./gantt-header";
 import { GanttGrid } from "./gantt-grid";
 import { GanttTodayLine } from "./gantt-today-line";
+import { GanttLaunchMarker } from "./gantt-launch-marker";
+import { getEffectiveLaunchDate, isManualLaunchDate } from "@/lib/launch-date";
 import { TimelineProjectFormDialog } from "@/components/timeline-project-form";
 import { updateProjectDates } from "@/lib/actions/timeline";
 import { CalendarDays, FolderOpen, Pencil } from "lucide-react";
@@ -73,8 +75,16 @@ export function GanttChart({
     if (localProjects.length > 0) {
       const starts = localProjects.map((p) => parseISO(p.startDate));
       const ends = localProjects.map((p) => parseISO(p.endDate));
+      const launches = localProjects.map((p) =>
+        parseISO(getEffectiveLaunchDate(p))
+      );
       minDate = new Date(Math.min(...starts.map((d) => d.getTime())));
-      maxDate = new Date(Math.max(...ends.map((d) => d.getTime())));
+      maxDate = new Date(
+        Math.max(
+          ...ends.map((d) => d.getTime()),
+          ...launches.map((d) => d.getTime())
+        )
+      );
     } else {
       minDate = new Date();
       maxDate = addMonths(new Date(), 6);
@@ -288,6 +298,9 @@ export function GanttChart({
                   </span>
                   <span className="text-[10px] text-muted-foreground">
                     {project.startDate} — {project.endDate}
+                    <span className="text-emerald-600 ml-1">
+                      🚀 {getEffectiveLaunchDate(project)}
+                    </span>
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0">
@@ -410,6 +423,25 @@ export function GanttChart({
                       <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-1 h-5 rounded bg-foreground/40" />
                     </div>
                   </div>
+                );
+              })}
+
+              {/* Launch markers */}
+              {localProjects.map((project, rowIndex) => {
+                const launchDate = getEffectiveLaunchDate(project);
+                const launchX = layout.dateToX(launchDate);
+                const y = rowIndex * ROW_HEIGHT + 8;
+                const markerHeight = ROW_HEIGHT - 16;
+
+                return (
+                  <GanttLaunchMarker
+                    key={`launch-${project.id}`}
+                    x={launchX}
+                    y={y}
+                    height={markerHeight}
+                    launchDate={launchDate}
+                    isManualOverride={isManualLaunchDate(project)}
+                  />
                 );
               })}
             </div>

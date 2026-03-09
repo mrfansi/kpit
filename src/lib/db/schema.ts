@@ -120,6 +120,8 @@ export const timelineProjects = sqliteTable("timeline_projects", {
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
   progress: integer("progress").notNull().default(0),
+  launchBufferDays: integer("launch_buffer_days").notNull().default(7),
+  estimatedLaunchDate: text("estimated_launch_date"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
