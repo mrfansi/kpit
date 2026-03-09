@@ -14,7 +14,9 @@ import { formatPeriodDate, listLastNMonths } from "@/lib/period";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import Link from "next/link";
-import { getKPIStatus } from "@/lib/kpi-status";
+import { getKPIStatus, getAchievementPct, statusConfig } from "@/lib/kpi-status";
+import { formatValue } from "@/lib/period";
+import { DomainAISummary } from "@/components/domain/domain-ai-summary";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -51,6 +53,41 @@ export default async function DomainPage({ params, searchParams }: Props) {
     if (latestEntry) kpiLatestPeriods[kpi.id] = latestEntry.periodDate;
   }
 
+  const statusCounts = { healthy: 0, warning: 0, critical: 0, noData: 0 };
+  const domainAIKpis = kpisWithEntries.map(({ kpi, latestEntry, effectiveTarget }) => {
+    const kpiWithTarget = effectiveTarget ? { ...kpi, ...effectiveTarget } : kpi;
+    const kpiStatus = getKPIStatus(latestEntry?.value, kpiWithTarget);
+    if (kpiStatus === "green") statusCounts.healthy++;
+    else if (kpiStatus === "yellow") statusCounts.warning++;
+    else if (kpiStatus === "red") statusCounts.critical++;
+    else statusCounts.noData++;
+
+    const tgt = effectiveTarget ?? { target: kpi.target };
+    const pct = latestEntry
+      ? getAchievementPct(latestEntry.value, tgt.target, kpi.direction)
+      : null;
+
+    return {
+      name: kpi.name,
+      actual: latestEntry ? formatValue(latestEntry.value, kpi.unit) : "N/A",
+      target: formatValue(tgt.target, kpi.unit),
+      achievement: pct !== null ? `${pct}%` : "N/A",
+      status: statusConfig[kpiStatus].label,
+      trend: "stabil",
+    };
+  });
+
+  const domainSummaryData = {
+    domainName: domain.name,
+    domainDescription: domain.description || "",
+    period: selectedPeriod ?? "",
+    healthyCount: statusCounts.healthy,
+    warningCount: statusCounts.warning,
+    criticalCount: statusCounts.critical,
+    noDataCount: statusCounts.noData,
+    kpis: domainAIKpis,
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -77,6 +114,8 @@ export default async function DomainPage({ params, searchParams }: Props) {
           <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => kpi)} kpiLatestPeriods={kpiLatestPeriods} />
         </div>
       </div>
+
+      <DomainAISummary requestData={domainSummaryData} />
 
       <StatSummary kpisWithEntries={kpisWithEntries} />
 
