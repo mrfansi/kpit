@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -52,6 +53,47 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
           period: "monthly",
         },
   });
+
+  const [generating, setGenerating] = useState(false);
+
+  async function handleGenerateDescription() {
+    const name = form.getValues("name");
+    if (!name || name.trim().length < 3) {
+      toast.error("Isi nama KPI terlebih dahulu (minimal 3 karakter)");
+      return;
+    }
+
+    const domainId = form.getValues("domainId");
+    const domain = domains.find((d) => d.id === domainId);
+
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/kpi/generate-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          unit: form.getValues("unit") || "%",
+          target: form.getValues("target") || 0,
+          direction: form.getValues("direction") || "higher_better",
+          domain: domain?.name || "Umum",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Gagal menghasilkan deskripsi");
+      }
+
+      const data = await res.json();
+      form.setValue("description", data.description, { shouldDirty: true });
+      toast.success("Deskripsi berhasil di-generate");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Terjadi kesalahan");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   async function onSubmit(values: KPIFormValues) {
     try {
@@ -111,7 +153,24 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Deskripsi <span className="text-muted-foreground font-normal">(opsional)</span></FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Deskripsi <span className="text-muted-foreground font-normal">(opsional)</span></FormLabel>
+                <button
+                  type="button"
+                  onClick={handleGenerateDescription}
+                  disabled={generating}
+                  className="text-xs px-2 py-0.5 rounded border border-gray-300 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  {generating ? (
+                    <>
+                      <span className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate"
+                  )}
+                </button>
+              </div>
               <FormControl><Input placeholder="Penjelasan singkat KPI ini..." {...field} /></FormControl>
               <FormMessage />
             </FormItem>
