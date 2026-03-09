@@ -48,6 +48,7 @@ export function GanttChart({
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<TimelineProject | null>(null);
   const [logPanelProject, setLogPanelProject] = useState<TimelineProject | null>(null);
+  const [listWidth, setListWidth] = useState(ROW_LIST_WIDTH);
 
   // Drag state
   const [dragState, setDragState] = useState<{
@@ -199,8 +200,8 @@ export function GanttChart({
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel: project names */}
         <div
-          className="shrink-0 border-r bg-background z-30"
-          style={{ width: ROW_LIST_WIDTH }}
+          className="shrink-0 bg-background z-30"
+          style={{ width: listWidth }}
         >
           <div
             className="sticky top-0 z-10 border-b bg-background flex items-center px-3"
@@ -276,6 +277,26 @@ export function GanttChart({
             ))}
           </div>
         </div>
+
+        {/* Resize handle */}
+        <div
+          className="shrink-0 w-1 cursor-col-resize bg-border hover:bg-primary/40 active:bg-primary/60 transition-colors z-30"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startWidth = listWidth;
+            const onMove = (ev: MouseEvent) => {
+              const newWidth = Math.max(180, Math.min(500, startWidth + ev.clientX - startX));
+              setListWidth(newWidth);
+            };
+            const onUp = () => {
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+            };
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          }}
+        />
 
         {/* Right panel: scrollable canvas */}
         <div ref={scrollRef} className="flex-1 overflow-auto">
