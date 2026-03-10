@@ -12,13 +12,13 @@ interface ReportDeltaProps {
 
 export function ReportDelta({ currentValue, compareEntry, unit, lowerBetter, showPrevValue }: ReportDeltaProps) {
   if (currentValue === null || !compareEntry) {
-    return <span className="text-gray-300">—</span>;
+    return <span className="text-muted-foreground">—</span>;
   }
 
   const diff = currentValue - compareEntry.value;
 
   if (diff === 0) {
-    return <span className="text-gray-400">—</span>;
+    return <span className="text-muted-foreground">—</span>;
   }
 
   const pct = compareEntry.value !== 0
@@ -33,7 +33,7 @@ export function ReportDelta({ currentValue, compareEntry, unit, lowerBetter, sho
     <span className={`whitespace-nowrap ${color}`}>
       {arrow} {pct !== null ? `${isUp ? "+" : ""}${pct}%` : `${isUp ? "+" : ""}${diff}`}
       {showPrevValue && (
-        <span className="text-gray-400 font-normal"> (dari {formatValue(compareEntry.value, unit)})</span>
+        <span className="text-muted-foreground font-normal"> (dari {formatValue(compareEntry.value, unit)})</span>
       )}
     </span>
   );

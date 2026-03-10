@@ -26,9 +26,9 @@ interface KPITargetSuggestionProps {
 }
 
 const confidenceColors = {
-  low: "bg-red-100 text-red-700",
-  medium: "bg-yellow-100 text-yellow-700",
-  high: "bg-green-100 text-green-700",
+  low: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  high: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
 };
 
 const confidenceLabels = {
@@ -99,7 +99,7 @@ export function KPITargetSuggestion({
         {loading ? (
           <>
             <span
-              className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mr-1"
+              className="inline-block w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin mr-1"
               aria-hidden="true"
             />
             Menganalisis...
@@ -110,13 +110,13 @@ export function KPITargetSuggestion({
       </Button>
 
       {!hasEnoughData && (
-        <p className="text-xs text-gray-400">Minimal 3 periode data.</p>
+        <p className="text-xs text-muted-foreground">Minimal 3 periode data.</p>
       )}
 
       {error && <p className="text-red-600 text-xs">{error}</p>}
 
       {suggestion && (
-        <div className="p-3 bg-blue-50 rounded border border-blue-200 text-sm max-w-sm">
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800 text-sm max-w-sm">
           <div className="flex items-center justify-between mb-1">
             <span className="font-semibold">
               {suggestion.suggestedTarget} {unit}
@@ -127,7 +127,7 @@ export function KPITargetSuggestion({
               Confidence: {confidenceLabels[suggestion.confidence]}
             </span>
           </div>
-          <p className="text-xs text-gray-600 mb-2">{suggestion.reasoning}</p>
+          <p className="text-xs text-muted-foreground mb-2">{suggestion.reasoning}</p>
           {onApply && (
             <Button
               type="button"

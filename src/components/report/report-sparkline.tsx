@@ -16,7 +16,7 @@ const statusColor: Record<KPIStatus, string> = {
 };
 
 export function ReportSparkline({ entries, status, width = 100, height = 28 }: ReportSparklineProps) {
-  if (entries.length < 2) return <span className="text-gray-300 text-xs">—</span>;
+  if (entries.length < 2) return <span className="text-muted-foreground text-xs">—</span>;
 
   const values = entries.map((e) => e.value);
   const min = Math.min(...values);

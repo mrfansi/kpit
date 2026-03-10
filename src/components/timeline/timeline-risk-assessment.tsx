@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface RiskAssessment {
   riskLevel: "low" | "medium" | "high" | "critical";
@@ -28,10 +29,10 @@ interface TimelineRiskAssessmentProps {
 }
 
 const riskColors = {
-  low: "bg-green-100 text-green-700 border-green-200",
-  medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  high: "bg-orange-100 text-orange-700 border-orange-200",
-  critical: "bg-red-100 text-red-700 border-red-200",
+  low: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
+  medium: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
+  high: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
+  critical: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
 };
 
 const riskLabels = {
@@ -93,10 +94,7 @@ export function TimelineRiskAssessment(props: TimelineRiskAssessmentProps) {
       >
         {loading ? (
           <>
-            <span
-              className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mr-1"
-              aria-hidden="true"
-            />
+            <LoadingSpinner className="mr-1" />
             Menganalisis...
           </>
         ) : assessment ? (
@@ -106,10 +104,10 @@ export function TimelineRiskAssessment(props: TimelineRiskAssessmentProps) {
         )}
       </Button>
 
-      {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
+      {error && <p className="text-destructive text-xs mt-2">{error}</p>}
 
       {assessment && (
-        <div className="mt-3 p-3 bg-gray-50 rounded border border-gray-200">
+        <div className="mt-3 p-3 bg-muted rounded border border-border">
           <div className="flex items-center gap-2 mb-2">
             <span
               className={`text-xs px-2 py-0.5 rounded border font-medium ${riskColors[assessment.riskLevel]}`}
@@ -117,19 +115,19 @@ export function TimelineRiskAssessment(props: TimelineRiskAssessmentProps) {
               Risiko: {riskLabels[assessment.riskLevel]}
             </span>
             <span
-              className={`text-xs ${assessment.onTrack ? "text-green-600" : "text-red-600"}`}
+              className={`text-xs ${assessment.onTrack ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
             >
               {assessment.onTrack ? "On Track" : "Off Track"}
             </span>
           </div>
 
           {assessment.estimatedCompletion && (
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="text-xs text-muted-foreground mb-2">
               Estimasi selesai: {assessment.estimatedCompletion}
             </p>
           )}
 
-          <div className="text-sm text-gray-700 space-y-2">
+          <div className="text-sm text-foreground space-y-2">
             {assessment.analysis
               .split("\n\n")
               .filter(Boolean)
@@ -138,7 +136,7 @@ export function TimelineRiskAssessment(props: TimelineRiskAssessmentProps) {
               ))}
           </div>
 
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             Dihasilkan oleh AI — verifikasi sebelum mengambil keputusan
           </p>
         </div>

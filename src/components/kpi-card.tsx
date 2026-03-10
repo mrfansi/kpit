@@ -75,7 +75,7 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
               </span>
               {trend && (
                 <div className={`flex items-center gap-0.5 mb-1 text-xs font-medium ${
-                  trend === "flat" ? "text-gray-400"
+                  trend === "flat" ? "text-muted-foreground"
                     : (trend === "up") !== (kpi.direction === "lower_better") ? "text-green-500" : "text-red-500"
                 }`}>
                   <TrendIcon className="w-3.5 h-3.5" />

@@ -18,7 +18,6 @@ function slugify(name: string): string {
 function revalidateAll() {
   revalidatePath("/timeline");
   revalidatePath("/admin/timeline");
-  revalidatePath("/admin/timeline/statuses");
 }
 
 export async function createStatus(formData: FormData) {
