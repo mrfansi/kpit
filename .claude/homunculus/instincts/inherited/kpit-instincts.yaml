@@ -1,0 +1,553 @@
+# Instincts generated from https://github.com/mrfansi/kpit
+# Generated: 2026-03-10T08:42:37.953Z
+# Version: 2.0
+
+---
+id: kpit-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, fix, refactor, docs
+
+## Evidence
+
+- 108 commits analyzed
+- Detected conventional commit pattern
+- Examples: refactor: apply dark mode theming and consolidate timeline page, feat: add KPI report presentation generator
+
+---
+id: kpit-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Commit Length
+
+## Action
+
+Write moderate-length commit messages (~50 characters)
+
+## Evidence
+
+- Average commit message length: 59 chars
+- Based on 108 commits
+
+---
+id: kpit-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: kpit-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: kpit-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Export Style
+
+## Action
+
+Prefer default exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: default
+
+---
+id: kpit-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: app, components, lib, scripts, types
+
+---
+id: kpit-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: kpit-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~26x per month
+- Files: src/app/report/all/*, src/components/report/*, src/app/api/report/narrative/*
+
+---
+id: kpit-workflow-refactoring
+trigger: "when refactoring code"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Workflow Refactoring
+
+## Action
+
+Follow the refactoring workflow:
+1. Ensure tests pass before refactor
+2. Refactor code structure
+3. Verify tests still pass
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: src/**/*
+
+---
+id: kpit-workflow-add-ai-feature-integration
+trigger: "when doing add ai feature integration"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Workflow Add Ai Feature Integration
+
+## Action
+
+Follow the add-ai-feature-integration workflow:
+1. Create API route in src/app/api/{domain}/{feature}/route.ts
+2. Create client component in src/components/{domain}/{feature}.tsx or src/components/{feature}.tsx
+3. Integrate component into relevant page in src/app/{domain}/[id]/page.tsx
+4. Optionally update shared libraries or queries
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~7x per month
+- Files: src/app/api/{domain}/{feature}/route.ts, src/components/{domain}/{feature}.tsx, src/app/{domain}/[id]/page.tsx
+
+---
+id: kpit-workflow-refactor-ai-service-abstraction
+trigger: "when doing refactor ai service abstraction"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Workflow Refactor Ai Service Abstraction
+
+## Action
+
+Follow the refactor-ai-service-abstraction workflow:
+1. Create AI service types and interfaces in src/lib/ai/types.ts
+2. Add provider implementation in src/lib/ai/{provider}-provider.ts
+3. Create shared utilities in src/lib/ai/{utility}.ts
+4. Add factory/barrel exports in src/lib/ai/index.ts
+5. Refactor existing API routes to use abstraction
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/lib/ai/types.ts, src/lib/ai/{provider}-provider.ts, src/lib/ai/api-helpers.ts
+
+---
+id: kpit-workflow-enhance-report-with-ai-features
+trigger: "when doing enhance report with ai features"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Workflow Enhance Report With Ai Features
+
+## Action
+
+Follow the enhance-report-with-ai-features workflow:
+1. Create AI API route for analysis/narrative in src/app/api/report/{feature}/route.ts
+2. Create report component in src/components/report/report-{feature}.tsx
+3. Integrate into main report page src/app/report/{type}/page.tsx
+4. Update data fetching and component props
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: src/app/api/report/{feature}/route.ts, src/components/report/report-{feature}.tsx, src/app/report/{type}/page.tsx
+
+---
+id: kpit-workflow-create-implementation-documentation
+trigger: "when doing create implementation documentation"
+confidence: 0.7
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mrfansi/kpit
+---
+
+# Kpit Workflow Create Implementation Documentation
+
+## Action
+
+Follow the create-implementation-documentation workflow:
+1. Create design document in docs/plans/{date}-{feature}-design.md
+2. Create implementation plan in docs/plans/{date}-{feature}.md
+3. Sometimes create roadmap document for multiple related features
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~4x per month
+- Files: docs/plans/{date}-{feature}-design.md, docs/plans/{date}-{feature}.md
+
+---
+id: kpit-conventional-commits
+trigger: "When making any commit"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Conventional Commits
+
+## Action
+
+Use conventional commit format: type(scope): description, keeping length around 59 characters
+
+## Evidence
+
+- All commits follow 'feat:', 'fix:', 'refactor:', 'docs:', 'chore:' pattern
+- Average commit length is 59 characters
+- 8 example commits all use conventional format
+
+---
+id: kpit-camelcase-files
+trigger: "When creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Camelcase Files
+
+## Action
+
+Name files using camelCase convention
+
+## Evidence
+
+- Naming convention pattern shows camelCase for files
+- File structure shows consistent camelCase usage
+
+---
+id: kpit-alias-imports
+trigger: "When importing modules"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Alias Imports
+
+## Action
+
+Use alias imports (likely @ for src directory)
+
+## Evidence
+
+- Import style is listed as 'alias'
+- TypeScript project with typical Next.js structure suggests @ aliases
+
+---
+id: kpit-default-exports
+trigger: "When exporting components or main module functionality"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Default Exports
+
+## Action
+
+Use default exports
+
+## Evidence
+
+- Export style is consistently 'default'
+
+---
+id: kpit-pascalcase-components
+trigger: "When creating React components or classes"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Pascalcase Components
+
+## Action
+
+Use PascalCase naming
+
+## Evidence
+
+- Classes use PascalCase convention
+- Component file structure suggests PascalCase usage
+
+---
+id: kpit-ai-api-route-pattern
+trigger: "When adding AI functionality to a domain"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Ai Api Route Pattern
+
+## Action
+
+Create API route at src/app/api/{domain}/{feature}/route.ts
+
+## Evidence
+
+- add-ai-feature-integration workflow shows this pattern
+- Frequency of 7x usage
+- Consistent across AI feature implementations
+
+---
+id: kpit-ai-component-placement
+trigger: "When creating AI-related client components"
+confidence: 0.8
+domain: workflow
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Ai Component Placement
+
+## Action
+
+Place component in src/components/{domain}/{feature}.tsx or src/components/{feature}.tsx
+
+## Evidence
+
+- add-ai-feature-integration workflow specifies this location
+- Component organization follows domain-based structure
+
+---
+id: kpit-report-ai-naming
+trigger: "When creating AI features for reports"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Report Ai Naming
+
+## Action
+
+Name components as report-{feature}.tsx in src/components/report/
+
+## Evidence
+
+- enhance-report-with-ai-features workflow shows this pattern
+- Example file report-delta.tsx follows this convention
+
+---
+id: kpit-ai-service-abstraction
+trigger: "When adding new AI providers or consolidating AI services"
+confidence: 0.88
+domain: workflow
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Ai Service Abstraction
+
+## Action
+
+Create provider in src/lib/ai/{provider}-provider.ts and update src/lib/ai/index.ts
+
+## Evidence
+
+- refactor-ai-service-abstraction workflow documented
+- Files show gemini-provider.ts pattern
+- Abstraction layer established
+
+---
+id: kpit-feature-documentation
+trigger: "When planning new features or major enhancements"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Feature Documentation
+
+## Action
+
+Create design doc at docs/plans/{date}-{feature}-design.md and implementation plan at docs/plans/{date}-{feature}.md
+
+## Evidence
+
+- create-implementation-documentation workflow shows 4x/week frequency
+- Clear pattern for documentation structure
+
+---
+id: kpit-type-based-organization
+trigger: "When organizing modules in src directory"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Type Based Organization
+
+## Action
+
+Group files by type (components/, lib/, types/) rather than by feature
+
+## Evidence
+
+- Module organization is 'type-based'
+- Folder structure shows app/, components/, lib/, types/ separation
+
+---
+id: kpit-fix-scope-specificity
+trigger: "When making fix commits for specific domains"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Fix Scope Specificity
+
+## Action
+
+Include scope in parentheses like fix(ai): or fix(report):
+
+## Evidence
+
+- Examples show 'fix(ai): use Session type...' and 'fix(report): improve readability...'
+
+---
+id: kpit-separate-test-location
+trigger: "When creating tests"
+confidence: 0.6
+domain: testing
+source: repo-analysis
+source_repo: mrfansi/kpit
+---
+
+# Kpit Separate Test Location
+
+## Action
+
+Place tests in separate location from source files
+
+## Evidence
+
+- Test location is listed as 'separate' in architecture patterns
+
