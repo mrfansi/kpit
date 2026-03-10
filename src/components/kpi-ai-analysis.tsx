@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface HistoryEntry {
   periodDate: string;
@@ -64,7 +65,7 @@ export function KPIAIAnalysis({ requestData }: KPIAIAnalysisProps) {
   }
 
   return (
-    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <div className="mt-6 p-4 bg-muted rounded-lg border border-border">
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold text-sm">Analisis AI</h3>
         <div className="flex items-center gap-2">
@@ -72,7 +73,7 @@ export function KPIAIAnalysis({ requestData }: KPIAIAnalysisProps) {
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="text-xs text-gray-500 hover:text-gray-700"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
               {expanded ? "Tutup" : "Buka"}
             </button>
@@ -87,10 +88,7 @@ export function KPIAIAnalysis({ requestData }: KPIAIAnalysisProps) {
           >
             {loading ? (
               <>
-                <span
-                  className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mr-1"
-                  aria-hidden="true"
-                />
+                <LoadingSpinner className="mr-1" />
                 Menganalisis...
               </>
             ) : analysis ? (
@@ -103,22 +101,22 @@ export function KPIAIAnalysis({ requestData }: KPIAIAnalysisProps) {
       </div>
 
       {!hasEnoughData && (
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-muted-foreground">
           Minimal 2 periode data diperlukan untuk analisis.
         </p>
       )}
 
-      {error && <p className="text-red-600 text-xs mb-2">{error}</p>}
+      {error && <p className="text-destructive text-xs mb-2">{error}</p>}
 
       {analysis && expanded && (
-        <div className="text-sm text-gray-700 space-y-2">
+        <div className="text-sm text-foreground space-y-2">
           {analysis
             .split("\n\n")
             .filter(Boolean)
             .map((paragraph, i) => (
               <p key={i}>{paragraph}</p>
             ))}
-          <p className="text-xs text-gray-400 mt-2 print:hidden">
+          <p className="text-xs text-muted-foreground mt-2 print:hidden">
             Dihasilkan oleh AI — verifikasi data sebelum mengambil keputusan
           </p>
         </div>

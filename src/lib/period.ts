@@ -40,6 +40,8 @@ export function formatCurrency(value: number): string {
 
 export function formatValue(value: number, unit: string): string {
   if (unit === "Rp") return formatCurrency(value);
-  if (unit === "%") return `${value}%`;
-  return `${value.toLocaleString("id-ID")} ${unit}`;
+  // Round to remove floating point artifacts (e.g. 0.19999999 → 0.2)
+  const rounded = Math.round(value * 10000) / 10000;
+  if (unit === "%") return `${rounded}%`;
+  return `${rounded.toLocaleString("id-ID")} ${unit}`;
 }

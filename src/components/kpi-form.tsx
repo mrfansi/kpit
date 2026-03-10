@@ -165,7 +165,7 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
                 >
                   {generating ? (
                     <>
-                      <span aria-hidden="true" className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                      <span aria-hidden="true" className="inline-block w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
                       Generating...
                     </>
                   ) : (

@@ -78,7 +78,7 @@ export function DataEntryValidator({
         {loading ? (
           <>
             <span
-              className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mr-1"
+              className="inline-block w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin mr-1"
               aria-hidden="true"
             />
             Memvalidasi...
@@ -103,15 +103,15 @@ export function DataEntryValidator({
               key={i}
               className={`text-xs p-2 rounded ${
                 flag.severity === "warning"
-                  ? "bg-yellow-50 border border-yellow-200 text-yellow-800"
-                  : "bg-blue-50 border border-blue-200 text-blue-800"
+                  ? "bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300"
+                  : "bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300"
               }`}
             >
               <span className="font-semibold">{flag.kpiName}:</span>{" "}
               {flag.concern}
             </div>
           ))}
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Peringatan ini bersifat advisory — Anda tetap bisa submit data.
           </p>
         </div>

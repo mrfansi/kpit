@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { MessageCircle, X, Send } from "lucide-react";
 
 interface ChatMessage {
@@ -79,7 +80,7 @@ export function AIChat() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="print:hidden fixed bottom-6 right-6 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors flex items-center justify-center z-50"
+        className="print:hidden fixed bottom-6 right-6 w-12 h-12 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-50"
         aria-label="Buka AI Chat"
       >
         <MessageCircle className="w-5 h-5" />
@@ -88,13 +89,13 @@ export function AIChat() {
   }
 
   return (
-    <div className="print:hidden fixed bottom-6 right-6 w-96 h-[500px] bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col z-50">
+    <div className="print:hidden fixed bottom-6 right-6 w-96 h-[500px] bg-card rounded-lg shadow-2xl border border-border flex flex-col z-50">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div>
           <h3 className="font-semibold text-sm">AI Assistant</h3>
           {dataDate && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Data per {new Date(dataDate).toLocaleDateString("id-ID")}
             </p>
           )}
@@ -103,14 +104,14 @@ export function AIChat() {
           {messages.length > 0 && (
             <button
               onClick={handleReset}
-              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1"
+              className="text-xs text-muted-foreground hover:text-foreground px-2 py-1"
             >
               Reset
             </button>
           )}
           <button
             onClick={() => setOpen(false)}
-            className="text-gray-400 hover:text-gray-600 p-1"
+            className="text-muted-foreground hover:text-foreground p-1"
             aria-label="Tutup chat"
           >
             <X className="w-4 h-4" />
@@ -121,7 +122,7 @@ export function AIChat() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
-          <div className="text-center text-gray-400 text-sm mt-8">
+          <div className="text-center text-muted-foreground text-sm mt-8">
             <p>Tanyakan apa saja tentang data KPI dan timeline.</p>
             <p className="text-xs mt-2">
               Contoh: &quot;KPI mana yang paling buruk?&quot;
@@ -134,8 +135,8 @@ export function AIChat() {
             key={i}
             className={`text-sm ${
               msg.role === "user"
-                ? "ml-8 bg-blue-50 rounded-lg p-2 text-blue-900"
-                : "mr-8 bg-gray-50 rounded-lg p-2 text-gray-700"
+                ? "ml-8 bg-primary/10 rounded-lg p-2 text-foreground"
+                : "mr-8 bg-muted rounded-lg p-2 text-foreground"
             }`}
           >
             {msg.content}
@@ -143,21 +144,18 @@ export function AIChat() {
         ))}
 
         {loading && (
-          <div className="mr-8 bg-gray-50 rounded-lg p-2">
-            <span
-              className="inline-block w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"
-              aria-hidden="true"
-            />
+          <div className="mr-8 bg-muted rounded-lg p-2">
+            <LoadingSpinner />
           </div>
         )}
 
-        {error && <p className="text-red-600 text-xs">{error}</p>}
+        {error && <p className="text-destructive text-xs">{error}</p>}
 
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-200 p-3">
+      <div className="border-t border-border p-3">
         <div className="flex gap-2">
           <Input
             value={input}
@@ -176,7 +174,7 @@ export function AIChat() {
             <Send className="w-4 h-4" />
           </Button>
         </div>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           {messages.length}/20 pesan
         </p>
       </div>

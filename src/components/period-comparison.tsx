@@ -13,7 +13,8 @@ function Delta({ current, compare, unit, lowerBetter }: { current: number | null
   if (current === null || compare === null) {
     return <span className="text-muted-foreground text-sm">—</span>;
   }
-  const abs = current - compare.value;
+  const rawAbs = current - compare.value;
+  const abs = Math.round(rawAbs * 10000) / 10000;
   const pct = compare.value !== 0 ? ((abs / compare.value) * 100).toFixed(1) : null;
   const isUp = abs > 0;
   const isFlat = abs === 0;
