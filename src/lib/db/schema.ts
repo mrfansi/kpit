@@ -86,6 +86,29 @@ export const kpiComments = sqliteTable("kpi_comments", {
   index("idx_kpi_comments_kpi_id").on(table.kpiId),
 ]);
 
+export const kpiActionPlans = sqliteTable("kpi_action_plans", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  kpiId: integer("kpi_id")
+    .notNull()
+    .references(() => kpis.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  owner: text("owner").notNull(),
+  dueDate: text("due_date").notNull(),
+  status: text("status", { enum: ["open", "in_progress", "done", "cancelled"] })
+    .notNull()
+    .default("open"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+}, (table) => [
+  index("idx_kpi_action_plans_kpi_id").on(table.kpiId),
+  index("idx_kpi_action_plans_status_due").on(table.status, table.dueDate),
+]);
+
 export const auditLogs = sqliteTable("audit_logs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id"),
@@ -109,11 +132,13 @@ export type KPI = typeof kpis.$inferSelect;
 export type KPIEntry = typeof kpiEntries.$inferSelect;
 export type KPITarget = typeof kpiTargets.$inferSelect;
 export type KPIComment = typeof kpiComments.$inferSelect;
+export type KPIActionPlan = typeof kpiActionPlans.$inferSelect;
 export type NewDomain = typeof domains.$inferInsert;
 export type NewKPI = typeof kpis.$inferInsert;
 export type NewKPIEntry = typeof kpiEntries.$inferInsert;
 export type NewKPITarget = typeof kpiTargets.$inferInsert;
 export type NewKPIComment = typeof kpiComments.$inferInsert;
+export type NewKPIActionPlan = typeof kpiActionPlans.$inferInsert;
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),

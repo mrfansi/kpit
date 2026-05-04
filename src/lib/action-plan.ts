@@ -1,0 +1,43 @@
+export const ACTION_PLAN_STATUSES = ["open", "in_progress", "done", "cancelled"] as const;
+
+export type ActionPlanStatus = (typeof ACTION_PLAN_STATUSES)[number];
+
+export const actionPlanStatusLabels: Record<ActionPlanStatus, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  done: "Done",
+  cancelled: "Cancelled",
+};
+
+export const activeActionPlanStatuses: ActionPlanStatus[] = ["open", "in_progress"];
+
+interface ActionPlanLike {
+  status: ActionPlanStatus;
+  dueDate: string;
+  updatedAt?: Date;
+}
+
+function toDateOnly(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+export function isActionPlanOverdue(action: Pick<ActionPlanLike, "status" | "dueDate">, today = new Date()) {
+  return activeActionPlanStatuses.includes(action.status) && action.dueDate < toDateOnly(today);
+}
+
+export function getActionPlanSummary(actions: ActionPlanLike[], today = new Date()) {
+  const currentMonth = toDateOnly(today).slice(0, 7);
+
+  return actions.reduce(
+    (summary, action) => {
+      summary.total += 1;
+      if (activeActionPlanStatuses.includes(action.status)) summary.active += 1;
+      if (isActionPlanOverdue(action, today)) summary.overdue += 1;
+      if (action.status === "done" && action.updatedAt && toDateOnly(action.updatedAt).slice(0, 7) === currentMonth) {
+        summary.doneThisMonth += 1;
+      }
+      return summary;
+    },
+    { total: 0, active: 0, overdue: 0, doneThisMonth: 0 }
+  );
+}

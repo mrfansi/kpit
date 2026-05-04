@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkline } from "@/components/sparkline";
 import { PinKPIButton } from "@/components/pin-kpi-button";
 import Link from "next/link";
-import { TrendingDown, TrendingUp, Minus, Clock } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, Clock, ListChecks } from "lucide-react";
 import { differenceInMonths, parseISO } from "date-fns";
 
 interface KPICardProps {
@@ -15,9 +15,10 @@ interface KPICardProps {
   sparklineEntries?: KPIEntry[];
   previousEntry?: KPIEntry | null;
   effectiveTarget?: { target: number; thresholdGreen: number; thresholdYellow: number };
+  activeActionCount?: number;
 }
 
-export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry, effectiveTarget }: KPICardProps) {
+export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry, effectiveTarget, activeActionCount = 0 }: KPICardProps) {
   const value = latestEntry?.value ?? null;
   // Gunakan effectiveTarget (per-periode) jika tersedia, fallback ke nilai default KPI
   const targetData = effectiveTarget ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
@@ -91,6 +92,13 @@ export function KPICard({ kpi, latestEntry, sparklineEntries = [], previousEntry
                 <span className="ml-1 text-primary">(periode ini)</span>
               )}
             </div>
+
+            {activeActionCount > 0 && (
+              <div className="inline-flex w-fit items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                <ListChecks className="h-3.5 w-3.5" />
+                {activeActionCount} action aktif
+              </div>
+            )}
 
             {/* Progress bar */}
             {achievementPct !== null && (

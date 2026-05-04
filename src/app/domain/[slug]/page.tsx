@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getAllDomains, getDomainBySlug, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getActionPlanCountsByKPIIds, getAllDomains, getDomainBySlug, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
@@ -35,6 +35,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
   const [kpisWithEntries] = await Promise.all([
     getKPIsWithLatestEntry(domain.id, selectedPeriod),
   ]);
+  const actionCounts = await getActionPlanCountsByKPIIds(kpisWithEntries.map(({ kpi }) => kpi.id));
 
   const filtered = kpisWithEntries.filter(({ kpi, latestEntry, effectiveTarget }) => {
     if (q && !kpi.name.toLowerCase().includes(q.toLowerCase())) return false;
@@ -137,7 +138,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
           </div>
         ) : (
           filtered.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
-            <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} />
+            <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} activeActionCount={actionCounts.get(kpi.id) ?? 0} />
           ))
         )}
       </div>

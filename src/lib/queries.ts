@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "./db";
-import { domains, kpiComments, kpiEntries, kpiTargets, kpis, type KPI, type KPIComment, type KPIEntry, type KPITarget } from "./db/schema";
+import { domains, kpiActionPlans, kpiComments, kpiEntries, kpiTargets, kpis, type KPI, type KPIActionPlan, type KPIComment, type KPIEntry, type KPITarget } from "./db/schema";
+import { activeActionPlanStatuses, getActionPlanSummary } from "./action-plan";
 
 export async function getAllDomains() {
   return db.select().from(domains).orderBy(domains.name);
@@ -220,6 +221,54 @@ export async function getKPIComments(kpiId: number): Promise<KPIComment[]> {
     .from(kpiComments)
     .where(eq(kpiComments.kpiId, kpiId))
     .orderBy(desc(kpiComments.createdAt));
+}
+
+export async function getKPIActionPlans(kpiId: number): Promise<KPIActionPlan[]> {
+  return db
+    .select()
+    .from(kpiActionPlans)
+    .where(eq(kpiActionPlans.kpiId, kpiId))
+    .orderBy(kpiActionPlans.dueDate, desc(kpiActionPlans.updatedAt));
+}
+
+export async function getActionPlanCountsByKPIIds(kpiIds: number[]): Promise<Map<number, number>> {
+  const counts = new Map<number, number>();
+  if (kpiIds.length === 0) return counts;
+
+  const actions = await db
+    .select({ kpiId: kpiActionPlans.kpiId })
+    .from(kpiActionPlans)
+    .where(and(inArray(kpiActionPlans.kpiId, kpiIds), inArray(kpiActionPlans.status, activeActionPlanStatuses)));
+
+  for (const action of actions) {
+    counts.set(action.kpiId, (counts.get(action.kpiId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export async function getAllActionPlansWithKPI() {
+  return db
+    .select({
+      action: kpiActionPlans,
+      kpi: {
+        id: kpis.id,
+        name: kpis.name,
+      },
+      domain: {
+        id: domains.id,
+        name: domains.name,
+        slug: domains.slug,
+      },
+    })
+    .from(kpiActionPlans)
+    .innerJoin(kpis, eq(kpiActionPlans.kpiId, kpis.id))
+    .innerJoin(domains, eq(kpis.domainId, domains.id))
+    .orderBy(kpiActionPlans.dueDate, desc(kpiActionPlans.updatedAt));
+}
+
+export async function getActionPlanDashboardSummary() {
+  const actions = await db.select().from(kpiActionPlans);
+  return getActionPlanSummary(actions);
 }
 
 export async function getAllKPIEntriesBatch(

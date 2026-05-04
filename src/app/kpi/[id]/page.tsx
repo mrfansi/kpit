@@ -11,9 +11,10 @@ import { ArrowLeft, Target, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight
 import Link from "next/link";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
 import { EditEntryDialog } from "@/components/edit-entry-dialog";
-import { getKPITargets, getPeriodComparisonEntries, getKPIComments, getDomainById, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getKPITargets, getPeriodComparisonEntries, getKPIComments, getDomainById, getKPIsWithLatestEntry, getKPIActionPlans } from "@/lib/queries";
 import { PeriodComparison } from "@/components/period-comparison";
 import { KPIComments } from "@/components/kpi-comments";
+import { KPIActionPlans } from "@/components/kpi-action-plans";
 import { computeForecast } from "@/lib/forecast";
 import { KPIAIAnalysis } from "@/components/kpi-ai-analysis";
 import { KPITargetSuggestion } from "@/components/kpi-target-suggestion";
@@ -45,10 +46,11 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
 
   const { from, to } = getPeriodRange(validRange);
   // Fetch all entries once; derive range entries and latest from this
-  const [allEntries, allTargetOverrides, comments] = await Promise.all([
+  const [allEntries, allTargetOverrides, comments, actionPlans] = await Promise.all([
     getKPIEntries(kpiId),
     getKPITargets(kpiId),
     getKPIComments(kpiId),
+    getKPIActionPlans(kpiId),
   ]);
 
   // Fetch domain and sibling KPIs for AI analysis
@@ -235,6 +237,12 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
             };
           })}
         />
+
+      <Card>
+        <CardContent className="pt-5">
+          <KPIActionPlans kpiId={kpi.id} initialActions={actionPlans} />
+        </CardContent>
+      </Card>
 
       {/* Data Table */}
       <Card>

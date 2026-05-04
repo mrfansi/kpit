@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getAllDomains, getAllKPIs, getEntriesForPeriod, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getActionPlanCountsByKPIIds, getAllDomains, getAllKPIs, getEntriesForPeriod, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
@@ -33,6 +33,7 @@ export default async function OverviewPage({ searchParams }: Props) {
     getAllKPIs(),
     getEntriesForPeriod(selectedPeriod ?? ""),
   ]);
+  const actionCounts = await getActionPlanCountsByKPIIds(allKPIsWithEntries.map(({ kpi }) => kpi.id));
 
   // Filter by search query and status
   const filtered = allKPIsWithEntries.filter(({ kpi, latestEntry, effectiveTarget }) => {
@@ -124,7 +125,7 @@ export default async function OverviewPage({ searchParams }: Props) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {pinnedWithEntries.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
-              <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} />
+              <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} activeActionCount={actionCounts.get(kpi.id) ?? 0} />
             ))}
           </div>
           <Separator />
@@ -146,7 +147,7 @@ export default async function OverviewPage({ searchParams }: Props) {
               </p>
             ) : (
               kpisWithEntries.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
-                <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} />
+                <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} activeActionCount={actionCounts.get(kpi.id) ?? 0} />
               ))
             )}
           </div>
