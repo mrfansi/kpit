@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import {
   DndContext,
   closestCenter,
@@ -92,6 +92,7 @@ function SortableRow({ kpi, domainName }: { kpi: KPI; domainName: string }) {
 }
 
 export function SortableKPITable({ kpis: initialKpis, domainMap }: SortableKPITableProps) {
+  const dndId = useId();
   const [kpis, setKpis] = useState(initialKpis);
   const [isPending, startTransition] = useTransition();
 
@@ -150,6 +151,7 @@ export function SortableKPITable({ kpis: initialKpis, domainMap }: SortableKPITa
 
   return (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis]}

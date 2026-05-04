@@ -10,7 +10,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
-  if (!mounted) return <Button variant="ghost" size="icon" className={className} disabled><Sun className="w-4 h-4" /></Button>;
+  if (!mounted) return <Button variant="ghost" size="icon" className={className} disabled aria-hidden suppressHydrationWarning><Sun className="w-4 h-4" /></Button>;
 
   const isDark = theme === "dark";
   return (
