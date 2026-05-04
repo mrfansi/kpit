@@ -1,4 +1,4 @@
-import { getAllDomains, getKPIsWithLatestEntry, getBatchPeriodComparison } from "@/lib/queries";
+import { getAllDomains, getKPIsWithLatestEntry, getBatchPeriodComparison, getReportActionPlansWithKPI } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
 import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
 import { PrintButton } from "@/components/print-button";
@@ -6,6 +6,7 @@ import { ReportPeriodSelector } from "@/components/report-period-selector";
 import { ReportSparkline } from "@/components/report/report-sparkline";
 import { ReportDelta } from "@/components/report/report-delta";
 import { ReportAINarrative } from "@/components/report/report-ai-narrative";
+import { ReportActionPlans } from "@/components/report/report-action-plans";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -30,8 +31,11 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       })()
     : null;
 
-  const domains = await getAllDomains();
-  const allKPIsWithEntries = await getKPIsWithLatestEntry(undefined, selectedPeriod);
+  const [domains, allKPIsWithEntries, actionPlanRows] = await Promise.all([
+    getAllDomains(),
+    getKPIsWithLatestEntry(undefined, selectedPeriod),
+    getReportActionPlansWithKPI(),
+  ]);
 
   const kpiIds = allKPIsWithEntries.map(({ kpi }) => kpi.id);
   const comparisonMap = selectedPeriod
@@ -239,6 +243,10 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
 
       {/* Executive Summary — AI Narrative or static fallback */}
       <ReportAINarrative staticSummary={executiveSummary} requestData={aiRequestData} />
+
+      {selectedPeriod && (
+        <ReportActionPlans rows={actionPlanRows} periodDate={selectedPeriod} />
+      )}
 
       {/* KPIs that need attention */}
       {attentionKpis.length > 0 && (

@@ -41,3 +41,17 @@ export function getActionPlanSummary(actions: ActionPlanLike[], today = new Date
     { total: 0, active: 0, overdue: 0, doneThisMonth: 0 }
   );
 }
+
+export function getReportActionPlans<T extends ActionPlanLike & { id?: number }>(
+  actions: T[],
+  periodDate: string,
+  today = new Date()
+) {
+  const periodMonth = periodDate.slice(0, 7);
+
+  return actions.filter((action) => {
+    if (activeActionPlanStatuses.includes(action.status)) return true;
+    if (isActionPlanOverdue(action, today)) return true;
+    return action.status === "done" && action.updatedAt && toDateOnly(action.updatedAt).slice(0, 7) === periodMonth;
+  });
+}

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getDomainBySlug, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getDomainBySlug, getKPIsWithLatestEntry, getReportActionPlansWithKPI } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
 import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
 import { BarChart2 } from "lucide-react";
@@ -7,6 +7,7 @@ import { PrintButton } from "@/components/print-button";
 import { ReportPeriodSelector } from "@/components/report-period-selector";
 import type { Metadata } from "next";
 import { domainIconMap } from "@/lib/domain-icons";
+import { ReportActionPlans } from "@/components/report/report-action-plans";
 
 interface Props {
   params: Promise<{ domain: string }>;
@@ -28,7 +29,10 @@ export default async function ReportPage({ params, searchParams }: Props) {
   const domain = await getDomainBySlug(slug);
   if (!domain) notFound();
 
-  const kpisWithEntries = await getKPIsWithLatestEntry(domain.id, selectedPeriod);
+  const [kpisWithEntries, actionPlanRows] = await Promise.all([
+    getKPIsWithLatestEntry(domain.id, selectedPeriod),
+    getReportActionPlansWithKPI(domain.id),
+  ]);
 
   const now = new Date();
   const printDate = now.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
@@ -69,6 +73,10 @@ export default async function ReportPage({ params, searchParams }: Props) {
         })}
         <span className="ml-auto text-muted-foreground">{kpisWithEntries.length} KPI total</span>
       </div>
+
+      {selectedPeriod && (
+        <ReportActionPlans rows={actionPlanRows} periodDate={selectedPeriod} showDomain={false} />
+      )}
 
       {/* KPI Table */}
       <table className="w-full text-sm border-collapse">

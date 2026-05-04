@@ -266,6 +266,29 @@ export async function getAllActionPlansWithKPI() {
     .orderBy(kpiActionPlans.dueDate, desc(kpiActionPlans.updatedAt));
 }
 
+export async function getReportActionPlansWithKPI(domainId?: number) {
+  const conditions = domainId ? [eq(kpis.domainId, domainId)] : [];
+
+  return db
+    .select({
+      action: kpiActionPlans,
+      kpi: {
+        id: kpis.id,
+        name: kpis.name,
+      },
+      domain: {
+        id: domains.id,
+        name: domains.name,
+        slug: domains.slug,
+      },
+    })
+    .from(kpiActionPlans)
+    .innerJoin(kpis, eq(kpiActionPlans.kpiId, kpis.id))
+    .innerJoin(domains, eq(kpis.domainId, domains.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(kpiActionPlans.dueDate, desc(kpiActionPlans.updatedAt));
+}
+
 export async function getActionPlanDashboardSummary() {
   const actions = await db.select().from(kpiActionPlans);
   return getActionPlanSummary(actions);
