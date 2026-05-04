@@ -15,9 +15,11 @@ import { getKPITargets, getPeriodComparisonEntries, getKPIComments, getDomainByI
 import { PeriodComparison } from "@/components/period-comparison";
 import { KPIComments } from "@/components/kpi-comments";
 import { KPIActionPlans } from "@/components/kpi-action-plans";
+import { KPIEarlyWarning } from "@/components/kpi-early-warning";
 import { computeForecast } from "@/lib/forecast";
 import { KPIAIAnalysis } from "@/components/kpi-ai-analysis";
 import { KPITargetSuggestion } from "@/components/kpi-target-suggestion";
+import { getKPIEarlyWarning } from "@/lib/kpi-warning";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -65,6 +67,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   const comparison = latestEntry
     ? await getPeriodComparisonEntries(kpiId, latestEntry.periodDate)
     : { prevMonth: null, prevYear: null };
+  const previousEntryForWarning = allEntries.length >= 2 ? allEntries[allEntries.length - 2] : null;
 
   // Build lookup map: periodDate → target override
   const targetOverrideMap = new Map(allTargetOverrides.map((t) => [t.periodDate, t]));
@@ -76,6 +79,11 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   const status = getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget });
   const achievementPct = getAchievementPct(latestEntry?.value, effectiveTarget.target, kpi.direction);
   const cfg = statusConfig[status];
+  const earlyWarning = getKPIEarlyWarning({
+    kpi: { ...kpi, ...effectiveTarget },
+    latestEntry,
+    previousEntry: previousEntryForWarning,
+  });
 
   // Gunakan semua data historis untuk forecast agar konsisten di semua range
   const forecastPoints = showForecast ? computeForecast(allEntries) : [];
@@ -240,7 +248,10 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
 
       <Card>
         <CardContent className="pt-5">
-          <KPIActionPlans kpiId={kpi.id} initialActions={actionPlans} />
+          <div className="space-y-5">
+            <KPIEarlyWarning warning={earlyWarning} />
+            <KPIActionPlans kpiId={kpi.id} initialActions={actionPlans} suggestion={earlyWarning?.suggestedAction ?? null} />
+          </div>
         </CardContent>
       </Card>
 

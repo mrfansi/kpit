@@ -16,6 +16,10 @@ import { Textarea } from "@/components/ui/textarea";
 interface KPIActionPlansProps {
   kpiId: number;
   initialActions: KPIActionPlan[];
+  suggestion?: {
+    title: string;
+    description: string;
+  } | null;
 }
 
 const statusClass: Record<ActionPlanStatus, string> = {
@@ -25,9 +29,19 @@ const statusClass: Record<ActionPlanStatus, string> = {
   cancelled: "bg-muted text-muted-foreground",
 };
 
-export function KPIActionPlans({ kpiId, initialActions }: KPIActionPlansProps) {
+export function KPIActionPlans({ kpiId, initialActions, suggestion }: KPIActionPlansProps) {
   const [actions, setActions] = useState(initialActions);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftDescription, setDraftDescription] = useState("");
+  const [draftOwner, setDraftOwner] = useState("");
+  const [draftDueDate, setDraftDueDate] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  function useSuggestion() {
+    if (!suggestion) return;
+    setDraftTitle(suggestion.title);
+    setDraftDescription(suggestion.description);
+  }
 
   function handleCreate(formData: FormData) {
     const title = String(formData.get("title") ?? "");
@@ -52,6 +66,10 @@ export function KPIActionPlans({ kpiId, initialActions }: KPIActionPlansProps) {
           },
           ...prev,
         ]);
+        setDraftTitle("");
+        setDraftDescription("");
+        setDraftOwner("");
+        setDraftDueDate("");
         toast.success("Action plan ditambahkan");
       } catch {
         toast.error("Gagal menambahkan action plan");
@@ -94,23 +112,31 @@ export function KPIActionPlans({ kpiId, initialActions }: KPIActionPlansProps) {
       </div>
 
       <form action={handleCreate} className="grid gap-3 rounded-lg border bg-muted/20 p-4 print:hidden">
+        {suggestion && (
+          <div className="flex flex-col gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+            <span>Early warning tersedia sebagai draft action plan.</span>
+            <Button type="button" variant="outline" size="sm" className="h-8 bg-background/80" onClick={useSuggestion}>
+              Use as Action Plan
+            </Button>
+          </div>
+        )}
         <div className="grid gap-3 md:grid-cols-[1fr_160px_150px]">
           <div className="space-y-1.5">
             <Label htmlFor="action-title">Judul</Label>
-            <Input id="action-title" name="title" placeholder="Contoh: Follow up gap realisasi penjualan" disabled={isPending} required />
+            <Input id="action-title" name="title" value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder="Contoh: Follow up gap realisasi penjualan" disabled={isPending} required />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="action-owner">PIC</Label>
-            <Input id="action-owner" name="owner" placeholder="Nama PIC" disabled={isPending} required />
+            <Input id="action-owner" name="owner" value={draftOwner} onChange={(event) => setDraftOwner(event.target.value)} placeholder="Nama PIC" disabled={isPending} required />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="action-due-date">Deadline</Label>
-            <Input id="action-due-date" name="dueDate" type="date" disabled={isPending} required />
+            <Input id="action-due-date" name="dueDate" type="date" value={draftDueDate} onChange={(event) => setDraftDueDate(event.target.value)} disabled={isPending} required />
           </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="action-description">Catatan</Label>
-          <Textarea id="action-description" name="description" placeholder="Langkah singkat atau konteks masalah..." disabled={isPending} />
+          <Textarea id="action-description" name="description" value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} placeholder="Langkah singkat atau konteks masalah..." disabled={isPending} />
         </div>
         <div className="flex justify-end">
           <Button type="submit" size="sm" disabled={isPending}>
