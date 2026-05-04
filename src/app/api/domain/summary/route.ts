@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
+import { createAICacheKey, getCachedAIResponse, setCachedAIResponse } from "@/lib/ai/cache";
 
 interface DomainKPIItem {
   name: string;
@@ -52,6 +53,15 @@ export async function POST(request: NextRequest) {
 
   const domainName = sanitizeInput(body.domainName, 100);
   const domainDesc = sanitizeInput(body.domainDescription || "", 200);
+  const cacheKey = createAICacheKey("domain-summary", {
+    ...body,
+    domainName,
+    domainDescription: domainDesc,
+  });
+  const cachedSummary = getCachedAIResponse(cacheKey);
+  if (cachedSummary) {
+    return NextResponse.json({ summary: cachedSummary, cached: true });
+  }
 
   const kpiList = body.kpis
     .map(
@@ -84,6 +94,7 @@ Instruksi:
     const ai = getAIService();
     const result = await ai.generateText(prompt);
     const text = cleanAIOutput(result.text);
+    setCachedAIResponse(cacheKey, text);
 
     return NextResponse.json({ summary: text });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAIService, cleanAIOutput } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
+import { createAICacheKey, getCachedAIResponse, setCachedAIResponse } from "@/lib/ai/cache";
 
 interface KPIDataItem {
   name: string;
@@ -32,6 +33,11 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
 
   const body: NarrativeRequest = await request.json();
+  const cacheKey = createAICacheKey("report-narrative", body);
+  const cachedNarrative = getCachedAIResponse(cacheKey);
+  if (cachedNarrative) {
+    return NextResponse.json({ narrative: cachedNarrative, cached: true });
+  }
 
   const kpiSummary = body.kpis
     .map(
@@ -70,6 +76,7 @@ Instruksi:
     const ai = getAIService();
     const result = await ai.generateText(prompt);
     const text = cleanAIOutput(result.text);
+    setCachedAIResponse(cacheKey, text);
 
     return NextResponse.json({ narrative: text });
   } catch (error) {

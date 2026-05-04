@@ -1,4 +1,4 @@
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const domains = sqliteTable("domains", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -35,7 +35,11 @@ export const kpis = sqliteTable("kpis", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
-});
+}, (table) => [
+  index("idx_kpis_domain_id").on(table.domainId),
+  index("idx_kpis_active_domain_sort").on(table.isActive, table.domainId, table.sortOrder),
+  index("idx_kpis_pinned_active_sort").on(table.isPinned, table.isActive, table.domainId, table.sortOrder),
+]);
 
 export const kpiEntries = sqliteTable("kpi_entries", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -48,7 +52,11 @@ export const kpiEntries = sqliteTable("kpi_entries", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
-});
+}, (table) => [
+  index("idx_kpi_entries_kpi_id").on(table.kpiId),
+  index("idx_kpi_entries_period").on(table.periodDate),
+  index("idx_kpi_entries_kpi_period").on(table.kpiId, table.periodDate),
+]);
 
 export const kpiTargets = sqliteTable("kpi_targets", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -59,7 +67,9 @@ export const kpiTargets = sqliteTable("kpi_targets", {
   target: real("target").notNull(),
   thresholdGreen: real("threshold_green").notNull(),
   thresholdYellow: real("threshold_yellow").notNull(),
-});
+}, (table) => [
+  index("idx_kpi_targets_kpi_period").on(table.kpiId, table.periodDate),
+]);
 
 export const kpiComments = sqliteTable("kpi_comments", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -72,7 +82,9 @@ export const kpiComments = sqliteTable("kpi_comments", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
-});
+}, (table) => [
+  index("idx_kpi_comments_kpi_id").on(table.kpiId),
+]);
 
 export const auditLogs = sqliteTable("audit_logs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -82,8 +94,13 @@ export const auditLogs = sqliteTable("audit_logs", {
   entity: text("entity").notNull(), // 'kpi' | 'entry' | 'domain' | 'user'
   entityId: text("entity_id"),
   detail: text("detail"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-});
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+}, (table) => [
+  index("idx_audit_logs_user_id").on(table.userId),
+  index("idx_audit_logs_created_at").on(table.createdAt),
+]);
 export type AuditLog = typeof auditLogs.$inferSelect;
 
 // Types
@@ -104,7 +121,9 @@ export const users = sqliteTable("users", {
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
   role: text("role", { enum: ["admin", "viewer"] }).notNull().default("admin"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
 });
 
 export type User = typeof users.$inferSelect;
@@ -144,7 +163,11 @@ export const timelineProjects = sqliteTable("timeline_projects", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
-});
+}, (table) => [
+  index("idx_timeline_projects_sort").on(table.sortOrder),
+  index("idx_timeline_projects_status_sort").on(table.statusId, table.sortOrder),
+  index("idx_timeline_projects_dates").on(table.startDate, table.endDate),
+]);
 
 export type TimelineProject = typeof timelineProjects.$inferSelect;
 export type NewTimelineProject = typeof timelineProjects.$inferInsert;
@@ -161,7 +184,9 @@ export const timelineProjectLogs = sqliteTable("timeline_project_logs", {
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
-});
+}, (table) => [
+  index("idx_timeline_project_logs_project_created").on(table.projectId, table.createdAt),
+]);
 
 export type TimelineProjectLog = typeof timelineProjectLogs.$inferSelect;
 export type NewTimelineProjectLog = typeof timelineProjectLogs.$inferInsert;

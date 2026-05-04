@@ -1,15 +1,19 @@
 import { auth } from "@/auth";
+import { canAccessAdminRoute, getAdminDeniedRedirectPath } from "@/lib/admin-access";
 import { NextResponse } from "next/server";
 
 export default auth((req) => {
   const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
   const isLoginPage = req.nextUrl.pathname === "/login";
   const isAuthenticated = !!req.auth;
+  const role = req.auth?.user?.role;
 
-  if (isAdminRoute && !isAuthenticated) {
-    const loginUrl = new URL("/login", req.nextUrl.origin);
-    loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
+  if (isAdminRoute && !canAccessAdminRoute(role)) {
+    const redirectUrl = new URL(getAdminDeniedRedirectPath(isAuthenticated), req.nextUrl.origin);
+    if (!isAuthenticated) {
+      redirectUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
+    }
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (isLoginPage && isAuthenticated) {
