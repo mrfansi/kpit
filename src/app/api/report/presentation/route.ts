@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllDomains, getKPIsWithLatestEntry, getBatchPeriodComparison } from "@/lib/queries";
+import { getAllDomains, getKPIsWithLatestEntry, getBatchPeriodComparison, getReportActionPlansWithKPI } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus } from "@/lib/kpi-status";
+import { getActionFocusItems, getActionPlanSummary, getReportActionPlans, isActionPlanOverdue } from "@/lib/action-plan";
 import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
 import { requireAuth } from "@/lib/ai/api-helpers";
 import { getAIService, cleanAIOutput } from "@/lib/ai";
@@ -11,6 +12,7 @@ import {
   slideExecutiveSummaryHtml,
   slideDomainHtml,
   slideAttentionHtml,
+  slideActionPlanHtml,
   slideClosingHtml,
   type PresentationData,
   type PresentationKPI,
@@ -122,8 +124,11 @@ export async function GET(request: NextRequest) {
   });
 
   // Fetch data
-  const domains = await getAllDomains();
-  const allKPIsWithEntries = await getKPIsWithLatestEntry(undefined, period);
+  const [domains, allKPIsWithEntries, actionPlanRows] = await Promise.all([
+    getAllDomains(),
+    getKPIsWithLatestEntry(undefined, period),
+    getReportActionPlansWithKPI(),
+  ]);
   const kpiIds = allKPIsWithEntries.map(({ kpi }) => kpi.id);
   const comparisonMap = await getBatchPeriodComparison(kpiIds, period);
 
@@ -235,6 +240,13 @@ export async function GET(request: NextRequest) {
           : `Turun ${Math.abs(k.momDelta!).toFixed(1)}% dari bulan lalu`,
     }));
 
+  const reportActions = getReportActionPlans(actionPlanRows.map((row) => row.action), period);
+  const reportActionIds = new Set(reportActions.map((action) => action.id));
+  const relevantActionRows = actionPlanRows.filter((row) => reportActionIds.has(row.action.id));
+  const actionSummary = getActionPlanSummary(relevantActionRows.map((row) => row.action));
+  const focusActionIds = new Set(getActionFocusItems(relevantActionRows.map((row) => row.action), period).map((action) => action.id));
+  const focusRows = relevantActionRows.filter((row) => focusActionIds.has(row.action.id));
+
   // Generate AI narratives in parallel
   const [executiveNarrative, ...domainNarratives] = await Promise.all([
     generateExecutiveNarrative(
@@ -269,6 +281,21 @@ export async function GET(request: NextRequest) {
       narrative: domainNarratives[i] ?? null,
     })),
     attentionKpis,
+    actionPlans: {
+      total: actionSummary.total,
+      active: actionSummary.active,
+      overdue: actionSummary.overdue,
+      doneThisMonth: actionSummary.doneThisMonth,
+      focusItems: focusRows.map(({ action, kpi, domain }) => ({
+        title: action.title,
+        kpiName: kpi.name,
+        domainName: domain.name,
+        owner: action.owner,
+        dueDate: action.dueDate,
+        status: action.status,
+        overdue: isActionPlanOverdue(action),
+      })),
+    },
   };
 
   // Build slides
@@ -280,6 +307,9 @@ export async function GET(request: NextRequest) {
 
   const attentionHtml = slideAttentionHtml(presentationData);
   if (attentionHtml) slidesHtml.push(attentionHtml);
+
+  const actionPlanHtml = slideActionPlanHtml(presentationData);
+  if (actionPlanHtml) slidesHtml.push(actionPlanHtml);
 
   slidesHtml.push(slideClosingHtml(presentationData));
 

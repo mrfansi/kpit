@@ -55,3 +55,24 @@ export function getReportActionPlans<T extends ActionPlanLike & { id?: number }>
     return action.status === "done" && action.updatedAt && toDateOnly(action.updatedAt).slice(0, 7) === periodMonth;
   });
 }
+
+export function getActionFocusItems<T extends ActionPlanLike & { id?: number }>(
+  actions: T[],
+  periodDate: string,
+  today = new Date(),
+  limit = 7
+) {
+  const reportActions = getReportActionPlans(actions, periodDate, today);
+  const activeActions = reportActions.filter((action) => activeActionPlanStatuses.includes(action.status));
+  const focusPool = activeActions.length > 0 ? activeActions : reportActions;
+
+  return [...focusPool]
+    .sort((a, b) => {
+      const overdueDiff = Number(isActionPlanOverdue(b, today)) - Number(isActionPlanOverdue(a, today));
+      if (overdueDiff !== 0) return overdueDiff;
+      const activeDiff = Number(activeActionPlanStatuses.includes(b.status)) - Number(activeActionPlanStatuses.includes(a.status));
+      if (activeDiff !== 0) return activeDiff;
+      return a.dueDate.localeCompare(b.dueDate);
+    })
+    .slice(0, limit);
+}

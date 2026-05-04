@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getActionPlanSummary, getReportActionPlans, isActionPlanOverdue } from "./action-plan";
+import { getActionFocusItems, getActionPlanSummary, getReportActionPlans, isActionPlanOverdue } from "./action-plan";
 
 const today = new Date("2026-05-05T12:00:00.000Z");
 
@@ -40,5 +40,19 @@ test("selects active, overdue, and done-in-period action plans for reports", () 
   assert.deepEqual(
     getReportActionPlans(actions, "2026-05-01", today).map((action) => action.id),
     [1, 2, 3]
+  );
+});
+
+test("prioritizes action focus items by overdue, active status, then deadline", () => {
+  const actions = [
+    { id: 1, status: "open" as const, dueDate: "2026-05-20", updatedAt: new Date("2026-05-01T08:00:00.000Z") },
+    { id: 2, status: "in_progress" as const, dueDate: "2026-05-04", updatedAt: new Date("2026-05-01T08:00:00.000Z") },
+    { id: 3, status: "done" as const, dueDate: "2026-05-02", updatedAt: new Date("2026-05-03T08:00:00.000Z") },
+    { id: 4, status: "open" as const, dueDate: "2026-05-10", updatedAt: new Date("2026-05-01T08:00:00.000Z") },
+  ];
+
+  assert.deepEqual(
+    getActionFocusItems(actions, "2026-05-01", today, 3).map((action) => action.id),
+    [2, 4, 1]
   );
 });

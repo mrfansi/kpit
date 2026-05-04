@@ -25,6 +25,16 @@ export interface PresentationKPI {
   domainName: string;
 }
 
+export interface PresentationActionPlan {
+  title: string;
+  kpiName: string;
+  domainName: string;
+  owner: string;
+  dueDate: string;
+  status: "open" | "in_progress" | "done" | "cancelled";
+  overdue: boolean;
+}
+
 export interface PresentationData {
   period: string;
   generatedDate: string;
@@ -47,6 +57,13 @@ export interface PresentationData {
     narrative: string | null;
   }[];
   attentionKpis: (PresentationKPI & { reason: string })[];
+  actionPlans: {
+    total: number;
+    active: number;
+    overdue: number;
+    doneThisMonth: number;
+    focusItems: PresentationActionPlan[];
+  };
 }
 
 // --- Helpers ---
@@ -93,6 +110,13 @@ function formatVal(value: number | null, unit: string): string {
     return `Rp ${rounded.toLocaleString("id-ID")}`;
   }
   return `${rounded} ${unit}`;
+}
+
+function formatDate(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+  });
 }
 
 // --- Slide generators ---
@@ -260,6 +284,60 @@ export function slideAttentionHtml(data: PresentationData): string {
         </div>
       </div>
       <div class="flex-col gap-1">${cards}</div>
+    </div>
+  </div>`;
+}
+
+export function slideActionPlanHtml(data: PresentationData): string {
+  if (data.actionPlans.focusItems.length === 0) return "";
+
+  const statusLabel: Record<PresentationActionPlan["status"], string> = {
+    open: "Open",
+    in_progress: "In Progress",
+    done: "Done",
+    cancelled: "Cancelled",
+  };
+
+  const rows = data.actionPlans.focusItems
+    .map((item, i) => {
+      const statusColor = item.overdue ? "var(--red)" : item.status === "done" ? "var(--green)" : item.status === "in_progress" ? "var(--yellow)" : "var(--blue)";
+      return `<div class="card card-animate" style="animation-delay:${i * 0.08}s;border-left:3px solid ${statusColor};padding:1rem 1.25rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;">
+          <div>
+            <div style="font-weight:700;">${escapeHtml(item.title)}</div>
+            <div class="text-small mt-1">${escapeHtml(item.kpiName)} \u00b7 ${escapeHtml(item.domainName)}</div>
+          </div>
+          <span class="badge" style="background:${item.overdue ? "rgba(239,68,68,0.15)" : "rgba(59,130,246,0.15)"};color:${statusColor};">${item.overdue ? "Overdue" : statusLabel[item.status]}</span>
+        </div>
+        <div class="text-small mt-1">PIC: ${escapeHtml(item.owner)} \u00b7 Deadline: ${escapeHtml(formatDate(item.dueDate))}</div>
+      </div>`;
+    })
+    .join("");
+
+  return `<div class="slide" data-slide="action-plan" role="region" aria-label="Action Plan Focus">
+    <div class="w-full" style="max-width:900px;">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;" class="animate-in">
+        ${illustrationGoal()}
+        <div>
+          <h2 class="title-large">Action Plan Focus</h2>
+          <p class="text-small">Tindak lanjut prioritas untuk periode ${escapeHtml(data.period)}</p>
+        </div>
+      </div>
+      <div class="grid-3 mb-2">
+        <div class="card flex-col flex-center animate-in animate-delay-1">
+          <span class="number-huge" style="font-size:2.5rem;" data-count-to="${data.actionPlans.active}" data-count-suffix="">0</span>
+          <span class="text-small">Action Aktif</span>
+        </div>
+        <div class="card flex-col flex-center animate-in animate-delay-2">
+          <span class="number-huge" style="font-size:2.5rem;background:linear-gradient(135deg,var(--red),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;" data-count-to="${data.actionPlans.overdue}" data-count-suffix="">0</span>
+          <span class="text-small">Overdue</span>
+        </div>
+        <div class="card flex-col flex-center animate-in animate-delay-3">
+          <span class="number-huge" style="font-size:2.5rem;" data-count-to="${data.actionPlans.doneThisMonth}" data-count-suffix="">0</span>
+          <span class="text-small">Done Bulan Ini</span>
+        </div>
+      </div>
+      <div class="flex-col gap-1">${rows}</div>
     </div>
   </div>`;
 }
