@@ -57,12 +57,12 @@ export function TimelineProjectFormDialog({
 
   // Sync color when project changes
   useEffect(() => {
-    setSelectedColor(project?.color ?? generateSoftColor());
-  }, [project?.id]);
+    queueMicrotask(() => setSelectedColor(project?.color ?? generateSoftColor()));
+  }, [project?.id, project?.color]);
 
   useEffect(() => {
-    setManualLaunch(!!project?.estimatedLaunchDate);
-  }, [project?.id]);
+    queueMicrotask(() => setManualLaunch(!!project?.estimatedLaunchDate));
+  }, [project?.id, project?.estimatedLaunchDate]);
 
   // Fetch logs when opening log dialog
   useEffect(() => {
@@ -331,6 +331,7 @@ export function TimelineProjectFormDialog({
               <DialogDescription>{project.name}</DialogDescription>
             </DialogHeader>
             <TimelineProgressLog
+              key={logs.map((log) => log.id).join("|")}
               projectId={project.id}
               currentProgress={project.progress}
               initialLogs={logs}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,19 +38,6 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
     for (const e of existingEntries) if (e.note) map[e.kpiId] = e.note;
     return map;
   });
-
-  // Re-sync when existingEntries prop changes (after period navigation)
-  useEffect(() => {
-    const newValues: Record<number, string> = {};
-    const newNotes: Record<number, string> = {};
-    for (const e of existingEntries) {
-      newValues[e.kpiId] = String(e.value);
-      if (e.note) newNotes[e.kpiId] = e.note;
-    }
-    setValues(newValues);
-    setNotes(newNotes);
-    setSavedAt(null);
-  }, [initialPeriod]); // re-run when period (URL) changes
 
   const domainMap = Object.fromEntries(domains.map((d) => [d.id, d]));
 

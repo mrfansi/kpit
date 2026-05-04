@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getKPIById, getKPIEntries } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
@@ -12,7 +11,7 @@ import { ArrowLeft, Target, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight
 import Link from "next/link";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
 import { EditEntryDialog } from "@/components/edit-entry-dialog";
-import { getEffectiveTarget, getKPITargets, getPeriodComparisonEntries, getKPIComments, getDomainById, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getKPITargets, getPeriodComparisonEntries, getKPIComments, getDomainById, getKPIsWithLatestEntry } from "@/lib/queries";
 import { PeriodComparison } from "@/components/period-comparison";
 import { KPIComments } from "@/components/kpi-comments";
 import { computeForecast } from "@/lib/forecast";

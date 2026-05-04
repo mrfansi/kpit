@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useTransition, useMemo, useEffect } from "react";
+import { useState, useRef, useCallback, useTransition, useMemo } from "react";
 import {
   addDays,
   parseISO,
@@ -57,9 +57,6 @@ export function GanttChart({
     startX: number;
     currentX: number;
   } | null>(null);
-
-  // Sync when props change
-  useEffect(() => setLocalProjects(initialProjects), [initialProjects]);
 
   // Compute layout
   const layout = useMemo(
@@ -322,8 +319,6 @@ export function GanttChart({
                 const status = statuses.find((s) => s.id === project.statusId);
                 const barColor = project.color;
                 const isNotStarted = status?.slug === "not_started";
-                const isOnHold = status?.slug === "on_hold";
-
                 const isDragging = dragState?.projectId === project.id;
                 const deltaX = isDragging
                   ? dragState!.currentX - dragState!.startX

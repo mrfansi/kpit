@@ -50,8 +50,6 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
               const status = statuses.find((s) => s.id === project.statusId);
               const barColor = project.color;
               const isNotStarted = status?.slug === "not_started";
-              const isOnHold = status?.slug === "on_hold";
-
               return (
                 <div
                   key={project.id}

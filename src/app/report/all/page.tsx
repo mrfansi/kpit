@@ -7,6 +7,7 @@ import { ReportSparkline } from "@/components/report/report-sparkline";
 import { ReportDelta } from "@/components/report/report-delta";
 import { ReportAINarrative } from "@/components/report/report-ai-narrative";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = { title: "Executive Report — Semua Domain" };
 
@@ -244,7 +245,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
         <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
           <h2 className="font-bold text-sm text-red-800 dark:text-red-300 mb-2">Perlu Perhatian</h2>
           <div className="space-y-2">
-            {attentionKpis.map(({ kpi, latestEntry, prevEntry, status, statusDeclined, effectiveTarget }) => {
+            {attentionKpis.map(({ kpi, latestEntry, prevEntry, status, effectiveTarget }) => {
               const tgt = effectiveTarget ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
               return (
                 <div key={kpi.id} className="flex items-start gap-2 text-sm">
@@ -369,7 +370,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
           Presentasi
         </a>
         <ReportPeriodSelector months={months} selectedPeriod={selectedPeriod ?? ""} />
-        <a href="/" className="px-4 py-2 border text-sm rounded hover:bg-muted transition-colors">&larr; Overview</a>
+        <Link href="/" className="px-4 py-2 border text-sm rounded hover:bg-muted transition-colors">&larr; Overview</Link>
       </div>
     </div>
   );

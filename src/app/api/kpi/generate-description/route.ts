@@ -19,7 +19,7 @@ interface GenerateDescriptionRequest {
 }
 
 export async function POST(request: NextRequest) {
-  const { session, error: authError } = await requireAuth();
+  const { error: authError } = await requireAuth();
   if (authError) return authError;
 
   let body: GenerateDescriptionRequest;

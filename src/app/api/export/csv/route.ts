@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDomainBySlug, getKPIsByDomain, getAllKPIs, getAllKPIEntriesBatch } from "@/lib/queries";
-import { formatPeriodDate, formatValue } from "@/lib/period";
+import { formatPeriodDate } from "@/lib/period";
 import { auth } from "@/auth";
+
+function csvCell(value: string | number) {
+  const raw = String(value);
+  const neutralized = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  return `"${neutralized.replaceAll('"', '""')}"`;
+}
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -35,7 +41,13 @@ export async function GET(req: NextRequest) {
   for (const kpi of kpis) {
     const entries = entriesByKpi.get(kpi.id) ?? [];
     for (const entry of entries) {
-      rows.push(`"${kpi.name}","${formatPeriodDate(entry.periodDate, "MMMM yyyy")}",${entry.value},${kpi.target},"${kpi.unit}"`);
+      rows.push([
+        csvCell(kpi.name),
+        csvCell(formatPeriodDate(entry.periodDate, "MMMM yyyy")),
+        csvCell(entry.value),
+        csvCell(kpi.target),
+        csvCell(kpi.unit),
+      ].join(","));
     }
   }
 

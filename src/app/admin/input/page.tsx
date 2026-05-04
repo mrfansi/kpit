@@ -26,6 +26,7 @@ export default async function AdminInputPage({ searchParams }: Props) {
         </p>
       </div>
       <BulkTableInput
+        key={selectedPeriod}
         kpis={kpis}
         domains={domains}
         initialPeriod={selectedPeriod}
@@ -34,4 +35,3 @@ export default async function AdminInputPage({ searchParams }: Props) {
     </div>
   );
 }
-

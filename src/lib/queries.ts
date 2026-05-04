@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "./db";
 import { domains, kpiComments, kpiEntries, kpiTargets, kpis, type KPI, type KPIComment, type KPIEntry, type KPITarget } from "./db/schema";
 

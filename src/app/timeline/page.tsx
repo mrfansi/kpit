@@ -17,6 +17,7 @@ export default async function TimelinePage() {
   return (
     <div className="-mx-4 lg:-mx-6 -my-4 lg:-my-6 h-[calc(100vh-3rem)] lg:h-screen">
       <GanttChart
+        key={projects.map((project) => `${project.id}:${project.startDate}:${project.endDate}:${project.progress}`).join("|")}
         projects={projects}
         statuses={statuses}
         isAuthenticated={!!session?.user}

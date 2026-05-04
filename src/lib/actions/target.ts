@@ -38,7 +38,11 @@ export async function upsertTarget(kpiId: number, periodDate: string, data: {
     .where(and(eq(kpiTargets.kpiId, kpiId), eq(kpiTargets.periodDate, periodDate)))
     .limit(1);
 
-  const { direction: _, ...targetData } = data;
+  const targetData = {
+    target: data.target,
+    thresholdGreen: data.thresholdGreen,
+    thresholdYellow: data.thresholdYellow,
+  };
 
   if (existing[0]) {
     await db.update(kpiTargets).set(targetData).where(eq(kpiTargets.id, existing[0].id));

@@ -14,8 +14,10 @@ const EntrySchema = z.object({
   kpiId: z.number().int().positive(),
   value: z.number().finite(),
   periodDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  note: z.string().optional(),
+  note: z.string().max(50000).optional(),
 });
+
+const BulkEntrySchema = z.array(EntrySchema).min(1);
 
 export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
   const session = await requireAdmin();
@@ -52,21 +54,27 @@ export async function bulkCreateEntries(rows: BulkEntryRow[]): Promise<{ saved: 
   const session = await requireAdmin();
   if (rows.length === 0) return { saved: 0 };
 
-  const periodDate = rows[0].periodDate;
-  const kpiIds = rows.map((r) => r.kpiId);
+  const parsedRows = BulkEntrySchema.parse(rows);
+
+  const periodDate = parsedRows[0].periodDate;
+  if (!parsedRows.every((row) => row.periodDate === periodDate)) {
+    throw new Error("Semua entri bulk harus berada dalam periode yang sama");
+  }
+
+  const kpiIds = parsedRows.map((r) => r.kpiId);
 
   await db.delete(kpiEntries).where(
     and(inArray(kpiEntries.kpiId, kpiIds), eq(kpiEntries.periodDate, periodDate))
   );
 
-  await db.insert(kpiEntries).values(rows);
+  await db.insert(kpiEntries).values(parsedRows);
 
-  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", detail: `bulk ${rows.length} entri periode ${periodDate}` });
+  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", detail: `bulk ${parsedRows.length} entri periode ${periodDate}` });
 
   revalidatePath("/");
-  for (const row of rows) {
+  for (const row of parsedRows) {
     revalidatePath(`/kpi/${row.kpiId}`);
   }
 
-  return { saved: rows.length };
+  return { saved: parsedRows.length };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createProgressLog, deleteProgressLog } from "@/lib/actions/timeline";
 import type { TimelineProjectLog } from "@/lib/db/schema";
@@ -32,9 +32,6 @@ export function TimelineProgressLog({
   const [logs, setLogs] = useState<TimelineProjectLog[]>(initialLogs);
   const [text, setText] = useState("");
   const [isPending, startTransition] = useTransition();
-
-  // Sync when initialLogs changes (e.g. after re-fetch)
-  useEffect(() => setLogs(initialLogs), [initialLogs]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

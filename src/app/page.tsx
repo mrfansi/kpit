@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getAllDomains, getAllKPIs, getEntriesForPeriod, getPinnedKPIs, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getAllDomains, getAllKPIs, getEntriesForPeriod, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPICard } from "@/components/kpi-card";
 import { StatSummary } from "@/components/stat-summary";
 import { DomainTabs } from "@/components/domain-tabs";
