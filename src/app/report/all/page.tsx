@@ -7,6 +7,7 @@ import { ReportSparkline } from "@/components/report/report-sparkline";
 import { ReportDelta } from "@/components/report/report-delta";
 import { ReportAINarrative } from "@/components/report/report-ai-narrative";
 import { ReportActionPlans } from "@/components/report/report-action-plans";
+import { MarkdownExportDialog } from "@/components/report/markdown-export-dialog";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -369,6 +370,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       {/* Controls (screen only) */}
       <div className="mt-8 flex gap-3 items-center print:hidden">
         <PrintButton />
+        {selectedPeriod && <MarkdownExportDialog period={selectedPeriod} />}
         <a
           href={`/api/report/presentation?period=${selectedPeriod ?? ""}`}
           target="_blank"
