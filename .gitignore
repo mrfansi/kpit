@@ -51,6 +51,8 @@ next-env.d.ts
 drizzle/meta/
 .env.local
 
+.omc/
+
 # Uploaded files (keep directory, ignore content)
 public/uploads/comments/*
 !public/uploads/comments/.gitkeep
