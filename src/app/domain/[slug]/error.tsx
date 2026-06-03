@@ -22,7 +22,7 @@ export default function Error({
       <div>
         <h2 className="text-lg font-semibold">Gagal Memuat Domain</h2>
         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          {error.message || "Terjadi kesalahan saat memuat data domain."}
+          Terjadi kesalahan saat memuat data domain. Silakan coba lagi.
         </p>
       </div>
       <div className="flex gap-2">

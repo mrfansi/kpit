@@ -4,6 +4,7 @@ import { getAchievementPct, getKPIStatus } from "@/lib/kpi-status";
 import { getActionFocusItems, getActionPlanSummary, getReportActionPlans, isActionPlanOverdue } from "@/lib/action-plan";
 import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
 import { requireAuth } from "@/lib/ai/api-helpers";
+import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 import { getAIService, cleanAIOutput } from "@/lib/ai";
 import { getPresentationStyles } from "@/lib/presentation/styles";
 import { getPresentationEngine } from "@/lib/presentation/engine";
@@ -106,8 +107,10 @@ function sanitizeColor(color: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const { error: authError } = await requireAuth();
-  if (authError) return authError;
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult.error;
+  const limited = enforceAIRateLimit(authResult.session.user.id, "presentation");
+  if (limited) return limited;
 
   const { searchParams } = new URL(request.url);
   const period = searchParams.get("period") ?? listLastNMonths(1)[0]?.value;

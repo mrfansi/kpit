@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { MessageCircle, Trash2, Send } from "lucide-react";
-import { isEmptyHtml, sanitizeHtmlClient } from "@/lib/html-utils";
+import { isEmptyHtml } from "@/lib/html-utils";
 
 interface Period {
   value: string;
@@ -48,12 +48,14 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
     if (isEmptyHtml(html)) return;
     startTransition(async () => {
       try {
-        await createComment(kpiId, selectedPeriod, html);
-        const sanitized = sanitizeHtmlClient(html);
-        setComments((prev) => [
-          { id: Date.now(), kpiId, periodDate: selectedPeriod, content: sanitized, author: "Admin", createdAt: new Date() },
-          ...prev,
-        ]);
+        // Use the row returned by the server (real DB id) so a subsequent
+        // delete targets the correct row instead of a fabricated Date.now() id.
+        const created = await createComment(kpiId, selectedPeriod, html);
+        if (!created) {
+          toast.error("Gagal menambahkan komentar");
+          return;
+        }
+        setComments((prev) => [created, ...prev]);
         setHtml("");
         setEditorKey((k) => k + 1); // Reset editor
         toast.success("Komentar ditambahkan");

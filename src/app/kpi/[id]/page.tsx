@@ -86,7 +86,9 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   });
 
   // Gunakan semua data historis untuk forecast agar konsisten di semua range
-  const forecastPoints = showForecast ? computeForecast(allEntries) : [];
+  const forecastPoints = showForecast
+    ? computeForecast(allEntries, 3, kpi.direction === "lower_better")
+    : [];
 
   // Anomaly detection: flag if latest value deviates > 2 stddev from historical mean
   const historicalValues = allEntries.slice(0, -1).map((e) => e.value); // exclude latest

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
 import { createAICacheKey, getCachedAIResponse, setCachedAIResponse } from "@/lib/ai/cache";
+import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 
 interface DomainKPIItem {
   name: string;
@@ -24,8 +25,10 @@ interface DomainSummaryRequest {
 }
 
 export async function POST(request: NextRequest) {
-  const { error: authError } = await requireAuth();
-  if (authError) return authError;
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult.error;
+  const limited = enforceAIRateLimit(authResult.session.user.id, "domain-summary");
+  if (limited) return limited;
 
   let body: DomainSummaryRequest;
   try {
@@ -54,6 +57,7 @@ export async function POST(request: NextRequest) {
   const domainName = sanitizeInput(body.domainName, 100);
   const domainDesc = sanitizeInput(body.domainDescription || "", 200);
   const cacheKey = createAICacheKey("domain-summary", {
+    userId: authResult.session.user.id,
     ...body,
     domainName,
     domainDescription: domainDesc,

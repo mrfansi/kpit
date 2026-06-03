@@ -15,8 +15,8 @@ if (!email || !password) {
   process.exit(1);
 }
 
-if (password.length < 8) {
-  console.error("ERROR: SEED_ADMIN_PASSWORD minimal 8 karakter.");
+if (password.length < 12 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+  console.error("ERROR: SEED_ADMIN_PASSWORD minimal 12 karakter dan harus mengandung huruf dan angka.");
   process.exit(1);
 }
 

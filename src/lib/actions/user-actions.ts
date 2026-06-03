@@ -33,7 +33,7 @@ export async function addUserAction(
     email: formData.get("email"),
     name: formData.get("name"),
     password: formData.get("password"),
-    role: formData.get("role") ?? "admin",
+    role: formData.get("role") ?? "viewer",
   });
   if (!parsed.success) return { error: "Data tidak valid. Pastikan semua field terisi dengan benar." };
 

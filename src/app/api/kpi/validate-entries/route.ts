@@ -1,72 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
-import { auth } from "@/auth";
+import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 
-interface EntryToValidate {
-  kpiId: string;
-  kpiName: string;
-  unit: string;
-  inputValue: number;
-  recentValues: number[];
-  target: number;
-  direction: string;
-}
-
-interface ValidateEntriesRequest {
-  period: string;
-  entries: EntryToValidate[];
-}
+const validateEntriesSchema = z.object({
+  period: z.string().max(50).optional().default(""),
+  entries: z
+    .array(
+      z.object({
+        kpiId: z.union([z.string(), z.number()]).optional(),
+        kpiName: z.string().max(200),
+        unit: z.string().max(50).optional().default(""),
+        inputValue: z.number(),
+        recentValues: z.array(z.number().finite()).optional().default([]),
+        target: z.number(),
+        direction: z.string().max(50).optional().default(""),
+      })
+    )
+    .min(1),
+});
 
 export async function POST(request: NextRequest) {
-  const { error: authError } = await requireAuth();
-  if (authError) return authError;
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult.error;
 
-  const fullSession = await auth();
-  if (fullSession?.user?.role !== "admin") {
+  if (authResult.session.user.role !== "admin") {
     return NextResponse.json(
       { error: "Hanya admin yang bisa menggunakan fitur ini." },
       { status: 403 }
     );
   }
 
-  let body: ValidateEntriesRequest;
+  const limited = enforceAIRateLimit(authResult.session.user.id, "validate-entries");
+  if (limited) return limited;
+
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Request body tidak valid." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Request body tidak valid." }, { status: 400 });
   }
 
-  if (!Array.isArray(body.entries) || body.entries.length === 0) {
-    return NextResponse.json(
-      { error: "Data entry tidak boleh kosong." },
-      { status: 400 }
-    );
+  const parsed = validateEntriesSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Data entry tidak valid." }, { status: 400 });
   }
+  const body = parsed.data;
 
-  const period = sanitizeInput(body.period || "", 50);
+  const period = sanitizeInput(body.period, 50);
 
   const entriesText = body.entries
     .map((e) => {
       const avg =
         e.recentValues.length > 0
-          ? (
-              e.recentValues.reduce((a, b) => a + b, 0) /
-              e.recentValues.length
-            ).toFixed(2)
+          ? (e.recentValues.reduce((a, b) => a + b, 0) / e.recentValues.length).toFixed(2)
           : "N/A";
-      const min =
-        e.recentValues.length > 0 ? Math.min(...e.recentValues) : "N/A";
-      const max =
-        e.recentValues.length > 0 ? Math.max(...e.recentValues) : "N/A";
+      const min = e.recentValues.length > 0 ? Math.min(...e.recentValues) : "N/A";
+      const max = e.recentValues.length > 0 ? Math.max(...e.recentValues) : "N/A";
       const direction =
-        e.direction === "lower_better"
-          ? "rendah lebih baik"
-          : "tinggi lebih baik";
-      return `- ${e.kpiName} (${e.unit}, ${direction}): input ${e.inputValue}, target ${e.target}, rata-rata 3 bulan ${avg}, range [${min}-${max}]`;
+        e.direction === "lower_better" ? "rendah lebih baik" : "tinggi lebih baik";
+      return `- ${sanitizeInput(e.kpiName, 200)} (${sanitizeInput(e.unit, 50)}, ${direction}): input ${e.inputValue}, target ${e.target}, rata-rata 3 bulan ${avg}, range [${min}-${max}]`;
     })
     .join("\n");
 
@@ -102,13 +96,13 @@ Instruksi:
       return NextResponse.json({ flags: [] });
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsedFlags = JSON.parse(jsonMatch[0]);
 
-    if (!Array.isArray(parsed)) {
+    if (!Array.isArray(parsedFlags)) {
       return NextResponse.json({ flags: [] });
     }
 
-    const flags = parsed
+    const flags = parsedFlags
       .filter(
         (f: Record<string, unknown>) =>
           typeof f.kpiName === "string" &&

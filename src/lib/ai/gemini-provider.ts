@@ -3,6 +3,9 @@ import type { AIService, AIGenerateOptions, AIGenerateResult } from "./types";
 import { AIServiceError } from "./types";
 
 const DEFAULT_MODEL = "gemini-3.1-flash-lite-preview";
+// Hard cap on generated tokens per call. Callers may tighten via options, but
+// never leave it unbounded — protects against runaway output cost/latency.
+const DEFAULT_MAX_OUTPUT_TOKENS = 1024;
 
 export class GeminiProvider implements AIService {
   private readonly client: GoogleGenerativeAI;
@@ -23,7 +26,7 @@ export class GeminiProvider implements AIService {
       const model = this.client.getGenerativeModel({
         model: modelName,
         generationConfig: {
-          maxOutputTokens: options?.maxOutputTokens,
+          maxOutputTokens: options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
           temperature: options?.temperature,
         },
       });

@@ -1,4 +1,4 @@
-import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const domains = sqliteTable("domains", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -68,7 +68,7 @@ export const kpiTargets = sqliteTable("kpi_targets", {
   thresholdGreen: real("threshold_green").notNull(),
   thresholdYellow: real("threshold_yellow").notNull(),
 }, (table) => [
-  index("idx_kpi_targets_kpi_period").on(table.kpiId, table.periodDate),
+  uniqueIndex("uq_kpi_targets_kpi_period").on(table.kpiId, table.periodDate),
 ]);
 
 export const kpiComments = sqliteTable("kpi_comments", {
@@ -145,7 +145,7 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
-  role: text("role", { enum: ["admin", "viewer"] }).notNull().default("admin"),
+  role: text("role", { enum: ["admin", "viewer"] }).notNull().default("viewer"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),

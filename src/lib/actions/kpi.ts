@@ -1,33 +1,54 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { kpis, type NewKPI } from "@/lib/db/schema";
+import { kpis, domains, type NewKPI } from "@/lib/db/schema";
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
+import { kpiSchema } from "@/lib/validations/kpi";
+
+async function assertDomainExists(domainId: number) {
+  const domain = await db.select({ id: domains.id }).from(domains).where(eq(domains.id, domainId)).get();
+  if (!domain) throw new Error("Domain tidak ditemukan");
+}
 
 export async function createKPI(data: Omit<NewKPI, "createdAt">) {
   const session = await requireAdmin();
 
-  // Set sortOrder ke posisi terakhir dalam domain
-  const [maxRow] = await db
-    .select({ max: sql<number>`COALESCE(MAX(sort_order), -1)` })
-    .from(kpis)
-    .where(and(eq(kpis.domainId, data.domainId), eq(kpis.isActive, true)));
-  const nextOrder = (maxRow?.max ?? -1) + 1;
+  // Server-side validation: kpiSchema is otherwise only enforced client-side.
+  const parsed = kpiSchema.parse(data);
+  await assertDomainExists(parsed.domainId);
 
-  await db.insert(kpis).values({ ...data, sortOrder: nextOrder });
-  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi", detail: data.name });
+  // MAX(sort_order)+1 read and insert atomic to avoid duplicate sort positions.
+  await db.transaction(async (tx) => {
+    const [maxRow] = await tx
+      .select({ max: sql<number>`COALESCE(MAX(sort_order), -1)` })
+      .from(kpis)
+      .where(and(eq(kpis.domainId, parsed.domainId), eq(kpis.isActive, true)));
+    const nextOrder = (maxRow?.max ?? -1) + 1;
+
+    await tx.insert(kpis).values({ ...parsed, sortOrder: nextOrder });
+    await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi", detail: parsed.name }, tx);
+  });
+
   revalidatePath("/");
   redirect(`/admin/kpi?success=${encodeURIComponent("KPI berhasil ditambahkan")}`);
 }
 
 export async function updateKPI(id: number, data: Partial<Omit<NewKPI, "id" | "createdAt">>) {
   const session = await requireAdmin();
-  await db.update(kpis).set(data).where(eq(kpis.id, id));
-  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi", entityId: String(id), detail: data.name });
+
+  // Server-side validation (partial: only provided fields are checked/written).
+  const parsed = kpiSchema.partial().parse(data);
+  if (parsed.domainId !== undefined) await assertDomainExists(parsed.domainId);
+
+  await db.transaction(async (tx) => {
+    await tx.update(kpis).set(parsed).where(eq(kpis.id, id));
+    await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi", entityId: String(id), detail: parsed.name }, tx);
+  });
+
   revalidatePath("/");
   revalidatePath(`/kpi/${id}`);
   redirect(`/admin/kpi?success=${encodeURIComponent("KPI berhasil diperbarui")}`);
@@ -89,23 +110,25 @@ export async function reorderKPI(id: number, direction: "up" | "down") {
   // Normalize dulu agar setiap KPI punya sortOrder unik
   await normalizeSortOrder(kpi.domainId);
 
-  // Re-fetch setelah normalize
-  const [current] = await db.select().from(kpis).where(eq(kpis.id, id)).limit(1);
-  if (!current) return;
+  // Re-fetch + sibling lookup + swap atomic so a concurrent reorder cannot
+  // interleave and clobber the swap or leave duplicate sortOrder.
+  await db.transaction(async (tx) => {
+    const [current] = await tx.select().from(kpis).where(eq(kpis.id, id)).limit(1);
+    if (!current) return;
 
-  const sibling = direction === "up"
-    ? await db.select().from(kpis)
-        .where(and(eq(kpis.domainId, current.domainId), eq(kpis.isActive, true), lt(kpis.sortOrder, current.sortOrder)))
-        .orderBy(sql`sort_order DESC`).limit(1)
-    : await db.select().from(kpis)
-        .where(and(eq(kpis.domainId, current.domainId), eq(kpis.isActive, true), gt(kpis.sortOrder, current.sortOrder)))
-        .orderBy(sql`sort_order ASC`).limit(1);
+    const sibling = direction === "up"
+      ? await tx.select().from(kpis)
+          .where(and(eq(kpis.domainId, current.domainId), eq(kpis.isActive, true), lt(kpis.sortOrder, current.sortOrder)))
+          .orderBy(sql`sort_order DESC`).limit(1)
+      : await tx.select().from(kpis)
+          .where(and(eq(kpis.domainId, current.domainId), eq(kpis.isActive, true), gt(kpis.sortOrder, current.sortOrder)))
+          .orderBy(sql`sort_order ASC`).limit(1);
 
-  if (!sibling[0]) return;
+    if (!sibling[0]) return;
 
-  // Swap sortOrder
-  await db.update(kpis).set({ sortOrder: sibling[0].sortOrder }).where(eq(kpis.id, current.id));
-  await db.update(kpis).set({ sortOrder: current.sortOrder }).where(eq(kpis.id, sibling[0].id));
+    await tx.update(kpis).set({ sortOrder: sibling[0].sortOrder }).where(eq(kpis.id, current.id));
+    await tx.update(kpis).set({ sortOrder: current.sortOrder }).where(eq(kpis.id, sibling[0].id));
+  });
 
   revalidatePath("/");
   revalidatePath("/admin/kpi");

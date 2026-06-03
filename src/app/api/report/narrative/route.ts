@@ -1,49 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAIService, cleanAIOutput } from "@/lib/ai";
+import { z } from "zod";
+import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
+import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 import { createAICacheKey, getCachedAIResponse, setCachedAIResponse } from "@/lib/ai/cache";
 
-interface KPIDataItem {
-  name: string;
-  description: string;
-  domain: string;
-  actual: string;
-  target: string;
-  achievement: string;
-  status: string;
-  momDelta: string;
-  prevValue: string;
-  direction: string;
-}
-
-interface NarrativeRequest {
-  period: string;
-  healthScore: number;
-  healthDelta: number | null;
-  improved: number;
-  declined: number;
-  stable: number;
-  avgAchievement: number | null;
-  domains: { name: string; description: string }[];
-  kpis: KPIDataItem[];
-}
+const narrativeSchema = z.object({
+  period: z.string().max(20),
+  healthScore: z.number(),
+  healthDelta: z.number().nullable().optional().default(null),
+  improved: z.number().optional().default(0),
+  declined: z.number().optional().default(0),
+  stable: z.number().optional().default(0),
+  avgAchievement: z.number().nullable().optional().default(null),
+  domains: z
+    .array(z.object({ name: z.string().max(200), description: z.string().max(500).optional().default("") }))
+    .optional()
+    .default([]),
+  kpis: z
+    .array(
+      z.object({
+        name: z.string().max(200),
+        description: z.string().max(500).optional().default(""),
+        domain: z.string().max(200).optional().default(""),
+        actual: z.string().max(50),
+        target: z.string().max(50),
+        achievement: z.string().max(50),
+        status: z.string().max(50),
+        momDelta: z.string().max(50),
+        prevValue: z.string().max(50),
+        direction: z.string().max(50),
+      })
+    )
+    .max(500),
+});
 
 export async function POST(request: NextRequest) {
-  const { error: authError } = await requireAuth();
-  if (authError) return authError;
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult.error;
+  const limited = enforceAIRateLimit(authResult.session.user.id, "narrative");
+  if (limited) return limited;
 
-  const body: NarrativeRequest = await request.json();
-  const cacheKey = createAICacheKey("report-narrative", body);
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Request body tidak valid." }, { status: 400 });
+  }
+
+  const parsed = narrativeSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Data laporan tidak valid." }, { status: 400 });
+  }
+  const body = parsed.data;
+
+  // Cache scoped to the authenticated user to avoid serving/poisoning across users.
+  const cacheKey = createAICacheKey("report-narrative", { userId: authResult.session.user.id, body });
   const cachedNarrative = getCachedAIResponse(cacheKey);
   if (cachedNarrative) {
     return NextResponse.json({ narrative: cachedNarrative, cached: true });
   }
 
   const kpiSummary = body.kpis
-    .map(
-      (k) =>
-        `- ${k.name} [${k.domain}]${k.description ? ` (${k.description})` : ""}: aktual ${k.actual}, target ${k.target}, pencapaian ${k.achievement}, status ${k.status}, perubahan ${k.momDelta} (sebelumnya ${k.prevValue}), arah: ${k.direction}`
-    )
+    .map((k) => {
+      const name = sanitizeInput(k.name, 200);
+      const domain = sanitizeInput(k.domain, 200);
+      const description = sanitizeInput(k.description, 300);
+      return `- ${name} [${domain}]${description ? ` (${description})` : ""}: aktual ${k.actual}, target ${k.target}, pencapaian ${k.achievement}, status ${k.status}, perubahan ${k.momDelta} (sebelumnya ${k.prevValue}), arah: ${k.direction}`;
+    })
     .join("\n");
 
   const healthDeltaText =
@@ -51,7 +75,7 @@ export async function POST(request: NextRequest) {
       ? ` (perubahan ${body.healthDelta > 0 ? "+" : ""}${body.healthDelta}% dari bulan lalu)`
       : "";
 
-  const prompt = `Kamu adalah analis KPI senior. Tulis narasi ringkasan eksekutif dalam Bahasa Indonesia untuk laporan KPI periode ${body.period}.
+  const prompt = `Kamu adalah analis KPI senior. Tulis narasi ringkasan eksekutif dalam Bahasa Indonesia untuk laporan KPI periode ${sanitizeInput(body.period, 20)}.
 
 Data:
 - Health Score: ${body.healthScore}%${healthDeltaText}

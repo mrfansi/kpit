@@ -1,66 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
-import { auth } from "@/auth";
+import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 
-interface HistoricalData {
-  periodDate: string;
-  value: number;
-  target: number;
-  achievementPct: number;
-}
-
-interface SuggestTargetRequest {
-  name: string;
-  unit: string;
-  direction: string;
-  currentTarget: number;
-  thresholdGreen: number;
-  thresholdYellow: number;
-  history: HistoricalData[];
-}
+const suggestTargetSchema = z.object({
+  name: z.string().min(1).max(200),
+  unit: z.string().max(50).optional().default(""),
+  direction: z.string().max(50).optional().default(""),
+  currentTarget: z.number().optional().default(0),
+  thresholdGreen: z.number().optional().default(0),
+  thresholdYellow: z.number().optional().default(0),
+  history: z
+    .array(
+      z.object({
+        periodDate: z.string().max(20),
+        value: z.number(),
+        target: z.number(),
+        achievementPct: z.number().finite(),
+      })
+    )
+    .min(3),
+});
 
 export async function POST(request: NextRequest) {
-  const { error: authError } = await requireAuth();
-  if (authError) return authError;
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult.error;
 
-  const fullSession = await auth();
-  if (fullSession?.user?.role !== "admin") {
+  if (authResult.session.user.role !== "admin") {
     return NextResponse.json(
       { error: "Hanya admin yang bisa menggunakan fitur ini." },
       { status: 403 }
     );
   }
 
-  let body: SuggestTargetRequest;
+  const limited = enforceAIRateLimit(authResult.session.user.id, "suggest-target");
+  if (limited) return limited;
+
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Request body tidak valid." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Request body tidak valid." }, { status: 400 });
   }
 
-  if (!body.name || typeof body.name !== "string") {
+  const parsed = suggestTargetSchema.safeParse(raw);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Nama KPI harus diisi." },
+      { error: "Data tidak valid. Minimal 3 periode data historis diperlukan." },
       { status: 400 }
     );
   }
-
-  if (!Array.isArray(body.history) || body.history.length < 3) {
-    return NextResponse.json(
-      {
-        error:
-          "Minimal 3 periode data historis diperlukan untuk saran target.",
-      },
-      { status: 400 }
-    );
-  }
+  const body = parsed.data;
 
   const name = sanitizeInput(body.name, 100);
-  const unit = sanitizeInput(body.unit || "", 50);
+  const unit = sanitizeInput(body.unit, 50);
 
   const directionText =
     body.direction === "lower_better"
@@ -76,8 +70,7 @@ export async function POST(request: NextRequest) {
     .join("\n");
 
   const avgAchievement =
-    body.history.reduce((sum, h) => sum + h.achievementPct, 0) /
-    body.history.length;
+    body.history.reduce((sum, h) => sum + h.achievementPct, 0) / body.history.length;
 
   const prompt = `Kamu adalah analis KPI senior. Berikan saran target untuk periode berikutnya.
 
@@ -122,12 +115,12 @@ Aturan penentuan target:
       );
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsedResult = JSON.parse(jsonMatch[0]);
 
     if (
-      typeof parsed.suggestedTarget !== "number" ||
-      typeof parsed.reasoning !== "string" ||
-      !["low", "medium", "high"].includes(parsed.confidence)
+      typeof parsedResult.suggestedTarget !== "number" ||
+      typeof parsedResult.reasoning !== "string" ||
+      !["low", "medium", "high"].includes(parsedResult.confidence)
     ) {
       return NextResponse.json(
         { error: "AI response format tidak valid. Coba lagi." },
@@ -136,9 +129,9 @@ Aturan penentuan target:
     }
 
     return NextResponse.json({
-      suggestedTarget: parsed.suggestedTarget,
-      reasoning: parsed.reasoning,
-      confidence: parsed.confidence,
+      suggestedTarget: parsedResult.suggestedTarget,
+      reasoning: parsedResult.reasoning,
+      confidence: parsedResult.confidence,
     });
   } catch (error) {
     if (error instanceof SyntaxError) {

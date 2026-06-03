@@ -1,7 +1,7 @@
 "use server";
 
 import { type NewKPIEntry } from "@/lib/db/schema";
-import { kpiEntries } from "@/lib/db/schema";
+import { kpiEntries, kpis } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -22,6 +22,8 @@ const BulkEntrySchema = z.array(EntrySchema).min(1);
 export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
   const session = await requireAdmin();
   EntrySchema.parse(data);
+  const kpi = await db.select({ id: kpis.id }).from(kpis).where(eq(kpis.id, data.kpiId)).get();
+  if (!kpi) throw new Error("KPI tidak ditemukan");
   await upsertKPIEntry({ ...data, note: data.note ?? undefined });
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", entityId: String(data.kpiId), detail: `periode ${data.periodDate}` });
   revalidatePath("/");
@@ -62,6 +64,14 @@ export async function bulkCreateEntries(rows: BulkEntryRow[]): Promise<{ saved: 
   }
 
   const kpiIds = parsedRows.map((r) => r.kpiId);
+
+  // Verify every referenced KPI exists before writing (no orphan entries).
+  const existingIds = new Set(
+    (await db.select({ id: kpis.id }).from(kpis).where(inArray(kpis.id, kpiIds))).map((k) => k.id)
+  );
+  if (kpiIds.some((id) => !existingIds.has(id))) {
+    throw new Error("Sebagian KPI tidak ditemukan");
+  }
 
   await db.delete(kpiEntries).where(
     and(inArray(kpiEntries.kpiId, kpiIds), eq(kpiEntries.periodDate, periodDate))

@@ -1,49 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
+import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 import { buildDataSnapshot, formatDataContext } from "@/lib/ai/data-context";
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface ChatRequest {
-  message: string;
-  history: ChatMessage[];
-}
 
 const MAX_HISTORY = 20;
 
+const chatSchema = z.object({
+  message: z.string().min(1).max(2000),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(4000),
+      })
+    )
+    .max(MAX_HISTORY)
+    .optional()
+    .default([]),
+});
+
 export async function POST(request: NextRequest) {
-  const { error: authError } = await requireAuth();
-  if (authError) return authError;
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult.error;
+  const limited = enforceAIRateLimit(authResult.session.user.id, "chat");
+  if (limited) return limited;
 
-  let body: ChatRequest;
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Request body tidak valid." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Request body tidak valid." }, { status: 400 });
   }
 
-  if (!body.message || typeof body.message !== "string") {
-    return NextResponse.json(
-      { error: "Pesan tidak boleh kosong." },
-      { status: 400 }
-    );
+  const parsed = chatSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Pesan tidak valid." }, { status: 400 });
   }
 
-  const message = sanitizeInput(body.message, 500);
-  const history = (body.history || []).slice(-MAX_HISTORY);
+  const message = sanitizeInput(parsed.data.message, 500);
+  const history = parsed.data.history.slice(-MAX_HISTORY);
 
   const snapshot = await buildDataSnapshot();
   const dataContext = formatDataContext(snapshot);
 
+  // Sanitize each history entry to prevent prompt injection via fake turns.
   const conversationHistory = history
-    .map((m) => `${m.role === "user" ? "User" : "AI"}: ${m.content}`)
+    .map((m) => `${m.role === "user" ? "User" : "AI"}: ${sanitizeInput(m.content, 2000)}`)
     .join("\n");
 
   const prompt = `Kamu adalah asisten AI untuk platform KPI Dashboard. Jawab pertanyaan user berdasarkan data berikut.

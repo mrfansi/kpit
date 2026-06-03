@@ -32,7 +32,11 @@ function addMonths(isoDate: string, n: number): string {
  * Hitung 3 titik forecast berdasarkan regresi linear dari entri historis.
  * Membutuhkan minimal 2 entri.
  */
-export function computeForecast(entries: KPIEntry[], months = 3): ForecastPoint[] {
+export function computeForecast(
+  entries: KPIEntry[],
+  months = 3,
+  allowNegative = false
+): ForecastPoint[] {
   if (entries.length < 2) return [];
 
   const sorted = [...entries].sort((a, b) => a.periodDate.localeCompare(b.periodDate));
@@ -42,9 +46,15 @@ export function computeForecast(entries: KPIEntry[], months = 3): ForecastPoint[
   const lastDate = sorted[sorted.length - 1].periodDate;
   const baseIndex = sorted.length;
 
-  return Array.from({ length: months }, (_, i) => ({
-    periodDate: addMonths(lastDate, i + 1),
-    value: Math.max(0, slope * (baseIndex + i) + intercept),
-    isForecast: true as const,
-  }));
+  return Array.from({ length: months }, (_, i) => {
+    const projected = slope * (baseIndex + i) + intercept;
+    // For metrics that can legitimately trend below zero (e.g. lower_better
+    // KPIs heading toward 0), keep the real projection instead of flattening
+    // the line at 0 and hiding the downward trajectory.
+    return {
+      periodDate: addMonths(lastDate, i + 1),
+      value: allowNegative ? projected : Math.max(0, projected),
+      isForecast: true as const,
+    };
+  });
 }

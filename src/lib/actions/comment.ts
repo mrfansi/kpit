@@ -1,10 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { kpiComments } from "@/lib/db/schema";
+import { kpiComments, kpis, type KPIComment } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { requireAuth } from "@/lib/auth-utils";
+import { requireAdmin } from "@/lib/auth-utils";
+import { logAudit } from "@/lib/db/audit";
+import { isValidCalendarDate } from "@/lib/date-utils";
+import { isEmptyHtml } from "@/lib/html-utils";
 import sanitizeHtml from "sanitize-html";
 
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
@@ -29,22 +32,50 @@ function sanitize(html: string): string {
   return sanitizeHtml(html, SANITIZE_OPTIONS);
 }
 
-import { isEmptyHtml } from "@/lib/html-utils";
+export async function createComment(
+  kpiId: number,
+  periodDate: string,
+  content: string
+): Promise<KPIComment | null> {
+  const session = await requireAdmin();
 
-export async function createComment(kpiId: number, periodDate: string, content: string) {
-  const session = await requireAuth();
+  // Validate identifiers before any write (no orphan comments).
+  if (!Number.isInteger(kpiId) || kpiId <= 0 || !isValidCalendarDate(periodDate)) {
+    return null;
+  }
+  const kpi = await db.select({ id: kpis.id }).from(kpis).where(eq(kpis.id, kpiId)).get();
+  if (!kpi) return null;
+
   const author = session.user.name ?? session.user.email ?? "Admin";
-  if (!kpiId || !periodDate) return;
-
   const clean = sanitize(content);
-  if (isEmptyHtml(clean) || clean.length > 50000) return;
+  if (isEmptyHtml(clean) || clean.length > 50000) return null;
 
-  await db.insert(kpiComments).values({ kpiId, periodDate, content: clean, author });
+  const [inserted] = await db
+    .insert(kpiComments)
+    .values({ kpiId, periodDate, content: clean, author })
+    .returning();
+
+  await logAudit({
+    userId: session.user.id,
+    userEmail: session.user.email ?? undefined,
+    action: "create",
+    entity: "kpi_comment",
+    entityId: String(kpiId),
+    detail: `periode ${periodDate}`,
+  });
   revalidatePath(`/kpi/${kpiId}`);
+  return inserted ?? null;
 }
 
 export async function deleteComment(id: number, kpiId: number) {
-  await requireAuth();
+  const session = await requireAdmin();
   await db.delete(kpiComments).where(eq(kpiComments.id, id));
+  await logAudit({
+    userId: session.user.id,
+    userEmail: session.user.email ?? undefined,
+    action: "delete",
+    entity: "kpi_comment",
+    entityId: String(id),
+  });
   revalidatePath(`/kpi/${kpiId}`);
 }

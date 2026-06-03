@@ -2,15 +2,22 @@ import { db } from "@/lib/db";
 import { auditLogs } from "@/lib/db/schema";
 import { desc, sql } from "drizzle-orm";
 
-export async function logAudit(data: {
-  userId?: string;
-  userEmail?: string;
-  action: "create" | "update" | "delete";
-  entity: string;
-  entityId?: string;
-  detail?: string;
-}) {
-  await db.insert(auditLogs).values({
+/**
+ * Append an audit log entry. Pass a transaction handle as `executor` to make
+ * the audit write atomic with the entity mutation it records.
+ */
+export async function logAudit(
+  data: {
+    userId?: string;
+    userEmail?: string;
+    action: "create" | "update" | "delete";
+    entity: string;
+    entityId?: string;
+    detail?: string;
+  },
+  executor: Pick<typeof db, "insert"> = db
+) {
+  await executor.insert(auditLogs).values({
     ...data,
     createdAt: new Date(),
   });

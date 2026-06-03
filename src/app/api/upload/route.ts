@@ -13,7 +13,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const formData = await req.formData();
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    return NextResponse.json(
+      { error: "Content-Type harus multipart/form-data." },
+      { status: 400 }
+    );
+  }
+
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json(
+      { error: "Body request tidak valid." },
+      { status: 400 }
+    );
+  }
   const file = formData.get("file") as File | null;
 
   if (!file) {

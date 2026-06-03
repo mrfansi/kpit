@@ -25,7 +25,7 @@ export async function createUser(data: {
 }) {
   return db.insert(users).values({
     ...data,
-    role: data.role ?? "admin",
+    role: data.role ?? "viewer",
     createdAt: new Date(),
   }).run();
 }

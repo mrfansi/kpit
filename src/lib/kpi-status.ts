@@ -31,6 +31,9 @@ export function getAchievementPct(
   if (direction === "lower_better") {
     // Lower is better: target 2%, actual 1% = 200% achievement (good)
     // target 2%, actual 4% = 50% achievement (bad)
+    // Guard value === 0: target / 0 = Infinity would bypass every downstream
+    // `!== null` check and corrupt report-wide achievement averages.
+    if (value === 0) return null;
     return Math.round((target / value) * 100);
   }
 

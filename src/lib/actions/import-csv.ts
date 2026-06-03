@@ -5,7 +5,7 @@ import { kpis, kpiEntries } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
-import { validatePeriodDate, validateNumericValue, buildRowError } from "@/lib/csv-import-utils";
+import { validatePeriodDate, validateNumericValue, buildRowError, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
 
@@ -30,6 +30,9 @@ export async function resolveCSVRows(text: string): Promise<{
 }> {
   await requireAuth();
   const { headers, rows } = parseCSV(text);
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return { resolved: [], errors: [{ row: 0, message: `Terlalu banyak baris (maks ${MAX_IMPORT_ROWS}).` }] };
+  }
   const errors: { row: number; message: string }[] = [];
   const resolved: (ImportRow & { rowIndex: number })[] = [];
 
@@ -95,6 +98,10 @@ export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
   let imported = 0;
   let skipped = 0;
   const errors: { row: number; message: string }[] = [];
+
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return { imported: 0, skipped: rows.length, errors: [{ row: 0, message: `Terlalu banyak baris (maks ${MAX_IMPORT_ROWS}).` }] };
+  }
 
   const validRows: (ImportRow & { rowIndex: number; kpiId: number })[] = [];
   for (let i = 0; i < rows.length; i++) {

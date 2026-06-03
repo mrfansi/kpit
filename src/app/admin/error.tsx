@@ -22,7 +22,7 @@ export default function Error({
       <div>
         <h2 className="text-lg font-semibold">Terjadi Kesalahan</h2>
         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          {error.message || "Gagal memuat halaman admin."}
+          Gagal memuat halaman admin. Silakan coba lagi.
         </p>
       </div>
       <div className="flex gap-2">

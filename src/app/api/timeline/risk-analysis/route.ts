@@ -1,70 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
+import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 
-interface ProgressLog {
-  date: string;
-  progressBefore: number;
-  progressAfter: number;
-  content: string;
-}
-
-interface RiskAnalysisRequest {
-  projectName: string;
-  description: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  estimatedLaunchDate: string | null;
-  launchBufferDays: number;
-  progress: number;
-  logs: ProgressLog[];
-}
+const riskAnalysisSchema = z.object({
+  projectName: z.string().min(1).max(200),
+  description: z.string().max(1000).optional().default(""),
+  status: z.string().max(50).optional().default(""),
+  startDate: z.string().min(1).max(20),
+  endDate: z.string().min(1).max(20),
+  estimatedLaunchDate: z.string().max(20).nullable().optional().default(null),
+  launchBufferDays: z.number().optional().default(0),
+  progress: z.number().optional().default(0),
+  logs: z
+    .array(
+      z.object({
+        date: z.string().max(20),
+        progressBefore: z.number().optional().default(0),
+        progressAfter: z.number().optional().default(0),
+        content: z.string().max(2000),
+      })
+    )
+    .optional()
+    .default([]),
+});
 
 export async function POST(request: NextRequest) {
-  const { error: authError } = await requireAuth();
-  if (authError) return authError;
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult.error;
+  const limited = enforceAIRateLimit(authResult.session.user.id, "risk-analysis");
+  if (limited) return limited;
 
-  let body: RiskAnalysisRequest;
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Request body tidak valid." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Request body tidak valid." }, { status: 400 });
   }
 
-  if (!body.projectName || typeof body.projectName !== "string") {
+  const parsed = riskAnalysisSchema.safeParse(raw);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Nama project harus diisi." },
+      { error: "Data tidak valid. Nama project serta tanggal mulai dan selesai harus diisi." },
       { status: 400 }
     );
   }
-
-  if (!body.startDate || !body.endDate) {
-    return NextResponse.json(
-      { error: "Tanggal mulai dan selesai harus diisi." },
-      { status: 400 }
-    );
-  }
+  const body = parsed.data;
 
   const projectName = sanitizeInput(body.projectName, 100);
-  const description = sanitizeInput(body.description || "", 200);
-  const status = sanitizeInput(body.status || "", 50);
+  const description = sanitizeInput(body.description, 200);
+  const status = sanitizeInput(body.status, 50);
 
   const start = new Date(body.startDate);
   const end = new Date(body.endDate);
   const now = new Date();
-  const totalDays = Math.ceil(
-    (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const elapsedDays = Math.ceil(
-    (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const remainingDays = Math.ceil(
-    (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const elapsedDays = Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const remainingDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   const timeElapsedPct =
     totalDays > 0 ? ((elapsedDays / totalDays) * 100).toFixed(1) : "0";
 
@@ -74,7 +67,7 @@ export async function POST(request: NextRequest) {
           .slice(-15)
           .map(
             (l) =>
-              `- ${l.date}: progress ${l.progressBefore}% → ${l.progressAfter}% | ${l.content}`
+              `- ${l.date}: progress ${l.progressBefore}% → ${l.progressAfter}% | ${sanitizeInput(l.content, 500)}`
           )
           .join("\n")
       : "Belum ada log aktivitas.";
@@ -124,12 +117,12 @@ Aturan penilaian risiko:
       );
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsedResult = JSON.parse(jsonMatch[0]);
 
     if (
-      !["low", "medium", "high", "critical"].includes(parsed.riskLevel) ||
-      typeof parsed.onTrack !== "boolean" ||
-      typeof parsed.analysis !== "string"
+      !["low", "medium", "high", "critical"].includes(parsedResult.riskLevel) ||
+      typeof parsedResult.onTrack !== "boolean" ||
+      typeof parsedResult.analysis !== "string"
     ) {
       return NextResponse.json(
         { error: "AI response format tidak valid. Coba lagi." },
@@ -138,10 +131,10 @@ Aturan penilaian risiko:
     }
 
     return NextResponse.json({
-      riskLevel: parsed.riskLevel,
-      estimatedCompletion: parsed.estimatedCompletion || null,
-      onTrack: parsed.onTrack,
-      analysis: parsed.analysis,
+      riskLevel: parsedResult.riskLevel,
+      estimatedCompletion: parsedResult.estimatedCompletion || null,
+      onTrack: parsedResult.onTrack,
+      analysis: parsedResult.analysis,
     });
   } catch (error) {
     if (error instanceof SyntaxError) {

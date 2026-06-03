@@ -5,6 +5,7 @@ import {
   cleanAIOutput,
 } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
+import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 
 const MAX_DESCRIPTION_LENGTH = 200;
 
@@ -19,8 +20,10 @@ interface GenerateDescriptionRequest {
 }
 
 export async function POST(request: NextRequest) {
-  const { error: authError } = await requireAuth();
-  if (authError) return authError;
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult.error;
+  const limited = enforceAIRateLimit(authResult.session.user.id, "generate-description");
+  if (limited) return limited;
 
   let body: GenerateDescriptionRequest;
   try {

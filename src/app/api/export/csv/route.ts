@@ -5,7 +5,12 @@ import { auth } from "@/auth";
 
 function csvCell(value: string | number) {
   const raw = String(value);
-  const neutralized = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  // Neutralize spreadsheet formula injection. Spreadsheets strip leading
+  // whitespace and still evaluate tab/CR-prefixed cells, so test the cell with
+  // leading whitespace removed AND the raw leading char (tab/CR/LF) too.
+  const stripped = raw.replace(/^\s+/, "");
+  const isFormula = /^[=+\-@]/.test(stripped) || /^[=+\-@\t\r\n]/.test(raw);
+  const neutralized = isFormula ? `'${raw}` : raw;
   return `"${neutralized.replaceAll('"', '""')}"`;
 }
 

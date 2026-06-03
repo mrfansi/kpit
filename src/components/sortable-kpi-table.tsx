@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   DndContext,
   closestCenter,
@@ -142,11 +143,21 @@ export function SortableKPITable({ kpis: initialKpis, domainMap }: SortableKPITa
 
     // Sort by domainId then sortOrder to maintain visual order
     newKpis.sort((a, b) => a.domainId - b.domainId || a.sortOrder - b.sortOrder);
+
+    // Snapshot for rollback if the server write fails.
+    const prevKpis = kpis;
     setKpis(newKpis);
 
     // Persist to DB
     const updates = newDomainKpis.map((k, i) => ({ id: k.id, sortOrder: i }));
-    startTransition(() => bulkReorderKPIs(updates));
+    startTransition(async () => {
+      try {
+        await bulkReorderKPIs(updates);
+      } catch {
+        setKpis(prevKpis);
+        toast.error("Gagal menyimpan urutan. Perubahan dibatalkan.");
+      }
+    });
   }
 
   return (

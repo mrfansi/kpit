@@ -32,11 +32,6 @@ export async function upsertTarget(kpiId: number, periodDate: string, data: {
 }) {
   const session = await requireAdmin();
   TargetSchema.parse(data);
-  const existing = await db
-    .select({ id: kpiTargets.id })
-    .from(kpiTargets)
-    .where(and(eq(kpiTargets.kpiId, kpiId), eq(kpiTargets.periodDate, periodDate)))
-    .limit(1);
 
   const targetData = {
     target: data.target,
@@ -44,13 +39,23 @@ export async function upsertTarget(kpiId: number, periodDate: string, data: {
     thresholdYellow: data.thresholdYellow,
   };
 
-  if (existing[0]) {
-    await db.update(kpiTargets).set(targetData).where(eq(kpiTargets.id, existing[0].id));
-  } else {
-    await db.insert(kpiTargets).values({ kpiId, periodDate, ...targetData });
-  }
+  // Select-then-write atomic; the UNIQUE(kpi_id, period_date) index plus this
+  // transaction prevent duplicate target rows under concurrent saves.
+  await db.transaction(async (tx) => {
+    const existing = await tx
+      .select({ id: kpiTargets.id })
+      .from(kpiTargets)
+      .where(and(eq(kpiTargets.kpiId, kpiId), eq(kpiTargets.periodDate, periodDate)))
+      .limit(1);
 
-  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi_target", entityId: String(kpiId), detail: `periode ${periodDate}` });
+    if (existing[0]) {
+      await tx.update(kpiTargets).set(targetData).where(eq(kpiTargets.id, existing[0].id));
+    } else {
+      await tx.insert(kpiTargets).values({ kpiId, periodDate, ...targetData });
+    }
+
+    await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi_target", entityId: String(kpiId), detail: `periode ${periodDate}` }, tx);
+  });
   revalidatePath("/");
   revalidatePath(`/kpi/${kpiId}`);
   redirect(`/admin/kpi/${kpiId}/targets?success=Target+periode+berhasil+disimpan`);

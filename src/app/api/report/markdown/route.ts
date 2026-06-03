@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/ai/api-helpers";
+import { isValidCalendarDate } from "@/lib/date-utils";
 import { format, parseISO } from "date-fns";
 import { enUS } from "date-fns/locale";
 import { getAllDomains, getAllKPIEntriesBatch, getBatchPeriodComparison, getEffectiveTarget, getKPIsWithLatestEntry, getReportActionPlansWithKPI } from "@/lib/queries";
@@ -240,6 +242,10 @@ async function buildHistoricalDomains(
 }
 
 export async function GET(request: NextRequest) {
+  // This route exposes the entire KPI/action-plan/timeline dataset — auth required.
+  const authResult = await requireAuth();
+  if (authResult.error) return authResult.error;
+
   const { searchParams } = new URL(request.url);
   const period = searchParams.get("period") ?? listLastNMonths(1)[0]?.value;
   const requestedFormat = searchParams.get("format") ?? "full";
@@ -249,11 +255,23 @@ export async function GET(request: NextRequest) {
   const requestedScope = searchParams.get("scope") ?? "selected";
   const scope = exportScopes.has(requestedScope) ? requestedScope as "selected" | "all" : "selected";
 
-  if (!period) {
-    return NextResponse.json({ error: "Period is required" }, { status: 400 });
+  // Validate the period before it flows into parseISO/format (RangeError otherwise).
+  if (!period || !isValidCalendarDate(period)) {
+    return NextResponse.json(
+      { error: "Parameter period tidak valid (format YYYY-MM-DD)." },
+      { status: 400 }
+    );
   }
 
-  const data = await buildUnifiedMarkdownReportData(period, scope);
+  let data: UnifiedMarkdownReportData;
+  try {
+    data = await buildUnifiedMarkdownReportData(period, scope);
+  } catch {
+    return NextResponse.json(
+      { error: "Gagal membuat laporan." },
+      { status: 500 }
+    );
+  }
   const markdown = generateMarkdownExport(data, format);
   const filename = scope === "all"
     ? `kpit-${format}-report-all-periods.md`

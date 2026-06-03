@@ -22,7 +22,7 @@ export default function Error({
       <div>
         <h2 className="text-lg font-semibold">Gagal Memuat KPI</h2>
         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          {error.message || "Terjadi kesalahan saat memuat data KPI."}
+          Terjadi kesalahan saat memuat data KPI. Silakan coba lagi.
         </p>
       </div>
       <div className="flex gap-2">

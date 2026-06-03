@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
 import { projectSchema } from "@/lib/validations/timeline";
+import { isValidCalendarDate } from "@/lib/date-utils";
 
 function revalidateTimeline() {
   revalidatePath("/timeline");
@@ -22,26 +23,31 @@ export async function createProject(formData: FormData) {
 
   const launchDate = parsed.data.estimatedLaunchDate || null;
 
-  await db.insert(timelineProjects).values({
-    name: parsed.data.name,
-    color: parsed.data.color,
-    description: parsed.data.description,
-    startDate: parsed.data.startDate,
-    endDate: parsed.data.endDate,
-    progress: parsed.data.progress,
-    sortOrder: parsed.data.sortOrder,
-    launchBufferDays: parsed.data.launchBufferDays,
-    estimatedLaunchDate: launchDate,
-    statusId: parsed.data.statusId ?? null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
-  await logAudit({
-    userId: session.user.id,
-    userEmail: session.user.email ?? undefined,
-    action: "create",
-    entity: "timeline_project",
-    detail: parsed.data.name,
+  await db.transaction(async (tx) => {
+    await tx.insert(timelineProjects).values({
+      name: parsed.data.name,
+      color: parsed.data.color,
+      description: parsed.data.description,
+      startDate: parsed.data.startDate,
+      endDate: parsed.data.endDate,
+      progress: parsed.data.progress,
+      sortOrder: parsed.data.sortOrder,
+      launchBufferDays: parsed.data.launchBufferDays,
+      estimatedLaunchDate: launchDate,
+      statusId: parsed.data.statusId ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await logAudit(
+      {
+        userId: session.user.id,
+        userEmail: session.user.email ?? undefined,
+        action: "create",
+        entity: "timeline_project",
+        detail: parsed.data.name,
+      },
+      tx
+    );
   });
   revalidateTimeline();
 }
@@ -61,46 +67,25 @@ export async function updateProject(id: number, formData: FormData) {
     columns: { progress: true, statusId: true, startDate: true, endDate: true, estimatedLaunchDate: true },
   });
 
-  await db
-    .update(timelineProjects)
-    .set({
-      name: parsed.data.name,
-      color: parsed.data.color,
-      description: parsed.data.description,
-      startDate: parsed.data.startDate,
-      endDate: parsed.data.endDate,
-      progress: parsed.data.progress,
-      sortOrder: parsed.data.sortOrder,
-      launchBufferDays: parsed.data.launchBufferDays,
-      estimatedLaunchDate: launchDate,
-      statusId: parsed.data.statusId ?? null,
-      updatedAt: new Date(),
-    })
-    .where(eq(timelineProjects.id, id));
+  // Build the auto-changelog line (reads are independent of the write below).
+  const author = session.user.name ?? session.user.email ?? "Admin";
+  const newProgress = parsed.data.progress;
+  const newStatusId = parsed.data.statusId ?? null;
+  const logParts: string[] = [];
 
-  // Auto-log progress and status changes
   if (oldProject) {
-    const author = session.user.name ?? session.user.email ?? "Admin";
-    const newProgress = parsed.data.progress;
-    const newStatusId = parsed.data.statusId ?? null;
-    const logParts: string[] = [];
-
     if (oldProject.startDate !== parsed.data.startDate) {
       logParts.push(`Start: ${oldProject.startDate} → ${parsed.data.startDate}`);
     }
-
     if (oldProject.endDate !== parsed.data.endDate) {
       logParts.push(`End: ${oldProject.endDate} → ${parsed.data.endDate}`);
     }
-
     if ((oldProject.estimatedLaunchDate ?? null) !== (launchDate ?? null)) {
       logParts.push(`Est. Launch: ${oldProject.estimatedLaunchDate ?? "—"} → ${launchDate ?? "auto"}`);
     }
-
     if (oldProject.progress !== newProgress) {
       logParts.push(`Progress: ${oldProject.progress}% → ${newProgress}%`);
     }
-
     if (oldProject.statusId !== newStatusId) {
       const [oldStatus, newStatus] = await Promise.all([
         oldProject.statusId
@@ -118,9 +103,29 @@ export async function updateProject(id: number, formData: FormData) {
       ]);
       logParts.push(`Status: ${oldStatus?.name ?? "—"} → ${newStatus?.name ?? "—"}`);
     }
+  }
 
-    if (logParts.length > 0) {
-      await db.insert(timelineProjectLogs).values({
+  // Entity update, auto-changelog, and audit log committed atomically.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(timelineProjects)
+      .set({
+        name: parsed.data.name,
+        color: parsed.data.color,
+        description: parsed.data.description,
+        startDate: parsed.data.startDate,
+        endDate: parsed.data.endDate,
+        progress: parsed.data.progress,
+        sortOrder: parsed.data.sortOrder,
+        launchBufferDays: parsed.data.launchBufferDays,
+        estimatedLaunchDate: launchDate,
+        statusId: parsed.data.statusId ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(timelineProjects.id, id));
+
+    if (oldProject && logParts.length > 0) {
+      await tx.insert(timelineProjectLogs).values({
         projectId: id,
         content: logParts.join(", "),
         progressBefore: oldProject.progress,
@@ -129,15 +134,18 @@ export async function updateProject(id: number, formData: FormData) {
         createdAt: new Date(),
       });
     }
-  }
 
-  await logAudit({
-    userId: session.user.id,
-    userEmail: session.user.email ?? undefined,
-    action: "update",
-    entity: "timeline_project",
-    entityId: String(id),
-    detail: parsed.data.name,
+    await logAudit(
+      {
+        userId: session.user.id,
+        userEmail: session.user.email ?? undefined,
+        action: "update",
+        entity: "timeline_project",
+        entityId: String(id),
+        detail: parsed.data.name,
+      },
+      tx
+    );
   });
   revalidateTimeline();
 }
@@ -149,6 +157,8 @@ export async function updateProjectDates(
 ) {
   const session = await requireAdmin();
 
+  // Reject malformed/non-calendar dates before any write.
+  if (!isValidCalendarDate(startDate) || !isValidCalendarDate(endDate)) return;
   if (endDate < startDate) return;
 
   // Fetch old values for change detection
@@ -161,17 +171,6 @@ export async function updateProjectDates(
   const clearLaunch =
     existing.estimatedLaunchDate && existing.estimatedLaunchDate < endDate;
 
-  await db
-    .update(timelineProjects)
-    .set({
-      startDate,
-      endDate,
-      ...(clearLaunch ? { estimatedLaunchDate: null } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(timelineProjects.id, id));
-
-  // Auto-log date changes from drag
   const logParts: string[] = [];
   if (existing.startDate !== startDate) {
     logParts.push(`Start: ${existing.startDate} → ${startDate}`);
@@ -179,25 +178,41 @@ export async function updateProjectDates(
   if (existing.endDate !== endDate) {
     logParts.push(`End: ${existing.endDate} → ${endDate}`);
   }
-  if (logParts.length > 0) {
-    const author = session.user.name ?? session.user.email ?? "Admin";
-    await db.insert(timelineProjectLogs).values({
-      projectId: id,
-      content: logParts.join(", "),
-      progressBefore: existing.progress,
-      progressAfter: existing.progress,
-      author,
-      createdAt: new Date(),
-    });
-  }
+  const author = session.user.name ?? session.user.email ?? "Admin";
 
-  await logAudit({
-    userId: session.user.id,
-    userEmail: session.user.email ?? undefined,
-    action: "update",
-    entity: "timeline_project",
-    entityId: String(id),
-    detail: `dates ${startDate} - ${endDate}`,
+  await db.transaction(async (tx) => {
+    await tx
+      .update(timelineProjects)
+      .set({
+        startDate,
+        endDate,
+        ...(clearLaunch ? { estimatedLaunchDate: null } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(timelineProjects.id, id));
+
+    if (logParts.length > 0) {
+      await tx.insert(timelineProjectLogs).values({
+        projectId: id,
+        content: logParts.join(", "),
+        progressBefore: existing.progress,
+        progressAfter: existing.progress,
+        author,
+        createdAt: new Date(),
+      });
+    }
+
+    await logAudit(
+      {
+        userId: session.user.id,
+        userEmail: session.user.email ?? undefined,
+        action: "update",
+        entity: "timeline_project",
+        entityId: String(id),
+        detail: `dates ${startDate} - ${endDate}`,
+      },
+      tx
+    );
   });
   revalidateTimeline();
 }
@@ -212,26 +227,39 @@ export async function createProgressLog(
 ) {
   const session = await requireAdmin();
 
+  // Validate projectId and confirm the project exists (no orphan logs).
+  if (!Number.isInteger(projectId) || projectId <= 0) return;
+  const project = await db
+    .select({ id: timelineProjects.id })
+    .from(timelineProjects)
+    .where(eq(timelineProjects.id, projectId))
+    .get();
+  if (!project) return;
+
   const clean = content.trim();
   if (!clean || clean.length > 50000) return;
 
   const author = session.user.name ?? session.user.email ?? "Admin";
 
-  await db.insert(timelineProjectLogs).values({
-    projectId,
-    content: clean,
-    progressBefore: progressBefore ?? null,
-    progressAfter: progressAfter ?? null,
-    author,
-    createdAt: new Date(),
-  });
-
-  await logAudit({
-    userId: session.user.id,
-    userEmail: session.user.email ?? undefined,
-    action: "create",
-    entity: "timeline_project_log",
-    entityId: String(projectId),
+  await db.transaction(async (tx) => {
+    await tx.insert(timelineProjectLogs).values({
+      projectId,
+      content: clean,
+      progressBefore: progressBefore ?? null,
+      progressAfter: progressAfter ?? null,
+      author,
+      createdAt: new Date(),
+    });
+    await logAudit(
+      {
+        userId: session.user.id,
+        userEmail: session.user.email ?? undefined,
+        action: "create",
+        entity: "timeline_project_log",
+        entityId: String(projectId),
+      },
+      tx
+    );
   });
 
   revalidateTimeline();
@@ -240,13 +268,18 @@ export async function createProgressLog(
 export async function deleteProgressLog(id: number) {
   const session = await requireAdmin();
 
-  await db.delete(timelineProjectLogs).where(eq(timelineProjectLogs.id, id));
-  await logAudit({
-    userId: session.user.id,
-    userEmail: session.user.email ?? undefined,
-    action: "delete",
-    entity: "timeline_project_log",
-    entityId: String(id),
+  await db.transaction(async (tx) => {
+    await tx.delete(timelineProjectLogs).where(eq(timelineProjectLogs.id, id));
+    await logAudit(
+      {
+        userId: session.user.id,
+        userEmail: session.user.email ?? undefined,
+        action: "delete",
+        entity: "timeline_project_log",
+        entityId: String(id),
+      },
+      tx
+    );
   });
   revalidateTimeline();
 }
@@ -260,13 +293,18 @@ export async function fetchProjectLogs(projectId: number) {
 export async function deleteProject(id: number) {
   const session = await requireAdmin();
 
-  await db.delete(timelineProjects).where(eq(timelineProjects.id, id));
-  await logAudit({
-    userId: session.user.id,
-    userEmail: session.user.email ?? undefined,
-    action: "delete",
-    entity: "timeline_project",
-    entityId: String(id),
+  await db.transaction(async (tx) => {
+    await tx.delete(timelineProjects).where(eq(timelineProjects.id, id));
+    await logAudit(
+      {
+        userId: session.user.id,
+        userEmail: session.user.email ?? undefined,
+        action: "delete",
+        entity: "timeline_project",
+        entityId: String(id),
+      },
+      tx
+    );
   });
   revalidateTimeline();
 }
