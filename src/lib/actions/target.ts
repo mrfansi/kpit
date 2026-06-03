@@ -41,20 +41,21 @@ export async function upsertTarget(kpiId: number, periodDate: string, data: {
 
   // Select-then-write atomic; the UNIQUE(kpi_id, period_date) index plus this
   // transaction prevent duplicate target rows under concurrent saves.
-  await db.transaction(async (tx) => {
-    const existing = await tx
+  db.transaction((tx) => {
+    const existing = tx
       .select({ id: kpiTargets.id })
       .from(kpiTargets)
       .where(and(eq(kpiTargets.kpiId, kpiId), eq(kpiTargets.periodDate, periodDate)))
-      .limit(1);
+      .limit(1)
+      .all();
 
     if (existing[0]) {
-      await tx.update(kpiTargets).set(targetData).where(eq(kpiTargets.id, existing[0].id));
+      tx.update(kpiTargets).set(targetData).where(eq(kpiTargets.id, existing[0].id)).run();
     } else {
-      await tx.insert(kpiTargets).values({ kpiId, periodDate, ...targetData });
+      tx.insert(kpiTargets).values({ kpiId, periodDate, ...targetData }).run();
     }
 
-    await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi_target", entityId: String(kpiId), detail: `periode ${periodDate}` }, tx);
+    logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi_target", entityId: String(kpiId), detail: `periode ${periodDate}` }, tx);
   });
   revalidatePath("/");
   revalidatePath(`/kpi/${kpiId}`);

@@ -119,17 +119,17 @@ export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
   }
 
   try {
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       for (const row of validRows) {
-        await tx.delete(kpiEntries).where(
+        tx.delete(kpiEntries).where(
           and(eq(kpiEntries.kpiId, row.kpiId), eq(kpiEntries.periodDate, row.periodDate))
-        );
-        await tx.insert(kpiEntries).values({
+        ).run();
+        tx.insert(kpiEntries).values({
           kpiId: row.kpiId,
           periodDate: row.periodDate,
           value: row.value,
           note: row.note,
-        });
+        }).run();
         imported++;
       }
     });

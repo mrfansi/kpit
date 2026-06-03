@@ -28,23 +28,24 @@ export async function createStatus(formData: FormData) {
 
   const slug = slugify(parsed.data.name);
 
-  await db.transaction(async (tx) => {
+  db.transaction((tx) => {
     // Next position = MAX(sort_order) + 1 (NOT count(), which collides with
     // existing rows after any deletion). Read + insert atomic.
-    const [row] = await tx
+    const [row] = tx
       .select({ max: sql<number>`COALESCE(MAX(sort_order), -1)` })
-      .from(timelineProjectStatuses);
+      .from(timelineProjectStatuses)
+      .all();
     const nextOrder = (row?.max ?? -1) + 1;
 
-    await tx.insert(timelineProjectStatuses).values({
+    tx.insert(timelineProjectStatuses).values({
       name: parsed.data.name,
       slug,
       color: parsed.data.color,
       sortOrder: nextOrder,
       createdAt: new Date(),
-    });
+    }).run();
 
-    await logAudit(
+    logAudit(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -66,13 +67,14 @@ export async function updateStatus(id: number, formData: FormData) {
 
   const slug = slugify(parsed.data.name);
 
-  await db.transaction(async (tx) => {
-    await tx
+  db.transaction((tx) => {
+    tx
       .update(timelineProjectStatuses)
       .set({ name: parsed.data.name, slug, color: parsed.data.color })
-      .where(eq(timelineProjectStatuses.id, id));
+      .where(eq(timelineProjectStatuses.id, id))
+      .run();
 
-    await logAudit(
+    logAudit(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -90,13 +92,14 @@ export async function updateStatus(id: number, formData: FormData) {
 export async function deleteStatus(id: number) {
   const session = await requireAdmin();
 
-  await db.transaction(async (tx) => {
+  db.transaction((tx) => {
     // Usage check and delete must be atomic, else a project assigned between
     // the two statements is left pointing at a deleted status.
-    const usage = await tx
+    const usage = tx
       .select({ cnt: count() })
       .from(timelineProjects)
-      .where(eq(timelineProjects.statusId, id));
+      .where(eq(timelineProjects.statusId, id))
+      .all();
 
     if ((usage[0]?.cnt ?? 0) > 0) {
       throw new Error(
@@ -104,11 +107,12 @@ export async function deleteStatus(id: number) {
       );
     }
 
-    await tx
+    tx
       .delete(timelineProjectStatuses)
-      .where(eq(timelineProjectStatuses.id, id));
+      .where(eq(timelineProjectStatuses.id, id))
+      .run();
 
-    await logAudit(
+    logAudit(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,

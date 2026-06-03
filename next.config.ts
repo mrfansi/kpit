@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3"],
   async headers() {
@@ -19,7 +21,11 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               // Next.js injects inline runtime scripts; the presentation export
               // route serves inline <script>. No external script origins allowed.
-              "script-src 'self' 'unsafe-inline'",
+              // Dev (Turbopack + React dev mode) requires 'unsafe-eval' for HMR
+              // and callstack reconstruction; production stays strict.
+              isDev
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+                : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self' data:",

@@ -123,7 +123,7 @@ export async function importTargetRows(rows: TargetImportRow[]): Promise<{ impor
   const existingKpiIds = new Set((await db.select({ id: kpis.id }).from(kpis)).map((k) => k.id));
 
   try {
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       for (const raw of rows) {
         const rowNum = raw?.rowIndex ?? 0;
         const parsed = TargetRowSchema.safeParse(raw);
@@ -139,13 +139,13 @@ export async function importTargetRows(rows: TargetImportRow[]): Promise<{ impor
         const { kpiId, periodDate, target, thresholdGreen, thresholdYellow } = parsed.data;
         const data = { target, thresholdGreen, thresholdYellow };
 
-        const existing = await tx.select({ id: kpiTargets.id }).from(kpiTargets)
-          .where(and(eq(kpiTargets.kpiId, kpiId), eq(kpiTargets.periodDate, periodDate))).limit(1);
+        const existing = tx.select({ id: kpiTargets.id }).from(kpiTargets)
+          .where(and(eq(kpiTargets.kpiId, kpiId), eq(kpiTargets.periodDate, periodDate))).limit(1).all();
 
         if (existing[0]) {
-          await tx.update(kpiTargets).set(data).where(eq(kpiTargets.id, existing[0].id));
+          tx.update(kpiTargets).set(data).where(eq(kpiTargets.id, existing[0].id)).run();
         } else {
-          await tx.insert(kpiTargets).values({ kpiId, periodDate, ...data });
+          tx.insert(kpiTargets).values({ kpiId, periodDate, ...data }).run();
         }
         imported++;
       }

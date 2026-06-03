@@ -23,8 +23,8 @@ export async function createProject(formData: FormData) {
 
   const launchDate = parsed.data.estimatedLaunchDate || null;
 
-  await db.transaction(async (tx) => {
-    await tx.insert(timelineProjects).values({
+  db.transaction((tx) => {
+    tx.insert(timelineProjects).values({
       name: parsed.data.name,
       color: parsed.data.color,
       description: parsed.data.description,
@@ -37,8 +37,8 @@ export async function createProject(formData: FormData) {
       statusId: parsed.data.statusId ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
-    await logAudit(
+    }).run();
+    logAudit(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -106,8 +106,8 @@ export async function updateProject(id: number, formData: FormData) {
   }
 
   // Entity update, auto-changelog, and audit log committed atomically.
-  await db.transaction(async (tx) => {
-    await tx
+  db.transaction((tx) => {
+    tx
       .update(timelineProjects)
       .set({
         name: parsed.data.name,
@@ -122,20 +122,21 @@ export async function updateProject(id: number, formData: FormData) {
         statusId: parsed.data.statusId ?? null,
         updatedAt: new Date(),
       })
-      .where(eq(timelineProjects.id, id));
+      .where(eq(timelineProjects.id, id))
+      .run();
 
     if (oldProject && logParts.length > 0) {
-      await tx.insert(timelineProjectLogs).values({
+      tx.insert(timelineProjectLogs).values({
         projectId: id,
         content: logParts.join(", "),
         progressBefore: oldProject.progress,
         progressAfter: newProgress,
         author,
         createdAt: new Date(),
-      });
+      }).run();
     }
 
-    await logAudit(
+    logAudit(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -180,8 +181,8 @@ export async function updateProjectDates(
   }
   const author = session.user.name ?? session.user.email ?? "Admin";
 
-  await db.transaction(async (tx) => {
-    await tx
+  db.transaction((tx) => {
+    tx
       .update(timelineProjects)
       .set({
         startDate,
@@ -189,20 +190,21 @@ export async function updateProjectDates(
         ...(clearLaunch ? { estimatedLaunchDate: null } : {}),
         updatedAt: new Date(),
       })
-      .where(eq(timelineProjects.id, id));
+      .where(eq(timelineProjects.id, id))
+      .run();
 
     if (logParts.length > 0) {
-      await tx.insert(timelineProjectLogs).values({
+      tx.insert(timelineProjectLogs).values({
         projectId: id,
         content: logParts.join(", "),
         progressBefore: existing.progress,
         progressAfter: existing.progress,
         author,
         createdAt: new Date(),
-      });
+      }).run();
     }
 
-    await logAudit(
+    logAudit(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -241,16 +243,16 @@ export async function createProgressLog(
 
   const author = session.user.name ?? session.user.email ?? "Admin";
 
-  await db.transaction(async (tx) => {
-    await tx.insert(timelineProjectLogs).values({
+  db.transaction((tx) => {
+    tx.insert(timelineProjectLogs).values({
       projectId,
       content: clean,
       progressBefore: progressBefore ?? null,
       progressAfter: progressAfter ?? null,
       author,
       createdAt: new Date(),
-    });
-    await logAudit(
+    }).run();
+    logAudit(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -268,9 +270,9 @@ export async function createProgressLog(
 export async function deleteProgressLog(id: number) {
   const session = await requireAdmin();
 
-  await db.transaction(async (tx) => {
-    await tx.delete(timelineProjectLogs).where(eq(timelineProjectLogs.id, id));
-    await logAudit(
+  db.transaction((tx) => {
+    tx.delete(timelineProjectLogs).where(eq(timelineProjectLogs.id, id)).run();
+    logAudit(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -293,9 +295,9 @@ export async function fetchProjectLogs(projectId: number) {
 export async function deleteProject(id: number) {
   const session = await requireAdmin();
 
-  await db.transaction(async (tx) => {
-    await tx.delete(timelineProjects).where(eq(timelineProjects.id, id));
-    await logAudit(
+  db.transaction((tx) => {
+    tx.delete(timelineProjects).where(eq(timelineProjects.id, id)).run();
+    logAudit(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
