@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createProgressLog, deleteProgressLog } from "@/lib/actions/timeline";
 import type { TimelineProjectLog } from "@/lib/db/schema";
@@ -32,6 +32,13 @@ export function TimelineProgressLog({
   const [logs, setLogs] = useState<TimelineProjectLog[]>(initialLogs);
   const [text, setText] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  // initialLogs arrives asynchronously from the parent (GanttLogPanel fetches
+  // after mount). useState only captures the first value, so sync the prop into
+  // local state whenever it changes — otherwise the list stays empty forever.
+  useEffect(() => {
+    setLogs(initialLogs);
+  }, [initialLogs]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,7 +101,7 @@ export function TimelineProgressLog({
       {logs.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">Belum ada progress log.</p>
       ) : (
-        <div className="max-h-72 overflow-y-auto pr-1">
+        <div className="pr-1">
           <div className="relative" style={{ paddingLeft: 28 }}>
             {/* Vertical line - centered at 11px from left */}
             <div className="absolute top-2 bottom-2 w-px bg-border" style={{ left: 11 }} />
