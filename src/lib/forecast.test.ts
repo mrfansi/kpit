@@ -75,8 +75,35 @@ test("tren menurun tidak menembus nol kecuali diizinkan", () => {
   );
 
   assert.deepEqual(
-    computeForecast(input, 3, true).map((p) => p.value),
+    computeForecast(input, 3, { allowNegative: true }).map((p) => p.value),
     [0, -10, -20]
+  );
+});
+
+test("proyeksi tidak menembus batas atas metrik", () => {
+  // Kasus nyata: PageSpeed mendatar mendekati 100. Regresi linear tidak tahu
+  // skalanya berhenti di sana dan akan memproyeksikan 105, 110, 115.
+  const naik = [entry("2026-01-01", 94), entry("2026-02-01", 97), entry("2026-03-01", 100)];
+
+  assert.deepEqual(
+    computeForecast(naik, 3).map((p) => p.value),
+    [103, 106, 109],
+    "tanpa batas, proyeksinya memang menembus 100"
+  );
+
+  assert.deepEqual(
+    computeForecast(naik, 3, { max: 100 }).map((p) => p.value),
+    [100, 100, 100]
+  );
+});
+
+test("batas eksplisit mengalahkan default nol", () => {
+  // Metrik yang lantainya bukan nol, mis. suhu atau selisih yang boleh minus.
+  const turun = [entry("2026-01-01", 10), entry("2026-02-01", 5), entry("2026-03-01", 0)];
+
+  assert.deepEqual(
+    computeForecast(turun, 2, { min: -20 }).map((p) => p.value),
+    [-5, -10]
   );
 });
 

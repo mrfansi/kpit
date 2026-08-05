@@ -23,6 +23,17 @@ export const kpis = sqliteTable("kpis", {
   direction: text("direction", { enum: ["higher_better", "lower_better"] })
     .notNull()
     .default("higher_better"),
+  /*
+   * Batas alami metrik, bukan target. PageSpeed mentok di 100, rating di 5,
+   * jumlah insiden tidak bisa negatif. Nullable karena banyak metrik memang
+   * tidak punya batas — dan menebak batas yang tidak ada lebih buruk daripada
+   * tidak punya.
+   *
+   * Dipakai untuk menjepit proyeksi forecast agar tidak menembus langit-langit,
+   * dan untuk menolak salah ketik saat input (misalnya 1000 pada skala 0–100).
+   */
+  minValue: real("min_value"),
+  maxValue: real("max_value"),
   refreshType: text("refresh_type", { enum: ["realtime", "periodic"] })
     .notNull()
     .default("periodic"),

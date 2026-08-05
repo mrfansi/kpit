@@ -35,14 +35,30 @@ function monthsBetween(from: string, to: string): number {
   return (ty - fy) * 12 + (tm - fm);
 }
 
+export interface ForecastBounds {
+  /**
+   * Batas alami metrik, kalau KPI-nya mendeklarasikannya. Regresi linear tidak
+   * tahu apa-apa soal langit-langit: metrik yang mendatar di 100 tetap
+   * diproyeksikan menembusnya. Menjepit di sini membuat proyeksinya mungkin.
+   */
+  min?: number | null;
+  max?: number | null;
+  /**
+   * Dipakai HANYA kalau `min` tidak dideklarasikan. Mempertahankan perilaku
+   * lama: metrik tanpa batas eksplisit tetap dijepit di nol, kecuali memang
+   * masuk akal menembusnya.
+   */
+  allowNegative?: boolean;
+}
+
 /**
  * Hitung 3 titik forecast berdasarkan regresi linear dari entri historis.
- * Membutuhkan minimal 2 entri.
+ * Membutuhkan minimal 2 entri pada bulan yang berbeda.
  */
 export function computeForecast(
   entries: KPIEntry[],
   months = 3,
-  allowNegative = false
+  bounds: ForecastBounds = {}
 ): ForecastPoint[] {
   if (entries.length < 2) return [];
 
@@ -70,16 +86,16 @@ export function computeForecast(
 
   const { slope, intercept } = linearRegression(points);
 
+  // Batas yang dideklarasikan KPI menang. Kalau tidak ada, jatuh ke perilaku
+  // lama: dijepit di nol kecuali metriknya memang boleh negatif.
+  const lower = bounds.min ?? (bounds.allowNegative ? null : 0);
+  const upper = bounds.max ?? null;
+
   return Array.from({ length: months }, (_, i) => {
     const periodDate = addMonths(lastDate, i + 1);
-    const projected = slope * monthsBetween(firstDate, periodDate) + intercept;
-    // For metrics that can legitimately trend below zero (e.g. lower_better
-    // KPIs heading toward 0), keep the real projection instead of flattening
-    // the line at 0 and hiding the downward trajectory.
-    return {
-      periodDate,
-      value: allowNegative ? projected : Math.max(0, projected),
-      isForecast: true as const,
-    };
+    let value = slope * monthsBetween(firstDate, periodDate) + intercept;
+    if (lower !== null) value = Math.max(lower, value);
+    if (upper !== null) value = Math.min(upper, value);
+    return { periodDate, value, isForecast: true as const };
   });
 }

@@ -10,6 +10,7 @@ import { upsertKPIEntry } from "@/lib/db/entries";
 import { requireAdmin } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
 import { notifyRedEntries } from "@/lib/notify";
+import { checkValueBounds } from "@/lib/kpi-bounds";
 
 const EntrySchema = z.object({
   kpiId: z.number().int().positive(),
@@ -34,8 +35,16 @@ export async function getExistingEntry(kpiId: number, periodDate: string): Promi
 export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
   const session = await requireAdmin();
   EntrySchema.parse(data);
-  const kpi = await db.select({ id: kpis.id }).from(kpis).where(eq(kpis.id, data.kpiId)).get();
+  const kpi = await db
+    .select({ id: kpis.id, minValue: kpis.minValue, maxValue: kpis.maxValue, unit: kpis.unit })
+    .from(kpis)
+    .where(eq(kpis.id, data.kpiId))
+    .get();
   if (!kpi) throw new Error("KPI tidak ditemukan");
+
+  const boundsError = checkValueBounds(data.value, kpi);
+  if (boundsError) throw new Error(boundsError);
+
   await upsertKPIEntry({ ...data, note: data.note ?? undefined });
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", entityId: String(data.kpiId), detail: `periode ${data.periodDate}` });
   await notifyRedEntries([{ kpiId: data.kpiId, value: data.value, periodDate: data.periodDate }]);
@@ -45,6 +54,19 @@ export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
 
 export async function updateEntry(id: number, value: number, note?: string) {
   const session = await requireAdmin();
+
+  // Batas KPI-nya diambil lewat entri, karena pemanggil hanya menyebut id entri.
+  const row = await db
+    .select({ minValue: kpis.minValue, maxValue: kpis.maxValue, unit: kpis.unit })
+    .from(kpiEntries)
+    .innerJoin(kpis, eq(kpiEntries.kpiId, kpis.id))
+    .where(eq(kpiEntries.id, id))
+    .get();
+  if (!row) throw new Error("Entri tidak ditemukan");
+
+  const boundsError = checkValueBounds(value, row);
+  if (boundsError) throw new Error(boundsError);
+
   await db.update(kpiEntries).set({ value, note }).where(eq(kpiEntries.id, id));
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi_entry", entityId: String(id) });
   revalidatePath("/");
@@ -79,11 +101,31 @@ export async function bulkCreateEntries(rows: BulkEntryRow[]): Promise<{ saved: 
   const kpiIds = parsedRows.map((r) => r.kpiId);
 
   // Verify every referenced KPI exists before writing (no orphan entries).
-  const existingIds = new Set(
-    (await db.select({ id: kpis.id }).from(kpis).where(inArray(kpis.id, kpiIds))).map((k) => k.id)
-  );
-  if (kpiIds.some((id) => !existingIds.has(id))) {
+  const kpiRows = await db
+    .select({
+      id: kpis.id,
+      name: kpis.name,
+      unit: kpis.unit,
+      minValue: kpis.minValue,
+      maxValue: kpis.maxValue,
+    })
+    .from(kpis)
+    .where(inArray(kpis.id, kpiIds));
+  const kpiById = new Map(kpiRows.map((k) => [k.id, k]));
+  if (kpiIds.some((id) => !kpiById.has(id))) {
     throw new Error("Sebagian KPI tidak ditemukan");
+  }
+
+  // Semua baris diperiksa dulu, dan seluruh bulk ditolak kalau ada satu yang
+  // di luar batas. Menyimpan sebagian akan meninggalkan periode yang setengah
+  // terisi tanpa jejak baris mana yang gagal.
+  const boundsErrors = parsedRows.flatMap((row) => {
+    const kpi = kpiById.get(row.kpiId)!;
+    const error = checkValueBounds(row.value, kpi);
+    return error ? [`${kpi.name}: ${error}`] : [];
+  });
+  if (boundsErrors.length > 0) {
+    throw new Error(boundsErrors.join(" "));
   }
 
   await db.delete(kpiEntries).where(

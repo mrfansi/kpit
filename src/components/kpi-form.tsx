@@ -42,6 +42,8 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
           thresholdGreen: defaultValues.thresholdGreen,
           thresholdYellow: defaultValues.thresholdYellow,
           direction: defaultValues.direction ?? "higher_better",
+          minValue: defaultValues.minValue,
+          maxValue: defaultValues.maxValue,
           refreshType: defaultValues.refreshType,
           period: defaultValues.period,
         }
@@ -53,6 +55,8 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
           thresholdGreen: 0,
           thresholdYellow: 0,
           direction: "higher_better",
+          minValue: null,
+          maxValue: null,
           refreshType: "periodic",
           period: "monthly",
         },
@@ -259,6 +263,41 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
                   {form.watch("direction") === "lower_better"
                     ? "Nilai ≤ ini (tapi > hijau) = At Risk"
                     : "Nilai ≥ ini (tapi < hijau) = At Risk"}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Batas alami metrik — beda dari target. Kosongkan kalau metriknya
+            memang tidak berbatas; menebak batas yang tidak ada lebih buruk
+            daripada tidak punya batas sama sekali. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="minValue"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nilai Minimum <span className="font-normal text-muted-foreground">(opsional)</span></FormLabel>
+                <FormControl><Input type="number" step="any" placeholder="Kosongkan jika tidak terbatas" onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                <FormDescription className="text-xs">
+                  Batas bawah yang mungkin secara alami, mis. 0 untuk jumlah.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="maxValue"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nilai Maksimum <span className="font-normal text-muted-foreground">(opsional)</span></FormLabel>
+                <FormControl><Input type="number" step="any" placeholder="Kosongkan jika tidak terbatas" onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                <FormDescription className="text-xs">
+                  Mis. 100 untuk skor, 5 untuk rating. Menjaga forecast tidak
+                  menembus langit-langit dan menangkap salah ketik saat input.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
