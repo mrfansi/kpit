@@ -19,8 +19,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { EmptyState } from "@/components/empty-state";
-import { MessageCircle, Trash2, Send } from "lucide-react";
-import { isEmptyHtml } from "@/lib/html-utils";
+import { MessageCircle, Trash2, Send, Sparkles, Loader2 } from "lucide-react";
+import { isEmptyHtml, textToHtml } from "@/lib/html-utils";
 
 // Ringkasan teks polos dari HTML komentar, untuk ditampilkan di dialog konfirmasi hapus.
 function excerptFromHtml(html: string, maxLength = 60) {
@@ -59,6 +59,32 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
   const [html, setHtml] = useState("");
   const [editorKey, setEditorKey] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const [isDrafting, setIsDrafting] = useState(false);
+
+  async function handleDraft() {
+    setIsDrafting(true);
+    try {
+      const res = await fetch("/api/kpi/draft-comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kpiId, periodDate: selectedPeriod }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // Pesan server sudah spesifik (mis. "belum ada data untuk periode ini",
+        // kuota AI habis) — teruskan apa adanya, jangan ganti teks generik.
+        toast.error(data?.error ?? "Gagal menyusun draf");
+        return;
+      }
+      setHtml(textToHtml(data.draft));
+      setEditorKey((k) => k + 1); // remount editor supaya `content` terbaca
+      toast.success("Draf dimuat — periksa dan sunting sebelum mengirim");
+    } catch {
+      toast.error("Gagal menghubungi layanan AI");
+    } finally {
+      setIsDrafting(false);
+    }
+  }
 
   const currentPeriodLabel = availablePeriods.find((p) => p.value === selectedPeriod)?.label ?? periodLabel;
   const visibleComments = comments.filter((c) => c.periodDate === selectedPeriod);
@@ -128,11 +154,29 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
       <form onSubmit={handleSubmit} className="space-y-2 print:hidden">
         <RichTextEditor
           key={editorKey}
+          content={html}
           onChange={setHtml}
           placeholder={`Tulis catatan untuk ${currentPeriodLabel}...`}
           disabled={isPending}
         />
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-2">
+          {/* Draf mengisi editor, bukan menyimpan. Manusia tetap yang memutuskan
+              apa yang terbit — model bisa salah baca angka, dan komentar ini
+              jadi catatan resmi periode. */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleDraft}
+            disabled={isPending || isDrafting}
+          >
+            {isDrafting ? (
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            {isDrafting ? "Menyusun draf..." : "Draf dengan AI"}
+          </Button>
           <Button type="submit" size="sm" disabled={isPending || isEmptyHtml(html)}>
             <Send className="w-3.5 h-3.5 mr-1.5" />
             Kirim
