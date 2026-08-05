@@ -25,6 +25,8 @@ interface KPITableProps {
    * kalau itu terjadi, periode asalnya harus ditulis, bukan disembunyikan.
    */
   selectedPeriod?: string;
+  /** Tombol pin hanya untuk admin; bagi viewer aksinya dijamin ditolak server. */
+  canEdit?: boolean;
 }
 
 const STALE_THRESHOLD_MONTHS = 2;
@@ -34,7 +36,13 @@ const STALE_THRESHOLD_MONTHS = 2;
  * lebih banyak KPI, dan yang lebih penting — angkanya berbaris dalam kolom,
  * jadi bisa dibandingkan dengan menyapu mata ke bawah, bukan melompat antar kartu.
  */
-export function KPITable({ rows, actionCounts, emptyMessage, selectedPeriod }: KPITableProps) {
+export function KPITable({
+  rows,
+  actionCounts,
+  emptyMessage,
+  selectedPeriod,
+  canEdit = false,
+}: KPITableProps) {
   if (rows.length === 0) {
     return <p className="px-3 py-6 text-sm text-muted-foreground">{emptyMessage}</p>;
   }
@@ -50,7 +58,7 @@ export function KPITable({ rows, actionCounts, emptyMessage, selectedPeriod }: K
             <Th className="w-36 text-left">Pencapaian</Th>
             <Th className="hidden w-24 text-right md:table-cell">Tren</Th>
             <Th className="hidden w-28 lg:table-cell">12 bulan</Th>
-            <Th className="w-8" />
+            {canEdit && <Th className="w-8" />}
           </tr>
         </thead>
         <tbody>
@@ -185,9 +193,11 @@ export function KPITable({ rows, actionCounts, emptyMessage, selectedPeriod }: K
                   </div>
                 </td>
 
-                <td className="py-2.5 pr-2">
-                  <PinKPIButton id={kpi.id} isPinned={kpi.isPinned} />
-                </td>
+                {canEdit && (
+                  <td className="py-2.5 pr-2">
+                    <PinKPIButton id={kpi.id} isPinned={kpi.isPinned} />
+                  </td>
+                )}
               </tr>
             );
           })}

@@ -1,17 +1,17 @@
 import { getAllTimelineProjects } from "@/lib/queries/timeline";
 import { getAllStatuses } from "@/lib/queries/timeline-statuses";
 import { GanttChart } from "@/components/gantt/gantt-chart";
-import { auth } from "@/auth";
+import { isAdminUser } from "@/lib/auth-utils";
 
 export const metadata = {
   title: "Timeline - KPI Dashboard",
 };
 
 export default async function TimelinePage() {
-  const [projects, statuses, session] = await Promise.all([
+  const [projects, statuses, canEdit] = await Promise.all([
     getAllTimelineProjects(),
     getAllStatuses(),
-    auth(),
+    isAdminUser(),
   ]);
 
   return (
@@ -20,7 +20,7 @@ export default async function TimelinePage() {
         key={projects.map((project) => `${project.id}:${project.startDate}:${project.endDate}:${project.progress}`).join("|")}
         projects={projects}
         statuses={statuses}
-        isAuthenticated={!!session?.user}
+        canEdit={canEdit}
       />
     </div>
   );

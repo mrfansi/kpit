@@ -32,13 +32,13 @@ import { GanttLogPanel } from "./gantt-log-panel";
 interface GanttChartProps {
   projects: TimelineProject[];
   statuses: TimelineProjectStatus[];
-  isAuthenticated: boolean;
+  canEdit: boolean;
 }
 
 export function GanttChart({
   projects: initialProjects,
   statuses,
-  isAuthenticated,
+  canEdit,
 }: GanttChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [panOffset, setPanOffset] = useState(0);
@@ -79,7 +79,7 @@ export function GanttChart({
   // Drag handlers
   const handleBarMouseDown = useCallback(
     (e: React.MouseEvent, projectId: number, mode: DragMode) => {
-      if (!isAuthenticated) return;
+      if (!canEdit) return;
       e.preventDefault();
       e.stopPropagation();
       setDragState({ projectId, mode, startX: e.clientX, currentX: e.clientX });
@@ -144,7 +144,7 @@ export function GanttChart({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [isAuthenticated, localProjects, viewMode]
+    [canEdit, localProjects, viewMode]
   );
 
   // Empty state
@@ -156,14 +156,14 @@ export function GanttChart({
           onViewModeChange={setViewMode}
           onPan={handlePan}
           onJumpToToday={() => setPanOffset(0)}
-          isAuthenticated={isAuthenticated}
+          canEdit={canEdit}
           onAddProject={() => { setEditingProject(null); setProjectDialogOpen(true); }}
         />
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           <div className="text-center space-y-2">
             <CalendarDays className="w-10 h-10 mx-auto opacity-40" />
             <p className="text-sm">Belum ada project.</p>
-            {isAuthenticated && (
+            {canEdit && (
               <p className="text-xs">
                 Klik &quot;+ Project&quot; untuk memulai.
               </p>
@@ -190,7 +190,7 @@ export function GanttChart({
         onViewModeChange={setViewMode}
         onPan={handlePan}
         onJumpToToday={() => setPanOffset(0)}
-        isAuthenticated={isAuthenticated}
+        canEdit={canEdit}
         onAddProject={() => { setEditingProject(null); setProjectDialogOpen(true); }}
       />
 
@@ -223,7 +223,7 @@ export function GanttChart({
                   <span className="text-sm font-medium truncate flex-1 min-w-0">
                     {project.name}
                   </span>
-                  {isAuthenticated && (
+                  {canEdit && (
                     <div className="flex items-center gap-0.5 shrink-0">
                       <button
                         className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"

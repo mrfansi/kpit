@@ -9,14 +9,19 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoutButton } from "@/components/logout-button";
 import { AIChat } from "@/components/ai-chat";
 import { domainIconMap } from "@/lib/domain-icons";
+import { canAccessAdminRoute } from "@/lib/admin-access";
 
 interface SidebarProps {
   domains: Domain[];
-  user?: { name?: string | null; email?: string | null } | null;
+  user?: { name?: string | null; email?: string | null; role?: string | null } | null;
 }
 
 export function Sidebar({ domains, user }: SidebarProps) {
   const pathname = usePathname();
+  // Middleware sudah memblokir /admin/* untuk non-admin. Tanpa gating di sini
+  // pun, viewer melihat delapan tautan yang memantulkannya kembali ke "/" tanpa
+  // penjelasan — jadi navigasinya yang harus jujur, bukan cuma route guard-nya.
+  const isAdmin = canAccessAdminRoute(user?.role ?? undefined);
 
   return (
     <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r bg-sidebar print:hidden">
@@ -48,19 +53,21 @@ export function Sidebar({ domains, user }: SidebarProps) {
 
         {/* Area admin dipisah dengan latar sendiri: sekali lihat jelas ini bukan
             navigasi baca-saja, tapi tempat data diubah. */}
-        <div className="mt-4 rounded-lg bg-sidebar-accent/40 p-1.5 ring-1 ring-sidebar-border">
-          <SectionLabel>Admin</SectionLabel>
-          <div className="space-y-1">
-            <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
-            <NavItem href="/admin/domain" icon={Globe} label="Kelola Domain" active={pathname.startsWith("/admin/domain")} />
-            <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
-            <NavItem href="/admin/actions" icon={ClipboardCheck} label="Action Plan" active={pathname.startsWith("/admin/actions")} />
-            <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
-            <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
-            <NavItem href="/admin/timeline" icon={GanttChart} label="Kelola Timeline" active={pathname.startsWith("/admin/timeline")} />
-            <NavItem href="/admin/audit" icon={ClipboardList} label="Audit Log" active={pathname.startsWith("/admin/audit")} />
+        {isAdmin && (
+          <div className="mt-4 rounded-lg bg-sidebar-accent/40 p-1.5 ring-1 ring-sidebar-border">
+            <SectionLabel>Admin</SectionLabel>
+            <div className="space-y-1">
+              <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
+              <NavItem href="/admin/domain" icon={Globe} label="Kelola Domain" active={pathname.startsWith("/admin/domain")} />
+              <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
+              <NavItem href="/admin/actions" icon={ClipboardCheck} label="Action Plan" active={pathname.startsWith("/admin/actions")} />
+              <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
+              <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
+              <NavItem href="/admin/timeline" icon={GanttChart} label="Kelola Timeline" active={pathname.startsWith("/admin/timeline")} />
+              <NavItem href="/admin/audit" icon={ClipboardList} label="Audit Log" active={pathname.startsWith("/admin/audit")} />
+            </div>
           </div>
-        </div>
+        )}
       </nav>
 
       {/* Footer: theme toggle + user info */}

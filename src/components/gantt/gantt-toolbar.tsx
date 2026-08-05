@@ -11,7 +11,7 @@ interface GanttToolbarProps {
   onViewModeChange: (mode: ViewMode) => void;
   onPan: (direction: "left" | "right") => void;
   onJumpToToday: () => void;
-  isAuthenticated: boolean;
+  canEdit: boolean;
   onAddProject?: () => void;
 }
 
@@ -25,7 +25,7 @@ export function GanttToolbar({
   onViewModeChange,
   onPan,
   onJumpToToday,
-  isAuthenticated,
+  canEdit,
   onAddProject,
 }: GanttToolbarProps) {
   return (
@@ -86,7 +86,7 @@ export function GanttToolbar({
             Report
           </Button>
         </Link>
-        {isAuthenticated && (
+        {canEdit && (
           <Button
             variant="outline"
             size="sm"

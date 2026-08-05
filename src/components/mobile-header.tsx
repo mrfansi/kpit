@@ -12,16 +12,20 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoutButton } from "@/components/logout-button";
 import { AIChat } from "@/components/ai-chat";
 import { domainIconMap } from "@/lib/domain-icons";
+import { canAccessAdminRoute } from "@/lib/admin-access";
 
 interface MobileHeaderProps {
   domains: Domain[];
   isAuthenticated?: boolean;
   userName?: string | null;
+  role?: string | null;
 }
 
-export function MobileHeader({ domains, isAuthenticated = false, userName }: MobileHeaderProps) {
+export function MobileHeader({ domains, isAuthenticated = false, userName, role }: MobileHeaderProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Login saja tidak cukup untuk melihat menu admin — lihat Sidebar.
+  const isAdmin = canAccessAdminRoute(role ?? undefined);
 
   const navItems: { href: string; icon: React.ElementType; label: string; color?: string }[] = [
     { href: "/", icon: Home, label: "Overview" },
@@ -74,7 +78,7 @@ export function MobileHeader({ domains, isAuthenticated = false, userName }: Mob
               />
             ))}
 
-            {isAuthenticated ? (
+            {isAdmin && (
               <div className="mt-4 rounded-lg bg-sidebar-accent/40 p-1.5 ring-1 ring-sidebar-border">
                 <div className="px-2 pt-1 pb-1">
                   <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
@@ -94,7 +98,9 @@ export function MobileHeader({ domains, isAuthenticated = false, userName }: Mob
                   ))}
                 </div>
               </div>
-            ) : (
+            )}
+
+            {!isAuthenticated && (
               <div className="pt-3">
                 <MobileNavItem
                   href="/login"

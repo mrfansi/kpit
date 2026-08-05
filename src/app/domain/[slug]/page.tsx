@@ -17,6 +17,7 @@ import Link from "next/link";
 import { getKPIStatus, getAchievementPct, statusConfig } from "@/lib/kpi-status";
 import { formatValue } from "@/lib/period";
 import { DomainAISummary } from "@/components/domain/domain-ai-summary";
+import { isAdminUser } from "@/lib/auth-utils";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -32,9 +33,10 @@ export default async function DomainPage({ params, searchParams }: Props) {
   const [domain, domains] = await Promise.all([getDomainBySlug(slug), getAllDomains()]);
   if (!domain) notFound();
 
-  const [kpisWithEntries, entriesForPeriod] = await Promise.all([
+  const [kpisWithEntries, entriesForPeriod, canEdit] = await Promise.all([
     getKPIsWithLatestEntry(domain.id, selectedPeriod),
     getEntriesForPeriod(selectedPeriod ?? ""),
+    isAdminUser(),
   ]);
   const actionCounts = await getActionPlanCountsByKPIIds(kpisWithEntries.map(({ kpi }) => kpi.id));
 
@@ -131,7 +133,9 @@ export default async function DomainPage({ params, searchParams }: Props) {
             </Link>
           </Button>
           <ExportButtons domainSlug={slug} />
-          <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => kpi)} kpiLatestPeriods={kpiLatestPeriods} />
+          {canEdit && (
+            <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => kpi)} kpiLatestPeriods={kpiLatestPeriods} />
+          )}
         </div>
       </div>
 
@@ -144,6 +148,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
           redKPIs={redKPIs}
           missingKPIs={missingKPIs}
           period={selectedPeriod ?? ""}
+          canEdit={canEdit}
         />
       )}
 
@@ -162,6 +167,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
             rows={filtered}
             actionCounts={actionCounts}
             selectedPeriod={selectedPeriod}
+            canEdit={canEdit}
             emptyMessage="Tidak ada KPI yang cocok dengan filter."
           />
         </div>

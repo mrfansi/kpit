@@ -18,6 +18,7 @@ import { KPIActionPlans } from "@/components/kpi-action-plans";
 import { KPIEarlyWarning } from "@/components/kpi-early-warning";
 import { computeForecast } from "@/lib/forecast";
 import { KPIAIAnalysis } from "@/components/kpi-ai-analysis";
+import { isAdminUser } from "@/lib/auth-utils";
 import { KPITargetSuggestion } from "@/components/kpi-target-suggestion";
 import { getKPIEarlyWarning } from "@/lib/kpi-warning";
 
@@ -48,11 +49,12 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
 
   const { from, to } = getPeriodRange(validRange);
   // Fetch all entries once; derive range entries and latest from this
-  const [allEntries, allTargetOverrides, comments, actionPlans] = await Promise.all([
+  const [allEntries, allTargetOverrides, comments, actionPlans, canEdit] = await Promise.all([
     getKPIEntries(kpiId),
     getKPITargets(kpiId),
     getKPIComments(kpiId),
     getKPIActionPlans(kpiId),
+    isAdminUser(),
   ]);
 
   // Fetch domain and sibling KPIs for AI analysis
@@ -268,12 +270,14 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
               </span>
             )}
           </CardTitle>
-          <Button variant="outline" size="sm" asChild className="print:hidden">
-            <Link href={`/admin/kpi/${kpi.id}/targets`}>
-              <Target className="w-3.5 h-3.5 mr-1.5" />
-              Atur Target Periode
-            </Link>
-          </Button>
+          {canEdit && (
+            <Button variant="outline" size="sm" asChild className="print:hidden">
+              <Link href={`/admin/kpi/${kpi.id}/targets`}>
+                <Target className="w-3.5 h-3.5 mr-1.5" />
+                Atur Target Periode
+              </Link>
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -285,7 +289,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                 <TableHead className="text-right">Target</TableHead>
                 <TableHead className="text-right">Pencapaian</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="print:hidden"></TableHead>
+                {canEdit && <TableHead className="print:hidden"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -312,6 +316,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                       <TableCell>
                         <Badge className={`${c.bg} ${c.color} border-0 text-xs`}>{c.label}</Badge>
                       </TableCell>
+                      {canEdit && (
                       <TableCell className="print:hidden">
                         <div className="flex items-center justify-end gap-1">
                           <EditEntryDialog
@@ -324,6 +329,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                           <DeleteEntryButton id={entry.id} kpiId={kpi.id} period={formatPeriodDate(entry.periodDate, "MMMM yyyy")} />
                         </div>
                       </TableCell>
+                      )}
                     </TableRow>
                   );
                 })

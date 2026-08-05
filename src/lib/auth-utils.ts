@@ -1,4 +1,18 @@
 import { auth } from "@/auth";
+import { canAccessAdminRoute } from "@/lib/admin-access";
+
+/**
+ * Baca peran tanpa melempar. Dipakai untuk memutuskan APA YANG DIRENDER, bukan
+ * untuk menjaga aksi — penjagaan tetap requireAdmin() di server action.
+ *
+ * Predikatnya sengaja bukan "sudah login": viewer terautentikasi tapi tidak
+ * boleh mengubah apa pun, jadi menampilkan tombol mutasi kepadanya hanya
+ * menghasilkan aksi yang dijamin gagal.
+ */
+export async function isAdminUser(): Promise<boolean> {
+  const session = await auth();
+  return canAccessAdminRoute(session?.user?.role);
+}
 
 /**
  * Require authenticated user with admin role.

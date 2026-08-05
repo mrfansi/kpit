@@ -14,6 +14,8 @@ interface AttentionBarProps {
   }[];
   missingKPIs: KPI[];
   period: string;
+  /** Pintasan "Isi sekaligus" menuju /admin/input — viewer akan dipantulkan. */
+  canEdit?: boolean;
 }
 
 const MAX_NAMED = 4;
@@ -24,7 +26,7 @@ const MAX_NAMED = 4;
  * "apa yang harus saya kerjakan?" — jadi tempatnya berdampingan, bukan menumpuk
  * jadi dua panel yang mendorong data asli turun ke bawah layar.
  */
-export function AttentionBar({ redKPIs, missingKPIs, period }: AttentionBarProps) {
+export function AttentionBar({ redKPIs, missingKPIs, period, canEdit = false }: AttentionBarProps) {
   if (redKPIs.length === 0 && missingKPIs.length === 0) return null;
 
   return (
@@ -87,12 +89,14 @@ export function AttentionBar({ redKPIs, missingKPIs, period }: AttentionBarProps
               +{missingKPIs.length - MAX_NAMED} lainnya
             </span>
           )}
-          <Link
-            href={`/admin/input?period=${period}`}
-            className="ml-auto shrink-0 px-1.5 py-0.5 text-xs font-medium underline underline-offset-2"
-          >
-            Isi sekaligus
-          </Link>
+          {canEdit && (
+            <Link
+              href={`/admin/input?period=${period}`}
+              className="ml-auto shrink-0 px-1.5 py-0.5 text-xs font-medium underline underline-offset-2"
+            >
+              Isi sekaligus
+            </Link>
+          )}
         </Row>
       )}
     </div>

@@ -14,6 +14,7 @@ import { getKPIStatus } from "@/lib/kpi-status";
 import { Pin, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { isAdminUser } from "@/lib/auth-utils";
 
 interface Props {
   searchParams: Promise<{ period?: string; q?: string; status?: string }>;
@@ -25,11 +26,12 @@ export default async function OverviewPage({ searchParams }: Props) {
   const months = listLastNMonths(12);
   const selectedPeriod = period ?? months[0]?.value;
 
-  const [domains, allKPIsWithEntries, allKPIs, entriesForPeriod] = await Promise.all([
+  const [domains, allKPIsWithEntries, allKPIs, entriesForPeriod, canEdit] = await Promise.all([
     getAllDomains(),
     getKPIsWithLatestEntry(undefined, selectedPeriod),
     getAllKPIs(),
     getEntriesForPeriod(selectedPeriod ?? ""),
+    isAdminUser(),
   ]);
   const actionCounts = await getActionPlanCountsByKPIIds(allKPIsWithEntries.map(({ kpi }) => kpi.id));
 
@@ -100,7 +102,7 @@ export default async function OverviewPage({ searchParams }: Props) {
             </Link>
           </Button>
           <ExportButtons />
-          <QuickEntryModal kpis={allKPIs} kpiLatestPeriods={kpiLatestPeriods} />
+          {canEdit && <QuickEntryModal kpis={allKPIs} kpiLatestPeriods={kpiLatestPeriods} />}
         </div>
       </div>
 
@@ -111,6 +113,7 @@ export default async function OverviewPage({ searchParams }: Props) {
           redKPIs={redKPIs}
           missingKPIs={missingKPIs}
           period={selectedPeriod ?? ""}
+          canEdit={canEdit}
         />
       )}
 
@@ -135,6 +138,7 @@ export default async function OverviewPage({ searchParams }: Props) {
               rows={pinnedWithEntries}
               actionCounts={actionCounts}
               selectedPeriod={selectedPeriod}
+              canEdit={canEdit}
               emptyMessage=""
             />
           </div>
@@ -156,6 +160,7 @@ export default async function OverviewPage({ searchParams }: Props) {
               rows={kpisWithEntries}
               actionCounts={actionCounts}
               selectedPeriod={selectedPeriod}
+              canEdit={canEdit}
               emptyMessage={
                 isFiltered
                   ? "Tidak ada KPI yang cocok dengan filter."
