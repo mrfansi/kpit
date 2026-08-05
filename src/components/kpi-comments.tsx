@@ -39,6 +39,8 @@ interface KPICommentsProps {
   periodLabel: string;
   initialComments: KPIComment[];
   availablePeriods?: Period[];
+  /** Komentarnya tetap terbaca siapa pun; hanya editor dan tombol hapus digating. */
+  canEdit?: boolean;
 }
 
 function formatRelative(date: Date) {
@@ -51,7 +53,7 @@ function formatRelative(date: Date) {
   return date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, availablePeriods = [] }: KPICommentsProps) {
+export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, availablePeriods = [], canEdit = false }: KPICommentsProps) {
   const [comments, setComments] = useState<KPIComment[]>(initialComments);
   const [selectedPeriod, setSelectedPeriod] = useState(periodDate);
   const [html, setHtml] = useState("");
@@ -122,6 +124,7 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
       </div>
 
       {/* Editor Form */}
+      {canEdit && (
       <form onSubmit={handleSubmit} className="space-y-2 print:hidden">
         <RichTextEditor
           key={editorKey}
@@ -136,6 +139,7 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
           </Button>
         </div>
       </form>
+      )}
 
       {/* Comment List */}
       {visibleComments.length === 0 ? (
@@ -150,6 +154,7 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
                     <span className="text-xs font-semibold">{c.author}</span>
                     <span className="text-xs text-muted-foreground">{formatRelative(new Date(c.createdAt))}</span>
                   </div>
+                  {canEdit && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -179,6 +184,7 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  )}
                 </div>
                 <div
                   className="prose-comment text-sm"

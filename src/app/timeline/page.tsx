@@ -15,7 +15,10 @@ export default async function TimelinePage() {
   ]);
 
   return (
-    <div className="-mx-4 lg:-mx-6 -my-4 lg:-my-6 h-[calc(100vh-3rem)] lg:h-screen">
+    // MobileHeader sebenarnya tinggi 61px (py-3=24px + trigger size-9=36px + border-b=1px),
+    // bukan 3rem/48px — selisihnya bikin Gantt melampaui viewport dan memicu scroll body.
+    // dvh (bukan vh) supaya tidak meleset lagi saat address bar browser mobile muncul/hilang.
+    <div className="-mx-4 lg:-mx-6 -my-4 lg:-my-6 h-[calc(100dvh-61px)] lg:h-screen">
       <GanttChart
         key={projects.map((project) => `${project.id}:${project.startDate}:${project.endDate}:${project.progress}`).join("|")}
         projects={projects}

@@ -16,6 +16,17 @@ interface SidebarProps {
   user?: { name?: string | null; email?: string | null; role?: string | null } | null;
 }
 
+// Overview juga "aktif" di /report/all (report gabungan semua domain, tidak
+// domain-spesifik), dan tiap domain juga aktif di scorecard-nya sendiri
+// (/report/[slug]) — tanpa ini pengguna berada di halaman yang menurut
+// sidebar bukan tempat mereka.
+function isOverviewActive(pathname: string) {
+  return pathname === "/" || pathname === "/report/all";
+}
+function isDomainActive(pathname: string, slug: string) {
+  return pathname.startsWith(`/domain/${slug}`) || pathname.startsWith(`/report/${slug}`);
+}
+
 export function Sidebar({ domains, user }: SidebarProps) {
   const pathname = usePathname();
   // Middleware sudah memblokir /admin/* untuk non-admin. Tanpa gating di sini
@@ -32,7 +43,7 @@ export function Sidebar({ domains, user }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
-        <NavItem href="/" icon={Home} label="Overview" active={pathname === "/"} />
+        <NavItem href="/" icon={Home} label="Overview" active={isOverviewActive(pathname)} />
         <NavItem href="/timeline" icon={GanttChart} label="Timeline" active={pathname.startsWith("/timeline")} />
 
         <SectionLabel>Domain</SectionLabel>
@@ -45,7 +56,7 @@ export function Sidebar({ domains, user }: SidebarProps) {
               href={`/domain/${d.slug}`}
               icon={Icon}
               label={d.name}
-              active={pathname === `/domain/${d.slug}`}
+              active={isDomainActive(pathname, d.slug)}
               color={d.color}
             />
           );

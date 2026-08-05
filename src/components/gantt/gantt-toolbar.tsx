@@ -51,10 +51,10 @@ export function GanttToolbar({
         </div>
 
         <div className="flex items-center gap-0.5">
+          {/* size="icon" default (size-9=36px) dipakai apa adanya — target sentuh minimal, jangan diperkecil lagi. */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
             onClick={() => onPan("left")}
           >
             <ChevronLeft className="w-4 h-4" />
@@ -62,7 +62,7 @@ export function GanttToolbar({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 text-xs"
+            className="h-9 text-xs"
             onClick={onJumpToToday}
           >
             <CalendarDays className="w-3.5 h-3.5 mr-1" />
@@ -71,7 +71,6 @@ export function GanttToolbar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
             onClick={() => onPan("right")}
           >
             <ChevronRight className="w-4 h-4" />
@@ -81,7 +80,7 @@ export function GanttToolbar({
 
       <div className="flex items-center gap-2">
         <Link href="/timeline/report" target="_blank">
-          <Button variant="outline" size="sm" className="h-7 text-xs">
+          <Button variant="outline" size="sm" className="h-9 text-xs">
             <FileText className="w-3.5 h-3.5 mr-1" />
             Report
           </Button>
@@ -90,7 +89,7 @@ export function GanttToolbar({
           <Button
             variant="outline"
             size="sm"
-            className="h-7 text-xs"
+            className="h-9 text-xs"
             onClick={onAddProject}
           >
             <Plus className="w-3.5 h-3.5 mr-1" />

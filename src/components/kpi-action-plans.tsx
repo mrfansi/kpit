@@ -32,6 +32,12 @@ interface KPIActionPlansProps {
     title: string;
     description: string;
   } | null;
+  /**
+   * Daftar rencananya tetap dibaca siapa pun — itu informasi. Yang digating
+   * hanya kontrol tulisnya, karena /kpi/[id] publik (middleware hanya menjaga
+   * /admin) dan server action menolak non-admin saat submit.
+   */
+  canEdit?: boolean;
 }
 
 const statusClass: Record<ActionPlanStatus, string> = {
@@ -41,7 +47,7 @@ const statusClass: Record<ActionPlanStatus, string> = {
   cancelled: "bg-muted text-muted-foreground",
 };
 
-export function KPIActionPlans({ kpiId, initialActions, suggestion }: KPIActionPlansProps) {
+export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = false }: KPIActionPlansProps) {
   const [actions, setActions] = useState(initialActions);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
@@ -114,7 +120,8 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion }: KPIActionP
   }
 
   return (
-    <div className="space-y-5">
+    // Sasaran tautan "N action plan" dari tabel KPI di Overview.
+    <div id="actions" className="scroll-mt-4 space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -123,6 +130,7 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion }: KPIActionP
         </div>
       </div>
 
+      {canEdit && (
       <form action={handleCreate} className="grid gap-3 rounded-lg border bg-muted/20 p-4 print:hidden">
         {suggestion && (
           <div className="flex flex-col gap-2 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning sm:flex-row sm:items-center sm:justify-between">
@@ -157,6 +165,7 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion }: KPIActionP
           </Button>
         </div>
       </form>
+      )}
 
       {actions.length === 0 ? (
         <EmptyState compact title="Belum ada action plan untuk KPI ini." />
@@ -182,6 +191,7 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion }: KPIActionP
                       </span>
                     </div>
                   </div>
+                  {canEdit && (
                   <div className="flex items-center gap-2 print:hidden">
                     <Select value={action.status} onValueChange={(value) => handleStatusChange(action, value as ActionPlanStatus)} disabled={isPending}>
                       <SelectTrigger className="h-8 w-36 text-xs">
@@ -218,6 +228,7 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion }: KPIActionP
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
+                  )}
                 </div>
               </li>
             );

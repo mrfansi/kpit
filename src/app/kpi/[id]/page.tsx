@@ -255,7 +255,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
         <CardContent className="pt-5">
           <div className="space-y-5">
             <KPIEarlyWarning warning={earlyWarning} />
-            <KPIActionPlans kpiId={kpi.id} initialActions={actionPlans} suggestion={earlyWarning?.suggestedAction ?? null} />
+            <KPIActionPlans kpiId={kpi.id} initialActions={actionPlans} suggestion={earlyWarning?.suggestedAction ?? null} canEdit={canEdit} />
           </div>
         </CardContent>
       </Card>
@@ -377,6 +377,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
               periodDate={latestEntry.periodDate}
               periodLabel={formatPeriodDate(latestEntry.periodDate, "MMMM yyyy")}
               initialComments={comments}
+              canEdit={canEdit}
               availablePeriods={[...allEntries].reverse().map((e) => ({
                 value: e.periodDate,
                 label: formatPeriodDate(e.periodDate, "MMMM yyyy"),

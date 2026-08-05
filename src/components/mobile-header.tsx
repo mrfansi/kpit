@@ -21,6 +21,17 @@ interface MobileHeaderProps {
   role?: string | null;
 }
 
+// Sama dengan sidebar desktop: Overview juga aktif di /report/all, item
+// domain juga aktif di scorecard-nya sendiri (/report/[slug]), Timeline dkk.
+// aktif untuk semua sub-rute-nya.
+function isNavActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/" || pathname === "/report/all";
+  if (href.startsWith("/domain/")) {
+    return pathname.startsWith(href) || pathname.startsWith(`/report/${href.slice("/domain/".length)}`);
+  }
+  return pathname.startsWith(href);
+}
+
 export function MobileHeader({ domains, isAuthenticated = false, userName, role }: MobileHeaderProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -73,7 +84,7 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
                 icon={Icon}
                 label={label}
                 color={color}
-                active={pathname === href}
+                active={isNavActive(pathname, href)}
                 onNavigate={() => setOpen(false)}
               />
             ))}

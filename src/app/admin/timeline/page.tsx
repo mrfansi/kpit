@@ -1,7 +1,6 @@
 import { getAllTimelineProjects } from "@/lib/queries/timeline";
 import { getAllStatuses } from "@/lib/queries/timeline-statuses";
 import { requireAdmin } from "@/lib/auth-utils";
-import { deleteProject } from "@/lib/actions/timeline";
 import { createStatus } from "@/lib/actions/timeline-statuses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,9 +16,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
-import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { DeleteStatusButton } from "./statuses/delete-button";
+import { DeleteProjectButton } from "./delete-project-button";
 import { AddProjectButton } from "./add-project-button";
 
 export const metadata = {
@@ -92,16 +91,7 @@ export default async function AdminTimelinePage() {
                     </TableCell>
                     <TableCell className="text-xs">{p.progress}%</TableCell>
                     <TableCell>
-                      <form action={deleteProject.bind(null, p.id)}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive"
-                          type="submit"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </form>
+                      <DeleteProjectButton id={p.id} name={p.name} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -183,7 +173,7 @@ export default async function AdminTimelinePage() {
                       {s.slug}
                     </TableCell>
                     <TableCell>
-                      <DeleteStatusButton id={s.id} />
+                      <DeleteStatusButton id={s.id} name={s.name} />
                     </TableCell>
                   </TableRow>
                 ))}

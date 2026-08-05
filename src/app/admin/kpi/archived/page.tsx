@@ -1,10 +1,7 @@
 import { getAllDomains, getArchivedKPIs } from "@/lib/queries";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RestoreKPIButton } from "@/components/restore-kpi-button";
 import { PageHeader } from "@/components/page-header";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 export default async function ArchivedKPIPage() {
   const [kpis, domains] = await Promise.all([getArchivedKPIs(), getAllDomains()]);
@@ -12,11 +9,6 @@ export default async function ArchivedKPIPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/kpi"><ArrowLeft className="w-4 h-4 mr-1" /> Kembali</Link>
-        </Button>
-      </div>
       <PageHeader
         title="KPI Diarsipkan"
         description={`${kpis.length} KPI tidak aktif — data historis tetap tersimpan`}

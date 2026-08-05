@@ -27,7 +27,9 @@ export function PinKPIButton({ id, isPinned }: PinKPIButtonProps) {
       disabled={isPending}
       title={isPinned ? "Lepas pin" : "Pin KPI ini"}
       className={cn(
-        "p-1 rounded transition-colors",
+        // ::before memperluas area sentuh ke 36px tanpa mengubah ukuran ikon
+        // atau tinggi baris tabel — target ikon-saja 22px terlalu kecil untuk disentuh.
+        "relative p-1 rounded transition-colors before:absolute before:inset-1/2 before:size-9 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']",
         isPinned
           ? "text-primary hover:text-primary/70"
           : "text-muted-foreground/40 hover:text-muted-foreground",

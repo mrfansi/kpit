@@ -8,8 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { formatValue, formatPeriodDate } from "@/lib/period";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -27,11 +25,6 @@ export default async function KPITargetsPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <Link href={`/admin/kpi`} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit">
-        <ArrowLeft className="w-4 h-4" />
-        Kembali ke Kelola KPI
-      </Link>
-
       <PageHeader
         title="Target per Periode"
         description={

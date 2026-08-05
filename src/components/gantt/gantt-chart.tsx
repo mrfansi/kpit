@@ -234,16 +234,17 @@ export function GanttChart({
                     {project.name}
                   </span>
                   {canEdit && (
+                    // Tanpa lg: tombol permanen terlihat di mobile/tablet — hover tidak ada di layar sentuh.
                     <div className="flex items-center gap-0.5 shrink-0">
                       <button
-                        className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                        className="opacity-100 lg:opacity-0 lg:group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
                         onClick={() => setLogPanelProject(project)}
                         title="Progress Log"
                       >
                         <ClipboardList className="w-3 h-3 text-muted-foreground" />
                       </button>
                       <button
-                        className="opacity-0 group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                        className="opacity-100 lg:opacity-0 lg:group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
                         onClick={() => {
                           setEditingProject(project);
                           setProjectDialogOpen(true);
