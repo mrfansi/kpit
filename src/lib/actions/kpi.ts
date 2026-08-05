@@ -7,7 +7,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
-import { kpiSchema } from "@/lib/validations/kpi";
+import {
+  kpiSchema,
+  kpiFieldsSchema,
+  checkBoundsOrder,
+  checkTargetWithinBounds,
+} from "@/lib/validations/kpi";
 
 async function assertDomainExists(domainId: number) {
   const domain = await db.select({ id: domains.id }).from(domains).where(eq(domains.id, domainId)).get();
@@ -42,8 +47,29 @@ export async function updateKPI(id: number, data: Partial<Omit<NewKPI, "id" | "c
   const session = await requireAdmin();
 
   // Server-side validation (partial: only provided fields are checked/written).
-  const parsed = kpiSchema.partial().parse(data);
+  // kpiFieldsSchema, bukan kpiSchema: .partial() tidak bisa dipakai pada skema
+  // yang punya .refine(). Aturan lintas-field dijalankan di bawah, terhadap
+  // hasil gabungan.
+  const parsed = kpiFieldsSchema.partial().parse(data);
   if (parsed.domainId !== undefined) await assertDomainExists(parsed.domainId);
+
+  // Diperiksa terhadap baris yang tersimpan digabung dengan perubahannya.
+  // Menaikkan minValue sendirian bisa membuatnya melewati maxValue lama, dan
+  // memeriksa hanya field yang dikirim tidak akan pernah melihat itu.
+  const existing = await db
+    .select({ target: kpis.target, minValue: kpis.minValue, maxValue: kpis.maxValue })
+    .from(kpis)
+    .where(eq(kpis.id, id))
+    .get();
+  if (!existing) throw new Error("KPI tidak ditemukan");
+
+  const merged = {
+    target: parsed.target ?? existing.target,
+    minValue: parsed.minValue !== undefined ? parsed.minValue : existing.minValue,
+    maxValue: parsed.maxValue !== undefined ? parsed.maxValue : existing.maxValue,
+  };
+  const coherenceError = checkBoundsOrder(merged) ?? checkTargetWithinBounds(merged);
+  if (coherenceError) throw new Error(coherenceError);
 
   db.transaction((tx) => {
     tx.update(kpis).set(parsed).where(eq(kpis.id, id)).run();
