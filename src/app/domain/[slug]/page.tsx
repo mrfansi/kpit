@@ -17,6 +17,7 @@ import Link from "next/link";
 import { getKPIStatus, getAchievementPct, statusConfig } from "@/lib/kpi-status";
 import { formatValue } from "@/lib/period";
 import { DomainAISummary } from "@/components/domain/domain-ai-summary";
+import { BatchCommentDraft } from "@/components/batch-comment-draft";
 import { isAdminUser } from "@/lib/auth-utils";
 
 interface Props {
@@ -131,6 +132,9 @@ export default async function DomainPage({ params, searchParams }: Props) {
             </Link>
           </Button>
           <ExportButtons domainSlug={slug} />
+          {canEdit && (
+            <BatchCommentDraft domainId={domain.id} periodDate={selectedPeriod ?? ""} />
+          )}
           {canEdit && (
             <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => kpi)} kpiLatestPeriods={kpiLatestPeriods} />
           )}

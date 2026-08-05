@@ -14,6 +14,7 @@ import { getKPIStatus } from "@/lib/kpi-status";
 import { Pin, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { BatchCommentDraft } from "@/components/batch-comment-draft";
 import { isAdminUser } from "@/lib/auth-utils";
 
 interface Props {
@@ -100,6 +101,7 @@ export default async function OverviewPage({ searchParams }: Props) {
             </Link>
           </Button>
           <ExportButtons />
+          {canEdit && <BatchCommentDraft periodDate={selectedPeriod ?? ""} />}
           {canEdit && <QuickEntryModal kpis={allKPIs} kpiLatestPeriods={kpiLatestPeriods} />}
         </div>
       </div>

@@ -67,6 +67,52 @@ export async function createComment(
   return inserted ?? null;
 }
 
+/**
+ * Simpan banyak komentar sekaligus (hasil draf batch yang sudah disunting).
+ *
+ * Bukan sekadar perulangan createComment: itu berarti N round-trip server, N
+ * revalidatePath, dan N baris audit untuk satu tindakan pengguna. Di sini satu
+ * tindakan menghasilkan satu jejak audit yang mencerminkan apa yang benar-benar
+ * terjadi.
+ *
+ * Item yang tidak lolos validasi dilewati, bukan menggagalkan sisanya — admin
+ * yang mengosongkan satu draf dari sepuluh tetap harus bisa menyimpan sembilan.
+ */
+export async function createCommentsBatch(
+  items: { kpiId: number; content: string }[],
+  periodDate: string
+): Promise<{ saved: number; skipped: number }> {
+  const session = await requireAdmin();
+
+  if (!isValidCalendarDate(periodDate) || items.length === 0) {
+    return { saved: 0, skipped: items.length };
+  }
+
+  const author = session.user.name ?? session.user.email ?? "Admin";
+  const validIds = new Set((await db.select({ id: kpis.id }).from(kpis)).map((k) => k.id));
+
+  const rows = items.flatMap((item) => {
+    if (!Number.isInteger(item.kpiId) || !validIds.has(item.kpiId)) return [];
+    const clean = sanitize(item.content);
+    if (isEmptyHtml(clean) || clean.length > 50000) return [];
+    return [{ kpiId: item.kpiId, periodDate, content: clean, author }];
+  });
+
+  if (rows.length > 0) {
+    await db.insert(kpiComments).values(rows);
+    await logAudit({
+      userId: session.user.id,
+      userEmail: session.user.email ?? undefined,
+      action: "create",
+      entity: "kpi_comment",
+      detail: `batch ${rows.length} catatan periode ${periodDate}`,
+    });
+    for (const row of rows) revalidatePath(`/kpi/${row.kpiId}`);
+  }
+
+  return { saved: rows.length, skipped: items.length - rows.length };
+}
+
 export async function deleteComment(id: number, kpiId: number) {
   const session = await requireAdmin();
   await db.delete(kpiComments).where(eq(kpiComments.id, id));
