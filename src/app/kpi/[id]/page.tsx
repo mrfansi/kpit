@@ -220,7 +220,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
           <TrendChart entries={entries} unit={kpi.unit} target={effectiveTarget.target} forecastPoints={forecastPoints} />
           {showForecast && forecastPoints.length > 0 && (
             <p className="text-xs text-muted-foreground mt-2">
-              <span className="inline-block w-6 border-t-2 border-dashed border-[hsl(var(--chart-3))] mr-1.5 align-middle" />
+              <span className="inline-block w-6 border-t-2 border-dashed border-[var(--chart-3)] mr-1.5 align-middle" />
               Proyeksi 3 bulan ke depan berdasarkan regresi linear historis
             </p>
           )}

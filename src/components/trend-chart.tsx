@@ -21,11 +21,11 @@ interface TrendChartProps {
 }
 
 const chartConfig = {
-  value: { label: "Aktual", color: "hsl(var(--chart-1))" },
-  forecast: { label: "Forecast", color: "hsl(var(--chart-3))" },
+  value: { label: "Aktual", color: "var(--chart-1)" },
+  forecast: { label: "Forecast", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
-export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))", forecastPoints = [] }: TrendChartProps) {
+export function TrendChart({ entries, unit, target, color = "var(--chart-1)", forecastPoints = [] }: TrendChartProps) {
   if (entries.length === 0) {
     return <EmptyState title="Belum ada data historis" description="Grafik akan muncul setelah data KPI diisi." />;
   }
@@ -73,7 +73,7 @@ export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))
         />
         <ReferenceLine
           y={target}
-          stroke="hsl(var(--chart-2))"
+          stroke="var(--chart-2)"
           strokeDasharray="4 2"
           label={{ value: "Target", position: "insideTopRight", fontSize: 11 }}
         />
@@ -90,10 +90,10 @@ export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))
           <Line
             type="monotone"
             dataKey="forecast"
-            stroke="hsl(var(--chart-3))"
+            stroke="var(--chart-3)"
             strokeWidth={2}
             strokeDasharray="5 3"
-            dot={{ r: 4, fill: "hsl(var(--chart-3))", strokeDasharray: "0" }}
+            dot={{ r: 4, fill: "var(--chart-3)", strokeDasharray: "0" }}
             activeDot={{ r: 6 }}
             connectNulls={false}
           />
