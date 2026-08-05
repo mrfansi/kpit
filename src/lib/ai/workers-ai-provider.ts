@@ -9,17 +9,33 @@ import { AIServiceError } from "./types";
  */
 const DEFAULT_MODEL = "@cf/openai/gpt-oss-120b";
 
-// Batas keras token keluaran per panggilan. Pemanggil boleh memperketat lewat
-// options, tapi tidak pernah membiarkannya tanpa batas — melindungi dari biaya
-// dan latensi yang lepas kendali.
-const DEFAULT_MAX_OUTPUT_TOKENS = 1024;
+/**
+ * Batas keras token keluaran per panggilan. Pemanggil boleh memperketat lewat
+ * options, tapi tidak pernah membiarkannya tanpa batas — melindungi dari biaya
+ * dan latensi yang lepas kendali.
+ *
+ * 4096, bukan 1024 seperti era Gemini: pada model reasoning (glm, gpt-oss)
+ * token penalaran ikut dihitung terhadap max_tokens dan dikeluarkan LEBIH DULU
+ * daripada jawaban. Diukur pada prompt narasi executive report — glm-5.2
+ * menghabiskan seluruh 1024 token untuk bernalar dan mengembalikan content
+ * kosong dengan finish_reason "length"; pada 4096 ia selesai di ~1473 token.
+ */
+const DEFAULT_MAX_OUTPUT_TOKENS = 4096;
 
 // Panggilan AI ada di jalur request pengguna. Tanpa batas waktu, satu panggilan
 // yang menggantung akan menahan koneksi sampai batas platform.
-const REQUEST_TIMEOUT_MS = 30_000;
+//
+// 60 detik karena model reasoning memang lambat: diukur pada prompt narasi
+// executive report, glm-5.2 butuh 18-23 detik sementara gpt-oss-120b 6 detik.
+// Batas 30 detik akan memutus glm di tengah jalan pada prompt yang lebih besar
+// (mis. chat yang membawa seluruh snapshot data).
+const REQUEST_TIMEOUT_MS = 60_000;
 
 interface ChatCompletionResponse {
-  choices?: { message?: { content?: string | null } }[];
+  choices?: {
+    finish_reason?: string | null;
+    message?: { content?: string | null };
+  }[];
   usage?: Record<string, unknown>;
 }
 
@@ -47,6 +63,7 @@ export class WorkersAIProvider implements AIService {
     options?: AIGenerateOptions
   ): Promise<AIGenerateResult> {
     const modelName = options?.model ?? this.defaultModel;
+    const maxOutputTokens = options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
 
     let response: Response;
     try {
@@ -59,7 +76,9 @@ export class WorkersAIProvider implements AIService {
         body: JSON.stringify({
           model: modelName,
           messages: [{ role: "user", content: prompt }],
-          max_tokens: options?.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+          // max_completion_tokens, bukan max_tokens: yang terakhir sudah
+          // deprecated di skema Workers AI.
+          max_completion_tokens: maxOutputTokens,
           ...(options?.temperature !== undefined && {
             temperature: options.temperature,
           }),
@@ -98,12 +117,23 @@ export class WorkersAIProvider implements AIService {
       );
     }
 
-    const text = payload.choices?.[0]?.message?.content;
-    // Model bisa mengembalikan 200 dengan konten kosong saat output terpotong
-    // batas token. Itu bukan jawaban, jadi jangan diteruskan sebagai string "".
+    const choice = payload.choices?.[0];
+    const text = choice?.message?.content;
+
+    // Model bisa mengembalikan 200 dengan konten kosong. Itu bukan jawaban,
+    // jadi jangan diteruskan sebagai string "".
     if (typeof text !== "string" || text.trim() === "") {
+      // finish_reason "length" + konten kosong punya satu sebab spesifik pada
+      // model reasoning: token penalaran menghabiskan max_tokens sebelum
+      // jawaban mulai ditulis. Sebutkan itu — "respons kosong" saja membuat
+      // orang mencari kesalahan di prompt atau kredensial, bukan di batas token.
+      const exhausted = choice?.finish_reason === "length";
       throw new AIServiceError(
-        "Workers AI mengembalikan respons kosong.",
+        exhausted
+          ? `Batas ${maxOutputTokens} token habis sebelum model mulai menjawab. ` +
+            `Ini khas model reasoning: token penalaran ikut dihitung. ` +
+            `Naikkan batasnya, atau pakai model non-reasoning lewat CLOUDFLARE_AI_MODEL.`
+          : "Workers AI mengembalikan respons kosong.",
         "invalid_response",
         payload
       );

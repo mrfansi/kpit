@@ -46,7 +46,9 @@ test("posts to the account-scoped endpoint with bearer auth and the prompt", asy
       const body = JSON.parse(calls[0].init.body as string);
       assert.equal(body.model, "@cf/openai/gpt-oss-120b");
       assert.deepEqual(body.messages, [{ role: "user", content: "apa kabar" }]);
-      assert.equal(body.max_tokens, 1024);
+      // max_completion_tokens, bukan max_tokens yang sudah deprecated.
+      assert.equal(body.max_completion_tokens, 4096);
+      assert.equal("max_tokens" in body, false);
     }
   );
 });
@@ -95,6 +97,29 @@ test("status non-2xx jadi provider_error tanpa membocorkan body ke pesan", async
       assert.ok(error instanceof AIServiceError);
       assert.equal(error.code, "provider_error");
       assert.equal(error.message.includes("xyz"), false);
+    }
+  );
+});
+
+test("anggaran token habis sebelum menjawab dijelaskan sebagai itu, bukan 'respons kosong'", async () => {
+  // Kasus nyata: model reasoning seperti glm-5.2 menghabiskan seluruh anggaran
+  // untuk bernalar dan mengembalikan 200 dengan content kosong. Pesan generik
+  // mengirim orang mencari kesalahan di prompt atau kredensial.
+  await withFetch(
+    async () =>
+      jsonResponse({
+        choices: [{ finish_reason: "length", message: { content: "" } }],
+      }),
+    async () => {
+      const provider = new WorkersAIProvider(ACCOUNT, TOKEN);
+      const error = await provider
+        .generateText("a")
+        .then(() => null, (e: unknown) => e);
+
+      assert.ok(error instanceof AIServiceError);
+      assert.equal(error.code, "invalid_response");
+      assert.match(error.message, /4096 token/);
+      assert.match(error.message, /reasoning/);
     }
   );
 });
