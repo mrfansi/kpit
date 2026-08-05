@@ -128,15 +128,21 @@ export function KPITable({
                       </span>
                     )}
                     {activeActions > 0 && (
-                      <span
-                        className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground"
+                      <Link
+                        href={`/kpi/${kpi.id}#actions`}
+                        className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
                         title={`${activeActions} action plan aktif`}
                       >
                         <ListChecks className="h-3 w-3" />
                         <span className="num">{activeActions}</span>
-                      </span>
+                      </Link>
                     )}
                   </div>
+                  {kpi.description && (
+                    <p className="mt-0.5 max-w-md truncate text-xs text-muted-foreground" title={kpi.description}>
+                      {kpi.description}
+                    </p>
+                  )}
                   <span className={cn("text-xs sm:hidden", cfg.color)}>{cfg.label}</span>
                 </td>
 
