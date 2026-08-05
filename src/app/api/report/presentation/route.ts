@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAllDomains, getKPIsWithLatestEntry, getBatchPeriodComparison, getReportActionPlansWithKPI } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus } from "@/lib/kpi-status";
 import { getActionFocusItems, getActionPlanSummary, getReportActionPlans, isActionPlanOverdue } from "@/lib/action-plan";
-import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
+import { formatPeriodDate, formatValue, defaultReportingPeriod } from "@/lib/period";
 import { requireAuth } from "@/lib/ai/api-helpers";
 import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 import { getAIService, cleanAIOutput } from "@/lib/ai";
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
   if (limited) return limited;
 
   const { searchParams } = new URL(request.url);
-  const period = searchParams.get("period") ?? listLastNMonths(1)[0]?.value;
+  const period = searchParams.get("period") ?? defaultReportingPeriod();
 
   if (!period) {
     return NextResponse.json({ error: "Period is required" }, { status: 400 });

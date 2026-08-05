@@ -3,8 +3,25 @@ import { id as localeId } from "date-fns/locale";
 
 export type PeriodType = "monthly" | "quarterly" | "yearly";
 
-export function getCurrentPeriod(): string {
-  return format(startOfMonth(new Date()), "yyyy-MM-dd");
+/**
+ * Periode yang dipilih dashboard kalau pengguna tidak menyebut apa-apa.
+ *
+ * Bulan LALU, bukan bulan berjalan. Kadens pelaporannya: tiap awal bulan,
+ * melaporkan bulan sebelumnya — jadi bulan berjalan secara struktural belum
+ * bisa punya data sampai ia tutup. Menjadikannya default berarti setiap
+ * halaman terbuka pada periode kosong, "N KPI belum diisi" menyala sepanjang
+ * tahun sehingga berhenti berarti apa-apa, dan halaman input mendarat di bulan
+ * yang justru TIDAK boleh diisi.
+ *
+ * Berlaku sepanjang bulan: pada 31 Agustus pun periode tertutup terakhir masih
+ * Juli, karena Agustus baru tutup di akhir harinya.
+ *
+ * Bulan berjalan tetap ada di daftar listLastNMonths — untuk KPI harian dan
+ * mingguan (schema: period = daily|weekly|monthly) ia memang sah diisi. Yang
+ * diperbaiki di sini hanya pilihan default-nya.
+ */
+export function defaultReportingPeriod(): string {
+  return format(subMonths(startOfMonth(new Date()), 1), "yyyy-MM-dd");
 }
 
 export function formatPeriodDate(dateStr: string, fmt = "MMM yyyy"): string {

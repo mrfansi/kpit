@@ -9,7 +9,7 @@ import { PeriodSelector } from "@/components/period-selector";
 import { KPIFilterBar } from "@/components/kpi-filter-bar";
 import { QuickEntryModal } from "@/components/quick-entry-modal";
 import { DomainStatusBadges } from "@/components/domain-status-badges";
-import { formatPeriodDate, listLastNMonths } from "@/lib/period";
+import { formatPeriodDate, defaultReportingPeriod } from "@/lib/period";
 import { getKPIStatus } from "@/lib/kpi-status";
 import { Pin, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,7 @@ interface Props {
 
 export default async function OverviewPage({ searchParams }: Props) {
   const { period, q, status } = await searchParams;
-
-  const months = listLastNMonths(12);
-  const selectedPeriod = period ?? months[0]?.value;
+  const selectedPeriod = period ?? defaultReportingPeriod();
 
   const [domains, allKPIsWithEntries, allKPIs, entriesForPeriod, canEdit] = await Promise.all([
     getAllDomains(),

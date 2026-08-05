@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getDomainBySlug, getKPIsWithLatestEntry, getReportActionPlansWithKPI } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
-import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
+import { formatPeriodDate, formatValue, listLastNMonths, defaultReportingPeriod } from "@/lib/period";
 import { BarChart2 } from "lucide-react";
 import { PrintButton } from "@/components/print-button";
 import { ReportPeriodSelector } from "@/components/report-period-selector";
@@ -22,9 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ReportPage({ params, searchParams }: Props) {
   const [{ domain: slug }, { period }] = await Promise.all([params, searchParams]);
-
-  const months = listLastNMonths(12);
-  const selectedPeriod = period ?? months[0]?.value;
+  const selectedPeriod = period ?? defaultReportingPeriod();
 
   const domain = await getDomainBySlug(slug);
   if (!domain) notFound();

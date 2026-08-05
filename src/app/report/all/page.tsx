@@ -1,6 +1,6 @@
 import { getAllDomains, getKPIsWithLatestEntry, getBatchPeriodComparison, getReportActionPlansWithKPI } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig, trendColor } from "@/lib/kpi-status";
-import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
+import { formatPeriodDate, formatValue, listLastNMonths, defaultReportingPeriod } from "@/lib/period";
 import { PrintButton } from "@/components/print-button";
 import { ReportPeriodSelector } from "@/components/report-period-selector";
 import { ReportSparkline } from "@/components/report/report-sparkline";
@@ -20,7 +20,7 @@ interface Props {
 export default async function ExecutiveReportPage({ searchParams }: Props) {
   const { period } = await searchParams;
   const months = listLastNMonths(24);
-  const selectedPeriod = period ?? months[0]?.value;
+  const selectedPeriod = period ?? defaultReportingPeriod();
   const periodLabel = selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "—";
 
   // Previous month label for display

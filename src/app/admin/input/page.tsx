@@ -1,7 +1,7 @@
 import { getAllDomains, getAllKPIs, getEntriesForPeriod } from "@/lib/queries";
 import { BulkTableInput } from "@/components/bulk-table-input";
 import { PageHeader } from "@/components/page-header";
-import { listLastNMonths } from "@/lib/period";
+import { defaultReportingPeriod } from "@/lib/period";
 
 interface Props {
   searchParams: Promise<{ period?: string }>;
@@ -9,8 +9,7 @@ interface Props {
 
 export default async function AdminInputPage({ searchParams }: Props) {
   const { period } = await searchParams;
-  const months = listLastNMonths(12);
-  const selectedPeriod = period ?? months[0]?.value ?? "";
+  const selectedPeriod = period ?? defaultReportingPeriod();
 
   const [kpis, domains, existingEntries] = await Promise.all([
     getAllKPIs(),

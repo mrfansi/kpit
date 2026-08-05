@@ -9,7 +9,7 @@ import { getAllStatuses } from "@/lib/queries/timeline-statuses";
 import { getActionFocusItems, getReportActionPlans, isActionPlanOverdue } from "@/lib/action-plan";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
 import { getEffectiveLaunchDate, isManualLaunchDate } from "@/lib/launch-date";
-import { formatValue, listLastNMonths } from "@/lib/period";
+import { formatValue, defaultReportingPeriod } from "@/lib/period";
 import { actionPlanStatusLabels } from "@/lib/action-plan";
 import { generateMarkdownExport, type MarkdownExportFormat, type UnifiedMarkdownReportData } from "@/lib/report-markdown";
 
@@ -247,7 +247,7 @@ export async function GET(request: NextRequest) {
   if (authResult.error) return authResult.error;
 
   const { searchParams } = new URL(request.url);
-  const period = searchParams.get("period") ?? listLastNMonths(1)[0]?.value;
+  const period = searchParams.get("period") ?? defaultReportingPeriod();
   const requestedFormat = searchParams.get("format") ?? "full";
   const format = exportFormats.has(requestedFormat as MarkdownExportFormat)
     ? requestedFormat as MarkdownExportFormat
