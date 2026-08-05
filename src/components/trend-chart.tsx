@@ -10,6 +10,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis, ReferenceLine } from "recharts";
+import { EmptyState } from "@/components/empty-state";
 
 interface TrendChartProps {
   entries: KPIEntry[];
@@ -26,11 +27,7 @@ const chartConfig = {
 
 export function TrendChart({ entries, unit, target, color = "hsl(var(--chart-1))", forecastPoints = [] }: TrendChartProps) {
   if (entries.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-50 text-muted-foreground text-sm">
-        Belum ada data historis
-      </div>
-    );
+    return <EmptyState title="Belum ada data historis" description="Grafik akan muncul setelah data KPI diisi." />;
   }
 
   const actualData = entries.map((e) => ({

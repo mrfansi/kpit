@@ -20,6 +20,17 @@ const EntrySchema = z.object({
 
 const BulkEntrySchema = z.array(EntrySchema).min(1);
 
+/** Cek entri existing untuk satu KPI+periode — dipakai form input untuk peringatan sebelum menimpa. */
+export async function getExistingEntry(kpiId: number, periodDate: string): Promise<{ value: number } | null> {
+  await requireAdmin();
+  const row = await db
+    .select({ value: kpiEntries.value })
+    .from(kpiEntries)
+    .where(and(eq(kpiEntries.kpiId, kpiId), eq(kpiEntries.periodDate, periodDate)))
+    .get();
+  return row ?? null;
+}
+
 export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
   const session = await requireAdmin();
   EntrySchema.parse(data);

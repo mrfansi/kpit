@@ -1,5 +1,5 @@
 import type { KPIEntry } from "@/lib/db/schema";
-import type { KPIStatus } from "@/lib/kpi-status";
+import { statusConfig, type KPIStatus } from "@/lib/kpi-status";
 
 interface ReportSparklineProps {
   entries: KPIEntry[];
@@ -7,13 +7,6 @@ interface ReportSparklineProps {
   width?: number;
   height?: number;
 }
-
-const statusColor: Record<KPIStatus, string> = {
-  green: "#22c55e",
-  yellow: "#eab308",
-  red: "#ef4444",
-  "no-data": "#94a3b8",
-};
 
 export function ReportSparkline({ entries, status, width = 100, height = 28 }: ReportSparklineProps) {
   if (entries.length < 2) return <span className="text-muted-foreground text-xs">—</span>;
@@ -32,7 +25,7 @@ export function ReportSparkline({ entries, status, width = 100, height = 28 }: R
     })
     .join(" ");
 
-  const color = statusColor[status];
+  const color = statusConfig[status].cssVar;
 
   return (
     <svg width={width} height={height} className="inline-block align-middle">

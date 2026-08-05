@@ -78,7 +78,9 @@ export default async function ReportPage({ params, searchParams }: Props) {
         <ReportActionPlans rows={actionPlanRows} periodDate={selectedPeriod} showDomain={false} />
       )}
 
-      {/* KPI Table */}
+      {/* KPI Table. Pembungkus overflow menahan geseran di tabelnya sendiri —
+          tanpa itu seluruh halaman laporan ikut bergeser di ponsel. */}
+      <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="border-b-2 border-foreground">
@@ -123,6 +125,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
           })}
         </tbody>
       </table>
+      </div>
 
       {/* Footer */}
       <footer className="mt-8 pt-4 border-t border-border text-xs text-muted-foreground flex justify-between">

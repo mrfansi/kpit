@@ -5,10 +5,28 @@ import { toast } from "sonner";
 import { createComment, deleteComment } from "@/lib/actions/comment";
 import type { KPIComment } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { EmptyState } from "@/components/empty-state";
 import { MessageCircle, Trash2, Send } from "lucide-react";
 import { isEmptyHtml } from "@/lib/html-utils";
+
+// Ringkasan teks polos dari HTML komentar, untuk ditampilkan di dialog konfirmasi hapus.
+function excerptFromHtml(html: string, maxLength = 60) {
+  const text = html.replace(/<[^>]*>/g, "").trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
+}
 
 interface Period {
   value: string;
@@ -121,7 +139,7 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
 
       {/* Comment List */}
       {visibleComments.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">Belum ada komentar untuk periode ini.</p>
+        <EmptyState compact title="Belum ada komentar untuk periode ini." />
       ) : (
         <ul className="space-y-3">
           {visibleComments.map((c) => (
@@ -132,15 +150,35 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
                     <span className="text-xs font-semibold">{c.author}</span>
                     <span className="text-xs text-muted-foreground">{formatRelative(new Date(c.createdAt))}</span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0 print:hidden"
-                    onClick={() => handleDelete(c.id)}
-                    disabled={isPending}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0 print:hidden"
+                        disabled={isPending}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Hapus Komentar Ini?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Komentar &quot;{excerptFromHtml(c.content) || "(kosong)"}&quot; akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(c.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Ya, Hapus
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
                 <div
                   className="prose-comment text-sm"

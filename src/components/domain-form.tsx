@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -177,7 +178,7 @@ export function DomainForm({ domain }: DomainFormProps) {
             {form.formState.isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Tambah Domain"}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <a href="/admin/domain">Batal</a>
+            <Link href="/admin/domain">Batal</Link>
           </Button>
         </div>
       </form>

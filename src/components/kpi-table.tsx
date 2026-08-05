@@ -6,6 +6,7 @@ import { formatPeriodDate, formatValue } from "@/lib/period";
 import { cn } from "@/lib/utils";
 import { Sparkline } from "@/components/sparkline";
 import { PinKPIButton } from "@/components/pin-kpi-button";
+import { EmptyState } from "@/components/empty-state";
 import type { KPI, KPIEntry } from "@/lib/db/schema";
 
 export interface KPIRowData {
@@ -44,7 +45,7 @@ export function KPITable({
   canEdit = false,
 }: KPITableProps) {
   if (rows.length === 0) {
-    return <p className="px-3 py-6 text-sm text-muted-foreground">{emptyMessage}</p>;
+    return <EmptyState compact title={emptyMessage} />;
   }
 
   return (

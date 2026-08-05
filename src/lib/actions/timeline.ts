@@ -158,16 +158,21 @@ export async function updateProjectDates(
 ) {
   const session = await requireAdmin();
 
-  // Reject malformed/non-calendar dates before any write.
-  if (!isValidCalendarDate(startDate) || !isValidCalendarDate(endDate)) return;
-  if (endDate < startDate) return;
+  // Reject malformed/non-calendar dates before any write. Throw (rather than
+  // silently return) so the drag-to-reschedule UI can roll back its optimistic move.
+  if (!isValidCalendarDate(startDate) || !isValidCalendarDate(endDate)) {
+    throw new Error("Tanggal tidak valid");
+  }
+  if (endDate < startDate) {
+    throw new Error("Tanggal selesai tidak boleh sebelum tanggal mulai");
+  }
 
   // Fetch old values for change detection
   const existing = await db.query.timelineProjects.findFirst({
     where: eq(timelineProjects.id, id),
     columns: { startDate: true, endDate: true, estimatedLaunchDate: true, progress: true },
   });
-  if (!existing) return;
+  if (!existing) throw new Error("Project tidak ditemukan");
 
   const clearLaunch =
     existing.estimatedLaunchDate && existing.estimatedLaunchDate < endDate;

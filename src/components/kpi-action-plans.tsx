@@ -8,10 +8,22 @@ import { createActionPlan, deleteActionPlan, updateActionPlan } from "@/lib/acti
 import { actionPlanStatusLabels, isActionPlanOverdue, type ActionPlanStatus } from "@/lib/action-plan";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { EmptyState } from "@/components/empty-state";
 
 interface KPIActionPlansProps {
   kpiId: number;
@@ -147,7 +159,7 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion }: KPIActionP
       </form>
 
       {actions.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">Belum ada action plan untuk KPI ini.</p>
+        <EmptyState compact title="Belum ada action plan untuk KPI ini." />
       ) : (
         <ul className="space-y-3">
           {actions.map((action) => {
@@ -181,9 +193,30 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion }: KPIActionP
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(action)} disabled={isPending}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isPending}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Hapus Action Plan Ini?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Action plan &quot;{action.title}&quot; akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(action)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Ya, Hapus
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </li>

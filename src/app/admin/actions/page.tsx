@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { TableSearch } from "@/components/table-search";
+import { EmptyState } from "@/components/empty-state";
 
 interface Props {
   searchParams: Promise<{ status?: string; q?: string }>;
@@ -93,10 +94,12 @@ export default async function AdminActionsPage({ searchParams }: Props) {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      {rows.length === 0
-                        ? "Belum ada action plan."
-                        : "Tidak ada action plan yang cocok dengan filter. Coba ubah pencarian atau status."}
+                    <TableCell colSpan={6}>
+                      <EmptyState
+                        compact
+                        title={rows.length === 0 ? "Belum ada action plan." : "Tidak ada action plan yang cocok dengan filter."}
+                        description={rows.length === 0 ? undefined : "Coba ubah pencarian atau status."}
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (

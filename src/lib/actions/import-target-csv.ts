@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { kpis, kpiTargets } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
@@ -18,6 +18,8 @@ export interface TargetImportRow {
   target: number;
   thresholdGreen: number;
   thresholdYellow: number;
+  /** Target kpi_targets yang sudah ada untuk (kpiId, periodDate) ini, kalau ada — dipakai preview untuk menandai baris yang akan menimpa. */
+  existingTarget?: number;
 }
 
 // Server-side schema: importTargetRows is a 'use server' action callable
@@ -104,6 +106,21 @@ export async function resolveTargetCSVRows(text: string): Promise<{
     }
 
     resolved.push({ rowIndex: rowNum, kpiId, kpiName, periodDate, target, thresholdGreen, thresholdYellow });
+  }
+
+  // Cek target lama yang bertabrakan, supaya preview bisa memperingatkan
+  // admin sebelum target lama ditimpa.
+  if (resolved.length > 0) {
+    const rowKpiIds = [...new Set(resolved.map((r) => r.kpiId))];
+    const rowPeriodDates = [...new Set(resolved.map((r) => r.periodDate))];
+    const existing = await db
+      .select({ kpiId: kpiTargets.kpiId, periodDate: kpiTargets.periodDate, target: kpiTargets.target })
+      .from(kpiTargets)
+      .where(and(inArray(kpiTargets.kpiId, rowKpiIds), inArray(kpiTargets.periodDate, rowPeriodDates)));
+    const existingMap = new Map(existing.map((e) => [`${e.kpiId}:${e.periodDate}`, e.target]));
+    for (const row of resolved) {
+      row.existingTarget = existingMap.get(`${row.kpiId}:${row.periodDate}`);
+    }
   }
 
   return { resolved, errors };

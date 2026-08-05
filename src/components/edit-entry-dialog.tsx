@@ -31,9 +31,13 @@ export function EditEntryDialog({ id, currentValue, currentNote, unit, period }:
       return;
     }
     startTransition(async () => {
-      await updateEntry(id, num, note || undefined);
-      toast.success("Data berhasil diperbarui");
-      setOpen(false);
+      try {
+        await updateEntry(id, num, note || undefined);
+        toast.success("Data berhasil diperbarui");
+        setOpen(false);
+      } catch {
+        toast.error("Gagal menyimpan perubahan, coba lagi");
+      }
     });
   }
 

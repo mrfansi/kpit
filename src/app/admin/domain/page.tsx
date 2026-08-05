@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { TableSearch } from "@/components/table-search";
+import { EmptyState } from "@/components/empty-state";
 import { PlusCircle, Pencil } from "lucide-react";
 import Link from "next/link";
 import { DeleteDomainButton } from "@/components/delete-domain-button";
@@ -59,12 +60,16 @@ export default async function AdminDomainPage({ searchParams }: Props) {
             <TableBody>
               {domains.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    {allDomains.length === 0 ? (
-                      <>Belum ada domain. <Link href="/admin/domain/new" className="underline">Buat domain pertama untuk mulai mencatat KPI</Link>.</>
-                    ) : (
-                      "Tidak ada domain yang cocok dengan pencarian. Coba kata kunci lain."
-                    )}
+                  <TableCell colSpan={6}>
+                    <EmptyState
+                      compact
+                      title={allDomains.length === 0 ? "Belum ada domain." : "Tidak ada domain yang cocok dengan pencarian."}
+                      description={
+                        allDomains.length === 0
+                          ? "Buat domain pertama menggunakan tombol Tambah Domain di atas."
+                          : "Coba kata kunci lain."
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

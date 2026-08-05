@@ -116,7 +116,7 @@ export function KPITargetSuggestion({
       {error && <p className="text-danger text-xs">{error}</p>}
 
       {suggestion && (
-        <div className="max-w-sm rounded border border-info/30 bg-info-soft p-3 text-sm">
+        <div className="max-w-sm rounded border border-info bg-info-soft p-3 text-sm">
           <div className="flex items-center justify-between mb-1">
             <span className="font-semibold">
               <span className="num">{suggestion.suggestedTarget}</span> {unit}

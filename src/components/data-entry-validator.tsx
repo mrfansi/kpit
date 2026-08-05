@@ -104,7 +104,7 @@ export function DataEntryValidator({
               className={`text-xs p-2 rounded ${
                 flag.severity === "warning"
                   ? "bg-warning-soft border border-warning text-warning"
-                  : "bg-info-soft border border-info/30 text-info"
+                  : "bg-info-soft border border-info text-info"
               }`}
             >
               <span className="font-semibold">{flag.kpiName}:</span>{" "}

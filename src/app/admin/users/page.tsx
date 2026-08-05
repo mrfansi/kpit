@@ -7,6 +7,7 @@ import { DeleteUserButton } from "@/components/delete-user-button";
 import { AddUserForm } from "@/components/add-user-form";
 import { PageHeader } from "@/components/page-header";
 import { TableSearch } from "@/components/table-search";
+import { EmptyState } from "@/components/empty-state";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { Users } from "lucide-react";
@@ -53,10 +54,12 @@ export default async function AdminUsersPage({ searchParams }: Props) {
               <TableBody>
                 {userList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      {allUsers.length === 0
-                        ? "Belum ada user."
-                        : "Tidak ada user yang cocok dengan pencarian. Coba kata kunci lain."}
+                    <TableCell colSpan={5}>
+                      <EmptyState
+                        compact
+                        title={allUsers.length === 0 ? "Belum ada user." : "Tidak ada user yang cocok dengan pencarian."}
+                        description={allUsers.length === 0 ? undefined : "Coba kata kunci lain."}
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (

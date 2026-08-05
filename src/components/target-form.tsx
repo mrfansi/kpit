@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -135,7 +136,7 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
             {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Target"}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <a href="/admin/kpi">Batal</a>
+            <Link href="/admin/kpi">Batal</Link>
           </Button>
         </div>
       </form>

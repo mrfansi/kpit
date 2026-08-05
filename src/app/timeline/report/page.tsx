@@ -3,6 +3,7 @@ import { getAllStatuses } from "@/lib/queries/timeline-statuses";
 import { ReportHeader } from "@/components/report/report-header";
 import { ReportSummaryTable } from "@/components/report/report-summary-table";
 import { ReportGantt } from "@/components/report/report-gantt";
+import { EmptyState } from "@/components/empty-state";
 import "./report-print.css";
 
 export const metadata = {
@@ -36,11 +37,7 @@ export default async function TimelineReportPage() {
           <ReportGantt projects={projects} statuses={statuses} />
         </div>
       )}
-      {projects.length === 0 && (
-        <p className="text-muted-foreground text-center py-12">
-          Belum ada project timeline.
-        </p>
-      )}
+      {projects.length === 0 && <EmptyState title="Belum ada project timeline" />}
     </div>
   );
 }

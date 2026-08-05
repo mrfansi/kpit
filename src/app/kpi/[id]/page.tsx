@@ -11,6 +11,7 @@ import { ArrowLeft, Target, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight
 import Link from "next/link";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
 import { EditEntryDialog } from "@/components/edit-entry-dialog";
+import { EmptyState } from "@/components/empty-state";
 import { getKPITargets, getPeriodComparisonEntries, getKPIComments, getDomainById, getKPIsWithLatestEntry, getKPIActionPlans } from "@/lib/queries";
 import { PeriodComparison } from "@/components/period-comparison";
 import { KPIComments } from "@/components/kpi-comments";
@@ -295,7 +296,9 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
             <TableBody>
               {pagedEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">Belum ada data</TableCell>
+                  <TableCell colSpan={6}>
+                    <EmptyState compact title="Belum ada data" />
+                  </TableCell>
                 </TableRow>
               ) : (
                 pagedEntries.map((entry) => {

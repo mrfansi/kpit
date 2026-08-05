@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { kpis, kpiEntries } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
 import { validatePeriodDate, validateNumericValue, buildRowError, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
@@ -16,6 +16,8 @@ export interface ImportRow {
   periodDate: string;
   value: number;
   note?: string;
+  /** Nilai kpi_entries yang sudah ada untuk (kpiId, periodDate) ini, kalau ada — dipakai preview untuk menandai baris yang akan menimpa data lama. */
+  existingValue?: number;
 }
 
 export interface ImportResult {
@@ -88,6 +90,21 @@ export async function resolveCSVRows(text: string): Promise<{
 
     const note = headers.includes("note") ? (row[idx("note")] || undefined) : undefined;
     resolved.push({ rowIndex: rowNum, kpiName, kpiId, periodDate, value, note });
+  }
+
+  // Cek entri lama yang bertabrakan dengan baris yang akan diimport, supaya
+  // preview bisa memperingatkan admin sebelum data lama ditimpa.
+  if (resolved.length > 0) {
+    const rowKpiIds = [...new Set(resolved.map((r) => r.kpiId!))];
+    const rowPeriodDates = [...new Set(resolved.map((r) => r.periodDate))];
+    const existing = await db
+      .select({ kpiId: kpiEntries.kpiId, periodDate: kpiEntries.periodDate, value: kpiEntries.value })
+      .from(kpiEntries)
+      .where(and(inArray(kpiEntries.kpiId, rowKpiIds), inArray(kpiEntries.periodDate, rowPeriodDates)));
+    const existingMap = new Map(existing.map((e) => [`${e.kpiId}:${e.periodDate}`, e.value]));
+    for (const row of resolved) {
+      row.existingValue = existingMap.get(`${row.kpiId}:${row.periodDate}`);
+    }
   }
 
   return { resolved, errors };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { resolveCSVRows, importCSVRows, type ImportRow } from "@/lib/actions/import-csv";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,8 @@ export default function ImportPage() {
     reader.readAsText(file);
   }
 
+  const overwriteCount = preview?.filter((r) => r.existingValue !== undefined).length ?? 0;
+
   function handleImport() {
     if (!preview?.length) return;
     startTransition(async () => {
@@ -52,9 +55,9 @@ export default function ImportPage() {
         title="Import Data CSV"
         description="Upload file CSV untuk memasukkan data KPI secara massal"
         actions={
-          <a href="/admin/import/targets" className="text-sm text-primary underline underline-offset-2 shrink-0">
+          <Link href="/admin/import/targets" className="text-sm text-primary underline underline-offset-2 shrink-0">
             Import Target →
-          </a>
+          </Link>
         }
       />
 
@@ -115,7 +118,13 @@ Tingkat Keterlambatan,2026-01-01,3.2,`}
               {isPending ? "Mengimport..." : "Konfirmasi Import"}
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {overwriteCount > 0 && (
+              <div className="flex items-center gap-2 text-sm text-warning bg-warning-soft rounded-md px-3 py-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span className="num font-medium">{overwriteCount}</span> entri akan <span className="font-semibold">DITIMPA</span> — data lama pada baris ini akan hilang.
+              </div>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -127,15 +136,26 @@ Tingkat Keterlambatan,2026-01-01,3.2,`}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {preview.slice(0, 50).map((row) => (
-                  <TableRow key={`${row.kpiId}-${row.periodDate}`}>
-                    <TableCell className="text-muted-foreground text-xs">{row.rowIndex}</TableCell>
-                    <TableCell className="font-medium">{row.kpiName}</TableCell>
-                    <TableCell>{row.periodDate}</TableCell>
-                    <TableCell className="text-right num">{row.value}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{row.note ?? "—"}</TableCell>
-                  </TableRow>
-                ))}
+                {preview.slice(0, 50).map((row) => {
+                  const willOverwrite = row.existingValue !== undefined;
+                  return (
+                    <TableRow key={`${row.kpiId}-${row.periodDate}`} className={willOverwrite ? "bg-warning-soft" : undefined}>
+                      <TableCell className="text-muted-foreground text-xs">{row.rowIndex}</TableCell>
+                      <TableCell className="font-medium">{row.kpiName}</TableCell>
+                      <TableCell>{row.periodDate}</TableCell>
+                      <TableCell className="text-right num">
+                        {willOverwrite ? (
+                          <span className="text-warning">
+                            {row.existingValue} → {row.value}
+                          </span>
+                        ) : (
+                          row.value
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{row.note ?? "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             {preview.length > 50 && (

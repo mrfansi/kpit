@@ -10,8 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { PlusCircle, Lightbulb } from "lucide-react";
-import { createEntry } from "@/lib/actions/entry";
+import { PlusCircle, Lightbulb, AlertTriangle } from "lucide-react";
+import { createEntry, getExistingEntry } from "@/lib/actions/entry";
 import { toast } from "sonner";
 import type { KPI } from "@/lib/db/schema";
 import { listLastNMonths } from "@/lib/period";
@@ -35,6 +35,7 @@ interface QuickEntryModalProps {
 export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModalProps) {
   const [open, setOpen] = useState(false);
   const [smartPeriodHint, setSmartPeriodHint] = useState<string | null>(null);
+  const [existingHint, setExistingHint] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const months = listLastNMonths(12);
 
@@ -48,24 +49,36 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
     },
   });
 
+  // Cek data existing untuk kombinasi KPI+periode yang baru dipilih, supaya
+  // admin tahu sebelum submit kalau nilai lama akan ditimpa.
+  function checkExisting(kpiId: string, periodDate: string) {
+    if (!kpiId || !periodDate) { setExistingHint(null); return; }
+    getExistingEntry(Number(kpiId), periodDate).then((existing) => {
+      setExistingHint(existing ? `Sudah ada data: ${existing.value} — akan ditimpa` : null);
+    });
+  }
+
   function handleKPIChange(kpiId: string) {
     form.setValue("kpiId", kpiId);
     const latestPeriod = kpiLatestPeriods[Number(kpiId)];
+    let periodDate = months[0]?.value ?? "";
     if (latestPeriod) {
       // Suggest next month after latest entry
       const nextMonth = format(addMonths(parseISO(latestPeriod), 1), "yyyy-MM-dd");
       const exists = months.find((m) => m.value === nextMonth);
       if (exists) {
         form.setValue("periodDate", nextMonth);
+        periodDate = nextMonth;
         setSmartPeriodHint(`Terakhir diisi: ${format(parseISO(latestPeriod), "MMMM yyyy")} → disarankan ${exists.label}`);
       } else {
         setSmartPeriodHint(null);
       }
     } else {
       // No entries yet — suggest current month
-      form.setValue("periodDate", months[0]?.value ?? "");
+      form.setValue("periodDate", periodDate);
       setSmartPeriodHint("Belum ada data — disarankan periode terkini");
     }
+    checkExisting(kpiId, periodDate);
   }
 
   function onSubmit(values: FormValues) {
@@ -80,6 +93,7 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
         toast.success("Data berhasil disimpan");
         form.reset({ kpiId: "", periodDate: months[0]?.value ?? "", value: undefined, note: "" });
         setSmartPeriodHint(null);
+        setExistingHint(null);
         setOpen(false);
       } catch {
         toast.error("Gagal menyimpan data");
@@ -88,7 +102,7 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setSmartPeriodHint(null); }}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setSmartPeriodHint(null); setExistingHint(null); } }}>
       <DialogTrigger asChild>
         <Button size="sm" className="h-8 text-xs">
           <PlusCircle className="w-3.5 h-3.5 mr-1.5" />
@@ -131,7 +145,7 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Periode</FormLabel>
-                  <Select onValueChange={(v) => { field.onChange(v); setSmartPeriodHint(null); }} value={field.value}>
+                  <Select onValueChange={(v) => { field.onChange(v); setSmartPeriodHint(null); checkExisting(form.getValues("kpiId"), v); }} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Pilih periode..." />
@@ -171,6 +185,12 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
                       onChange={(e) => field.onChange(e.target.valueAsNumber)}
                     />
                   </FormControl>
+                  {existingHint && (
+                    <p className="flex items-center gap-1 mt-1 text-xs text-warning">
+                      <AlertTriangle className="w-3 h-3" />
+                      {existingHint}
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

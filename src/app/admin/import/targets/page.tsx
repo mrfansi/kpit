@@ -32,6 +32,8 @@ export default function ImportTargetsPage() {
     reader.readAsText(file);
   }
 
+  const overwriteCount = preview?.filter((r) => r.existingTarget !== undefined).length ?? 0;
+
   function handleImport() {
     if (!preview?.length) return;
     startTransition(async () => {
@@ -99,7 +101,13 @@ Tingkat Keterlambatan,2026-01-01,5,6,8`}
               {isPending ? "Mengimport..." : "Konfirmasi Import"}
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {overwriteCount > 0 && (
+              <div className="flex items-center gap-2 text-sm text-warning bg-warning-soft rounded-md px-3 py-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span className="num font-medium">{overwriteCount}</span> target akan <span className="font-semibold">DITIMPA</span> — nilai lama pada baris ini akan hilang.
+              </div>
+            )}
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -112,15 +120,26 @@ Tingkat Keterlambatan,2026-01-01,5,6,8`}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {preview.slice(0, 50).map((row) => (
-                    <TableRow key={`${row.kpiId}-${row.periodDate}`}>
-                      <TableCell className="font-medium">{row.kpiName}</TableCell>
-                      <TableCell>{row.periodDate}</TableCell>
-                      <TableCell className="text-right num">{row.target}</TableCell>
-                      <TableCell className="text-right num text-success">{row.thresholdGreen}</TableCell>
-                      <TableCell className="text-right num text-warning">{row.thresholdYellow}</TableCell>
-                    </TableRow>
-                  ))}
+                  {preview.slice(0, 50).map((row) => {
+                    const willOverwrite = row.existingTarget !== undefined;
+                    return (
+                      <TableRow key={`${row.kpiId}-${row.periodDate}`} className={willOverwrite ? "bg-warning-soft" : undefined}>
+                        <TableCell className="font-medium">{row.kpiName}</TableCell>
+                        <TableCell>{row.periodDate}</TableCell>
+                        <TableCell className="text-right num">
+                          {willOverwrite ? (
+                            <span className="text-warning">
+                              {row.existingTarget} → {row.target}
+                            </span>
+                          ) : (
+                            row.target
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right num text-success">{row.thresholdGreen}</TableCell>
+                        <TableCell className="text-right num text-warning">{row.thresholdYellow}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

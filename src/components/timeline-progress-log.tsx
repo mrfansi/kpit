@@ -5,7 +5,19 @@ import { toast } from "sonner";
 import { createProgressLog, deleteProgressLog } from "@/lib/actions/timeline";
 import type { TimelineProjectLog } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { EmptyState } from "@/components/empty-state";
 import { Trash2, Send, ArrowRight } from "lucide-react";
 
 interface TimelineProgressLogProps {
@@ -95,7 +107,7 @@ export function TimelineProgressLog({
 
       {/* Timeline List */}
       {logs.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">Belum ada progress log.</p>
+        <EmptyState compact title="Belum ada progress log." />
       ) : (
         <div className="pr-1">
           <div className="relative" style={{ paddingLeft: 28 }}>
@@ -124,15 +136,35 @@ export function TimelineProgressLog({
                         {log.progressAfter}%
                       </span>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto"
-                      onClick={() => handleDelete(log.id)}
-                      disabled={isPending}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto"
+                          disabled={isPending}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Hapus Log Ini?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Log &quot;{log.content.length > 60 ? `${log.content.slice(0, 60)}…` : log.content}&quot; akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(log.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Ya, Hapus
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                   <div className="flex items-start gap-1.5">
                     <span className="text-xs font-semibold text-foreground">{log.author}</span>

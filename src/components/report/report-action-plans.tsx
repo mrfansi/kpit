@@ -77,6 +77,9 @@ export function ReportActionPlans({ rows, periodDate, showDomain = true }: Repor
         </div>
       </div>
 
+      {/* Tanpa pembungkus ini, tabel selebar ini membuat seluruh halaman
+          bergeser horizontal di ponsel, bukan cuma tabelnya. */}
+      <div className="overflow-x-auto">
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr className="border-b border-border text-muted-foreground print:border-black">
@@ -120,6 +123,7 @@ export function ReportActionPlans({ rows, periodDate, showDomain = true }: Repor
           })}
         </tbody>
       </table>
+      </div>
     </section>
   );
 }

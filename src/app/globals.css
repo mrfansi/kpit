@@ -61,10 +61,26 @@
 /*
  * Palet "panel instrumen", tanpa warna brand sama sekali.
  *
- * Chrome sepenuhnya netral (chroma = 0). Satu-satunya warna di layar adalah
- * sinyal status KPI: hijau / kuning / merah. Konsekuensinya, elemen interaktif
- * TIDAK boleh dibedakan lewat hue — pakai kontras, bobot, dan garis. Kalau
- * tombol butuh hue untuk terlihat penting, hierarkinya yang salah.
+ * Chrome sepenuhnya netral (chroma = 0). Elemen interaktif TIDAK boleh
+ * dibedakan lewat hue — pakai kontras, bobot, dan garis. Kalau tombol butuh
+ * hue untuk terlihat penting, hierarkinya yang salah.
+ *
+ * Hue hanya boleh masuk lewat dua pintu, dan keduanya membawa makna:
+ *
+ * 1. SINYAL STATUS — hijau / kuning / merah, token di bawah. Ini penilaian:
+ *    KPI ini sehat atau tidak. Hue-nya wajib konsisten di seluruh aplikasi,
+ *    jadi selalu lewat `statusConfig` di src/lib/kpi-status.ts, tidak pernah
+ *    ditulis langsung.
+ *
+ * 2. IDENTITAS KATEGORI — warna per domain dan per project, disimpan di DB
+ *    dan dihasilkan `generateSoftColor()` (src/lib/colors.ts). Ini BUKAN
+ *    penilaian, cuma label: membedakan "Finance" dari "Operations" pada dot
+ *    sidebar, bar Gantt, dan baris tabel laporan. Sengaja pastel dan
+ *    berchroma rendah supaya tidak pernah terbaca sebagai sinyal status.
+ *
+ * Di luar dua itu, hue apa pun — apalagi hex atau kelas Tailwind mentah
+ * seperti `text-blue-500` — adalah bug: ia akan berebut perhatian dengan
+ * sinyal status dan tidak ikut berubah saat dark mode.
  */
 :root {
   --radius: 0.625rem;

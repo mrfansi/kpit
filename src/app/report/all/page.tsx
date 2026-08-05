@@ -293,6 +293,8 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
               <span className="num text-xs text-muted-foreground">{kpis.length} KPI · {dGreen} on track{dRed > 0 ? ` · ${dRed} off track` : ""}</span>
             </div>
 
+            {/* Lihat catatan pembungkus overflow di report/[domain]. */}
+            <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
@@ -357,6 +359,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                 })}
               </tbody>
             </table>
+            </div>
           </section>
         );
       })}

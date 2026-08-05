@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -323,7 +324,7 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
             {form.formState.isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Tambah KPI"}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <a href="/admin/kpi">Batal</a>
+            <Link href="/admin/kpi">Batal</Link>
           </Button>
         </div>
       </form>

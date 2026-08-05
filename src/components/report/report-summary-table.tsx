@@ -12,7 +12,10 @@ export function ReportSummaryTable({ projects, statuses }: ReportSummaryTablePro
   return (
     <div className="mb-10">
       <h2 className="text-lg font-semibold mb-4">Executive Summary</h2>
-      <div className="border rounded-lg overflow-hidden">
+      {/* overflow-x-auto, bukan overflow-hidden: keduanya sama-sama mengikat
+          sudut membulat, tapi yang pertama masih menyisakan cara menjangkau
+          kolom yang keluar layar di ponsel. */}
+      <div className="border rounded-lg overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 border-b">

@@ -22,8 +22,11 @@ export function GanttLogPanel({ project, onClose }: GanttLogPanelProps) {
     fetchProjectLogs(project.id).then(setLogs);
   }, [project.id]);
 
+  // max-w menyisakan 2rem: tanpa itu, di ponsel 360px panel menutupi seluruh
+  // viewport dan tidak ada isyarat visual bahwa ini overlay yang bisa ditutup.
+  // Sama seperti Dialog dan AIChat.
   return (
-    <div className="fixed inset-y-0 right-0 w-[360px] bg-background border-l shadow-xl z-50 flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-[360px] max-w-[calc(100%-2rem)] bg-background border-l shadow-xl z-50 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold truncate">{project.name}</h3>

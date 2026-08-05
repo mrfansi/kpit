@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { createProject, updateProject, deleteProject, fetchProjectLogs } from "@/lib/actions/timeline";
 import { format, addMonths } from "date-fns";
 import type { TimelineProject, TimelineProjectLog, TimelineProjectStatus } from "@/lib/db/schema";
@@ -72,19 +73,30 @@ export function TimelineProjectFormDialog({
   }, [logDialogOpen, project]);
 
   async function handleSubmit(formData: FormData) {
-    if (isEdit) {
-      await updateProject(project!.id, formData);
-    } else {
-      await createProject(formData);
+    try {
+      if (isEdit) {
+        await updateProject(project!.id, formData);
+      } else {
+        await createProject(formData);
+      }
+      toast.success(isEdit ? "Project berhasil diperbarui" : "Project berhasil ditambahkan");
+      formRef.current?.reset();
+      onOpenChange(false);
+    } catch (error) {
+      // Pesan dari projectSchema.safeParse (mis. tanggal tidak valid) harus sampai ke admin.
+      toast.error(error instanceof Error ? error.message : "Gagal menyimpan project");
     }
-    formRef.current?.reset();
-    onOpenChange(false);
   }
 
   async function handleDelete() {
     if (!project) return;
-    await deleteProject(project.id);
-    onOpenChange(false);
+    try {
+      await deleteProject(project.id);
+      toast.success("Project berhasil dihapus");
+      onOpenChange(false);
+    } catch {
+      toast.error("Gagal menghapus project, coba lagi");
+    }
   }
 
   return (

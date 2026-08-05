@@ -58,7 +58,10 @@ export function AddUserForm() {
               <Label htmlFor="role">Role</Label>
               <select
                 name="role"
-                defaultValue="admin"
+                /* Least privilege: admin harus sengaja memilihnya. Default lama
+                   "admin" berarti sekali lupa mengganti dropdown, pengguna baru
+                   langsung dapat akses penuh. */
+                defaultValue="viewer"
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
               >
                 <option value="admin">Admin</option>

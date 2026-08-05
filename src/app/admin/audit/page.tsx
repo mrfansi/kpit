@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
@@ -66,10 +67,12 @@ export default async function AdminAuditPage({ searchParams }: Props) {
               <TableBody>
                 {logs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      {unfilteredCount === 0
-                        ? "Belum ada log."
-                        : "Tidak ada log yang cocok dengan filter. Coba ubah aksi atau entitas."}
+                    <TableCell colSpan={5}>
+                      <EmptyState
+                        compact
+                        title={unfilteredCount === 0 ? "Belum ada log." : "Tidak ada log yang cocok dengan filter."}
+                        description={unfilteredCount === 0 ? undefined : "Coba ubah aksi atau entitas."}
+                      />
                     </TableCell>
                   </TableRow>
                 ) : logs.map((l) => (

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { DeleteStatusButton } from "./statuses/delete-button";
@@ -59,9 +60,7 @@ export default async function AdminTimelinePage() {
         </CardHeader>
         <CardContent>
           {projects.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Belum ada project. Klik Tambah project untuk membuat yang pertama.
-            </p>
+            <EmptyState title="Belum ada project" description="Klik Tambah Project di atas untuk membuat yang pertama." />
           ) : (
             <Table>
               <TableHeader>
@@ -159,9 +158,7 @@ export default async function AdminTimelinePage() {
         </CardHeader>
         <CardContent>
           {statuses.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Belum ada status. Tambahkan menggunakan form di atas.
-            </p>
+            <EmptyState title="Belum ada status" description="Tambahkan menggunakan form di atas." />
           ) : (
             <Table>
               <TableHeader>

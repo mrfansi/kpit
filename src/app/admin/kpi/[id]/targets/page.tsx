@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { formatValue, formatPeriodDate } from "@/lib/period";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -73,8 +74,12 @@ export default async function KPITargetsPage({ params }: Props) {
             <TableBody>
               {targets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Belum ada target override. Semua periode menggunakan target default.
+                  <TableCell colSpan={5}>
+                    <EmptyState
+                      compact
+                      title="Belum ada target override."
+                      description="Semua periode menggunakan target default."
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

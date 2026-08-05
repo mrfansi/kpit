@@ -25,9 +25,11 @@ import { GanttLaunchMarker } from "./gantt-launch-marker";
 import { getEffectiveLaunchDate, isManualLaunchDate } from "@/lib/launch-date";
 import { TimelineProjectFormDialog } from "@/components/timeline-project-form";
 import { updateProjectDates } from "@/lib/actions/timeline";
-import { CalendarDays, ClipboardList, Pencil } from "lucide-react";
+import { ClipboardList, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GanttLogPanel } from "./gantt-log-panel";
+import { EmptyState } from "@/components/empty-state";
+import { toast } from "sonner";
 
 interface GanttChartProps {
   projects: TimelineProject[];
@@ -129,14 +131,27 @@ export function GanttChart({
             newEnd = candidate > project.startDate ? candidate : project.endDate;
           }
 
+          const previousDates = { startDate: project.startDate, endDate: project.endDate };
+
           setLocalProjects((prevProjects) =>
             prevProjects.map((p) =>
               p.id === drag.projectId ? { ...p, startDate: newStart, endDate: newEnd } : p
             )
           );
 
-          startTransition(() => {
-            updateProjectDates(drag.projectId, newStart, newEnd);
+          startTransition(async () => {
+            try {
+              await updateProjectDates(drag.projectId, newStart, newEnd);
+            } catch (error) {
+              // Server menolak (mis. tanggal tidak valid) — kembalikan bar ke posisi
+              // semula, jangan biarkan UI menampilkan jadwal yang tidak tersimpan.
+              setLocalProjects((prevProjects) =>
+                prevProjects.map((p) =>
+                  p.id === drag.projectId ? { ...p, ...previousDates } : p
+                )
+              );
+              toast.error(error instanceof Error ? error.message : "Gagal memperbarui jadwal project");
+            }
           });
         });
       };
@@ -159,16 +174,11 @@ export function GanttChart({
           canEdit={canEdit}
           onAddProject={() => { setEditingProject(null); setProjectDialogOpen(true); }}
         />
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          <div className="text-center space-y-2">
-            <CalendarDays className="w-10 h-10 mx-auto opacity-40" />
-            <p className="text-sm">Belum ada project.</p>
-            {canEdit && (
-              <p className="text-xs">
-                Klik &quot;+ Project&quot; untuk memulai.
-              </p>
-            )}
-          </div>
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyState
+            title="Belum ada project."
+            description={canEdit ? 'Klik "+ Project" untuk memulai.' : undefined}
+          />
         </div>
         <TimelineProjectFormDialog
           open={projectDialogOpen}

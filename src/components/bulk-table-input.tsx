@@ -135,7 +135,10 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
                       type="number"
                       step="any"
                       placeholder="—"
-                      className="h-7 text-sm w-full"
+                      /* .num supaya digit yang diketik sejajar dengan kolom
+                         Target di sebelahnya — tanpa itu, dua kolom angka
+                         bersebelahan pakai metrik font yang berbeda. */
+                      className="num h-7 text-sm w-full"
                       value={values[kpi.id] ?? ""}
                       onChange={(e) => setValues((prev) => ({ ...prev, [kpi.id]: e.target.value }))}
                     />
