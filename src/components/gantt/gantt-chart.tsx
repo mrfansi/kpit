@@ -447,6 +447,7 @@ export function GanttChart({
             onClick={() => setLogPanelProject(null)}
           />
           <GanttLogPanel
+            key={logPanelProject.id}
             project={logPanelProject}
             onClose={() => setLogPanelProject(null)}
           />

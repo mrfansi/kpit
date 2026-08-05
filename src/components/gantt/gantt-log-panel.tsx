@@ -14,7 +14,9 @@ interface GanttLogPanelProps {
 }
 
 export function GanttLogPanel({ project, onClose }: GanttLogPanelProps) {
-  const [logs, setLogs] = useState<TimelineProjectLog[]>([]);
+  // null = masih fetch. Dibedakan dari [] supaya panel tidak sempat menampilkan
+  // "belum ada log" untuk proyek yang sebenarnya punya log.
+  const [logs, setLogs] = useState<TimelineProjectLog[] | null>(null);
 
   useEffect(() => {
     fetchProjectLogs(project.id).then(setLogs);
@@ -32,27 +34,33 @@ export function GanttLogPanel({ project, onClose }: GanttLogPanelProps) {
         </Button>
       </div>
       <div className="flex-1 overflow-y-auto p-4">
-        <TimelineRiskAssessment
-          projectName={project.name}
-          description={project.description || ""}
-          status={project.statusId ? String(project.statusId) : ""}
-          startDate={project.startDate}
-          endDate={project.endDate}
-          estimatedLaunchDate={project.estimatedLaunchDate}
-          launchBufferDays={project.launchBufferDays}
-          progress={project.progress}
-          logs={logs.map((l) => ({
-            date: l.createdAt instanceof Date ? l.createdAt.toISOString() : String(l.createdAt),
-            progressBefore: l.progressBefore ?? 0,
-            progressAfter: l.progressAfter ?? 0,
-            content: l.content,
-          }))}
-        />
-        <TimelineProgressLog
-          projectId={project.id}
-          currentProgress={project.progress}
-          initialLogs={logs}
-        />
+        {logs === null ? (
+          <p className="text-sm text-muted-foreground">Memuat progress log…</p>
+        ) : (
+          <>
+            <TimelineRiskAssessment
+              projectName={project.name}
+              description={project.description || ""}
+              status={project.statusId ? String(project.statusId) : ""}
+              startDate={project.startDate}
+              endDate={project.endDate}
+              estimatedLaunchDate={project.estimatedLaunchDate}
+              launchBufferDays={project.launchBufferDays}
+              progress={project.progress}
+              logs={logs.map((l) => ({
+                date: l.createdAt instanceof Date ? l.createdAt.toISOString() : String(l.createdAt),
+                progressBefore: l.progressBefore ?? 0,
+                progressAfter: l.progressAfter ?? 0,
+                content: l.content,
+              }))}
+            />
+            <TimelineProgressLog
+              projectId={project.id}
+              currentProgress={project.progress}
+              initialLogs={logs}
+            />
+          </>
+        )}
       </div>
     </div>
   );
