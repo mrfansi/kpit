@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, Users, User, PenLine, Menu, Globe, Upload, LogIn, ClipboardList, GanttChart } from "lucide-react";
+import { BarChart2, Settings, Home, Users, User, PenLine, Menu, Globe, Upload, LogIn, ClipboardList, ClipboardCheck, GanttChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoutButton } from "@/components/logout-button";
+import { AIChat } from "@/components/ai-chat";
 import { domainIconMap } from "@/lib/domain-icons";
 
 interface MobileHeaderProps {
@@ -37,8 +38,10 @@ export function MobileHeader({ domains, isAuthenticated = false, userName }: Mob
     { href: "/admin/kpi", icon: Settings, label: "Kelola KPI" },
     { href: "/admin/domain", icon: Globe, label: "Kelola Domain" },
     { href: "/admin/input", icon: PenLine, label: "Input Data" },
+    { href: "/admin/actions", icon: ClipboardCheck, label: "Action Plan" },
     { href: "/admin/import", icon: Upload, label: "Import CSV" },
     { href: "/admin/users", icon: Users, label: "Pengguna" },
+    { href: "/admin/timeline", icon: GanttChart, label: "Kelola Timeline" },
     { href: "/admin/audit", icon: ClipboardList, label: "Audit Log" },
   ];
 
@@ -58,56 +61,48 @@ export function MobileHeader({ domains, isAuthenticated = false, userName }: Mob
             </SheetTitle>
           </SheetHeader>
 
-          <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+          <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
             {navItems.map(({ href, icon: Icon, label, color }) => (
-              <Link
+              <MobileNavItem
                 key={href}
                 href={href}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "flex items-center gap-2.5 px-2 py-2.5 rounded-md text-sm transition-colors",
-                  pathname === href
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <Icon className="w-4 h-4 shrink-0" style={color && pathname !== href ? { color } : undefined} />
-                <span className="truncate">{label}</span>
-              </Link>
+                icon={Icon}
+                label={label}
+                color={color}
+                active={pathname === href}
+                onNavigate={() => setOpen(false)}
+              />
             ))}
 
             {isAuthenticated ? (
-              <>
-                <div className="pt-3 pb-1 px-2">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Admin</span>
+              <div className="mt-4 rounded-lg bg-sidebar-accent/40 p-1.5 ring-1 ring-sidebar-border">
+                <div className="px-2 pt-1 pb-1">
+                  <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                    Admin
+                  </span>
                 </div>
-                {adminItems.map(({ href, icon: Icon, label }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "flex items-center gap-2.5 px-2 py-2.5 rounded-md text-sm transition-colors",
-                      pathname.startsWith(href)
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{label}</span>
-                  </Link>
-                ))}
-              </>
+                <div className="space-y-1">
+                  {adminItems.map(({ href, icon: Icon, label }) => (
+                    <MobileNavItem
+                      key={href}
+                      href={href}
+                      icon={Icon}
+                      label={label}
+                      active={pathname.startsWith(href)}
+                      onNavigate={() => setOpen(false)}
+                    />
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="pt-3">
-                <Link
+                <MobileNavItem
                   href="/login"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-2.5 px-2 py-2.5 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                  <LogIn className="w-4 h-4 shrink-0" />
-                  <span>Login Admin</span>
-                </Link>
+                  icon={LogIn}
+                  label="Login Admin"
+                  active={pathname === "/login"}
+                  onNavigate={() => setOpen(false)}
+                />
               </div>
             )}
           </nav>
@@ -126,6 +121,7 @@ export function MobileHeader({ domains, isAuthenticated = false, userName }: Mob
                     <span className="text-xs text-muted-foreground truncate">{userName}</span>
                   </div>
                 )}
+                <AIChat />
                 <Link
                   href="/admin/account"
                   onClick={() => setOpen(false)}
@@ -140,11 +136,45 @@ export function MobileHeader({ domains, isAuthenticated = false, userName }: Mob
         </SheetContent>
       </Sheet>
 
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <BarChart2 className="w-4 h-4 text-primary shrink-0" />
-        <span className="font-semibold text-sm truncate">KPI Dashboard</span>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <BarChart2 className="h-4 w-4 shrink-0 text-primary" />
+        <span className="truncate text-sm font-semibold">KPI Dashboard</span>
       </div>
       <ThemeToggle />
     </header>
+  );
+}
+
+function MobileNavItem({
+  href,
+  icon: Icon,
+  label,
+  active,
+  color,
+  onNavigate,
+}: {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  active: boolean;
+  color?: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "relative flex items-center gap-2.5 rounded-md py-2.5 pr-2 pl-3 text-sm transition-colors",
+        "before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-full before:content-['']",
+        active
+          ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground before:bg-primary"
+          : "text-muted-foreground before:bg-transparent hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" style={color && !active ? { color } : undefined} />
+      <span className="truncate">{label}</span>
+    </Link>
   );
 }

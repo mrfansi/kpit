@@ -66,8 +66,8 @@ export default async function ReportPage({ params, searchParams }: Props) {
           if (count === 0) return null;
           return (
             <div key={s} className="flex items-center gap-1.5">
-              <span className={`inline-block w-3 h-3 rounded-full ${s === "green" ? "bg-green-500" : s === "yellow" ? "bg-yellow-500" : s === "red" ? "bg-red-500" : "bg-muted-foreground/30"}`} />
-              <span>{count} {cfg.label}</span>
+              <span className={`inline-block w-3 h-3 rounded-full ${statusConfig[s].solid}`} />
+              <span><span className="num">{count}</span> {cfg.label}</span>
             </div>
           );
         })}
@@ -95,7 +95,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
             const status = getKPIStatus(latestEntry?.value, { ...kpi, ...tgt });
             const pct = getAchievementPct(latestEntry?.value, tgt.target, kpi.direction);
             const cfg = statusConfig[status];
-            const statusDot = status === "green" ? "bg-green-500" : status === "yellow" ? "bg-yellow-400" : status === "red" ? "bg-red-500" : "bg-muted-foreground/30";
+            const statusDot = statusConfig[status].solid;
 
             return (
               <tr key={kpi.id} className="border-b border-border hover:bg-muted/50">
@@ -103,13 +103,13 @@ export default async function ReportPage({ params, searchParams }: Props) {
                   <div className="font-medium">{kpi.name}</div>
                   {kpi.description && <div className="text-xs text-muted-foreground truncate max-w-xs">{kpi.description}</div>}
                 </td>
-                <td className="text-right py-2.5 px-4 font-semibold">
+                <td className="num text-right py-2.5 px-4 font-semibold">
                   {latestEntry ? formatValue(latestEntry.value, kpi.unit) : "—"}
                 </td>
-                <td className="text-right py-2.5 px-4 text-muted-foreground">
+                <td className="num text-right py-2.5 px-4 text-muted-foreground">
                   {formatValue(tgt.target, kpi.unit)}
                 </td>
-                <td className="text-right py-2.5 px-4">
+                <td className="num text-right py-2.5 px-4">
                   {pct !== null ? `${pct}%` : "—"}
                 </td>
                 <td className="py-2.5 pl-4">

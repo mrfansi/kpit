@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -77,19 +78,25 @@ export function AIChat() {
   }
 
   if (!open) {
+    // Pemicu inline, bukan tombol mengambang: FAB selalu melayang di atas konten
+    // dan menutupi kontrol di baris terakhir tabel. Di sini ia punya tempat sendiri.
     return (
       <button
         onClick={() => setOpen(true)}
-        className="print:hidden fixed bottom-6 right-6 w-12 h-12 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-50"
-        aria-label="Buka AI Chat"
+        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground print:hidden"
       >
-        <MessageCircle className="w-5 h-5" />
+        <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+        <span>AI Assistant</span>
       </button>
     );
   }
 
-  return (
-    <div className="print:hidden fixed bottom-6 right-6 w-96 h-[500px] bg-card rounded-lg shadow-2xl border border-border flex flex-col z-50">
+  // Panel di-portal ke <body>. Pemicunya hidup di dalam sidebar, dan sidebar
+  // itu `position: sticky` — yang SELALU membuat stacking context. Kalau panel
+  // ikut dirender di sana, `z-50`-nya hanya berlaku di dalam sidebar, sehingga
+  // sel tabel (yang `relative` demi rail status) menimpanya dan panel tampak tembus.
+  return createPortal(
+    <div className="print:hidden fixed bottom-6 right-6 w-[calc(100vw-2rem)] max-w-96 h-[min(500px,calc(100vh-6rem))] bg-card rounded-lg shadow-2xl border border-border flex flex-col z-50">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div>
@@ -178,6 +185,7 @@ export function AIChat() {
           {messages.length}/20 pesan
         </p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

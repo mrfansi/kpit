@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Upload, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
 
 export default function ImportTargetsPage() {
   const [preview, setPreview] = useState<TargetImportRow[] | null>(null);
@@ -44,10 +45,10 @@ export default function ImportTargetsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Import Target KPI via CSV</h1>
-        <p className="text-muted-foreground text-sm mt-1">Upload file CSV untuk mengatur target per periode secara massal</p>
-      </div>
+      <PageHeader
+        title="Import Target KPI via CSV"
+        description="Upload file CSV untuk mengatur target per periode secara massal"
+      />
 
       {/* Format */}
       <Card>
@@ -91,7 +92,7 @@ Tingkat Keterlambatan,2026-01-01,5,6,8`}
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-yellow-500" />
+              <AlertTriangle className="w-4 h-4 text-warning" />
               Preview — {preview.length} target siap diimport
             </CardTitle>
             <Button onClick={handleImport} disabled={isPending}>
@@ -115,9 +116,9 @@ Tingkat Keterlambatan,2026-01-01,5,6,8`}
                     <TableRow key={`${row.kpiId}-${row.periodDate}`}>
                       <TableCell className="font-medium">{row.kpiName}</TableCell>
                       <TableCell>{row.periodDate}</TableCell>
-                      <TableCell className="text-right">{row.target}</TableCell>
-                      <TableCell className="text-right text-green-600">{row.thresholdGreen}</TableCell>
-                      <TableCell className="text-right text-yellow-600">{row.thresholdYellow}</TableCell>
+                      <TableCell className="text-right num">{row.target}</TableCell>
+                      <TableCell className="text-right num text-success">{row.thresholdGreen}</TableCell>
+                      <TableCell className="text-right num text-warning">{row.thresholdYellow}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -128,10 +129,10 @@ Tingkat Keterlambatan,2026-01-01,5,6,8`}
       )}
 
       {result && (
-        <Card className={result.errors.length === 0 ? "border-green-500" : ""}>
+        <Card className={result.errors.length === 0 ? "border-success" : ""}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-6 h-6 text-green-600" />
+              <CheckCircle2 className="w-6 h-6 text-success" />
               <div>
                 <p className="font-semibold">Import Selesai</p>
                 <p className="text-sm text-muted-foreground">

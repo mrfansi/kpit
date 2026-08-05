@@ -1,15 +1,15 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getActionPlanCountsByKPIIds, getAllDomains, getDomainBySlug, getKPIsWithLatestEntry } from "@/lib/queries";
-import { KPICard } from "@/components/kpi-card";
-import { StatSummary } from "@/components/stat-summary";
+import { getActionPlanCountsByKPIIds, getAllDomains, getDomainBySlug, getEntriesForPeriod, getKPIsWithLatestEntry } from "@/lib/queries";
+import { KPITable } from "@/components/kpi-table";
+import { SummaryStrip } from "@/components/summary-strip";
+import { AttentionBar } from "@/components/attention-bar";
 import { DomainTabs } from "@/components/domain-tabs";
 import { ExportButtons } from "@/components/export-buttons";
 import { EmptyState } from "@/components/empty-state";
 import { PeriodSelector } from "@/components/period-selector";
 import { KPIFilterBar } from "@/components/kpi-filter-bar";
 import { QuickEntryModal } from "@/components/quick-entry-modal";
-import { Separator } from "@/components/ui/separator";
 import { formatPeriodDate, listLastNMonths } from "@/lib/period";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
@@ -32,10 +32,29 @@ export default async function DomainPage({ params, searchParams }: Props) {
   const [domain, domains] = await Promise.all([getDomainBySlug(slug), getAllDomains()]);
   if (!domain) notFound();
 
-  const [kpisWithEntries] = await Promise.all([
+  const [kpisWithEntries, entriesForPeriod] = await Promise.all([
     getKPIsWithLatestEntry(domain.id, selectedPeriod),
+    getEntriesForPeriod(selectedPeriod ?? ""),
   ]);
   const actionCounts = await getActionPlanCountsByKPIIds(kpisWithEntries.map(({ kpi }) => kpi.id));
+
+  // KPI domain ini yang off track / belum diisi untuk periode terpilih.
+  const entryKpiIds = new Set(entriesForPeriod.map((e) => e.kpiId));
+  const missingKPIs = kpisWithEntries
+    .map(({ kpi }) => kpi)
+    .filter((kpi) => !entryKpiIds.has(kpi.id));
+
+  const redKPIs = kpisWithEntries
+    .filter(({ kpi, latestEntry, effectiveTarget }) => {
+      const withTarget = effectiveTarget ? { ...kpi, ...effectiveTarget } : kpi;
+      return getKPIStatus(latestEntry?.value, withTarget) === "red";
+    })
+    .map(({ kpi, latestEntry, effectiveTarget }) => ({
+      kpi,
+      latestEntry,
+      effectiveTarget,
+      domainName: domain.name,
+    }));
 
   const filtered = kpisWithEntries.filter(({ kpi, latestEntry, effectiveTarget }) => {
     if (q && !kpi.name.toLowerCase().includes(q.toLowerCase())) return false;
@@ -94,9 +113,9 @@ export default async function DomainPage({ params, searchParams }: Props) {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{domain.name}</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Data per{" "}
-            <span className="font-medium text-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
+            Posisi per{" "}
+            <span className="num font-medium text-foreground">
               {selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "—"}
             </span>
           </p>
@@ -118,30 +137,35 @@ export default async function DomainPage({ params, searchParams }: Props) {
 
       <DomainAISummary requestData={domainSummaryData} />
 
-      <StatSummary kpisWithEntries={kpisWithEntries} />
+      <SummaryStrip kpisWithEntries={kpisWithEntries} />
 
-      <Suspense>
-        <KPIFilterBar defaultQ={q} defaultStatus={status} />
-      </Suspense>
+      {!isFiltered && (
+        <AttentionBar
+          redKPIs={redKPIs}
+          missingKPIs={missingKPIs}
+          period={selectedPeriod ?? ""}
+        />
+      )}
 
-      <DomainTabs domains={domains} activeSlug={slug} />
-      <Separator />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filtered.length === 0 ? (
-          <div className="col-span-full">
-            {isFiltered ? (
-              <p className="text-sm text-muted-foreground">Tidak ada KPI yang cocok dengan filter.</p>
-            ) : (
-              <EmptyState />
-            )}
-          </div>
-        ) : (
-          filtered.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
-            <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} activeActionCount={actionCounts.get(kpi.id) ?? 0} />
-          ))
-        )}
+      <div className="flex flex-wrap items-center gap-3">
+        <Suspense>
+          <KPIFilterBar defaultQ={q} defaultStatus={status} />
+        </Suspense>
+        <DomainTabs domains={domains} activeSlug={slug} />
       </div>
+
+      {filtered.length === 0 && !isFiltered ? (
+        <EmptyState />
+      ) : (
+        <div className="overflow-hidden rounded-lg border">
+          <KPITable
+            rows={filtered}
+            actionCounts={actionCounts}
+            selectedPeriod={selectedPeriod}
+            emptyMessage="Tidak ada KPI yang cocok dengan filter."
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -161,12 +161,12 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
         <StatCard label="Nilai Terkini" value={latestEntry ? formatValue(latestEntry.value, kpi.unit) : "—"} />
         <StatCard label="Target (periode ini)" value={formatValue(effectiveTarget.target, kpi.unit)} />
         <StatCard label="Pencapaian" value={achievementPct !== null ? `${achievementPct}%` : "—"} />
-        <StatCard label="Tipe Refresh" value={kpi.refreshType === "realtime" ? "Real-time" : "Periodik"} />
+        <StatCard label="Tipe Refresh" value={kpi.refreshType === "realtime" ? "Real-time" : "Periodik"} numeric={false} />
       </div>
 
       {/* Anomaly alert */}
       {isAnomalous && (
-        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-orange-300 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 text-orange-700 dark:text-orange-400 text-sm">
+        <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-warning bg-warning-soft text-warning text-sm">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
           <span>
             <strong>Anomali terdeteksi:</strong> Nilai terkini secara signifikan lebih{" "}
@@ -303,12 +303,12 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                   return (
                     <TableRow key={entry.id}>
                       <TableCell>{formatPeriodDate(entry.periodDate, "MMMM yyyy")}</TableCell>
-                      <TableCell className="text-right font-medium">{formatValue(entry.value, kpi.unit)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">
+                      <TableCell className="num text-right font-medium">{formatValue(entry.value, kpi.unit)}</TableCell>
+                      <TableCell className="num text-right text-muted-foreground">
                         {formatValue(entryTarget.target, kpi.unit)}
                         {override && <span className="ml-1 text-xs text-primary">*</span>}
                       </TableCell>
-                      <TableCell className="text-right">{pct !== null ? `${pct}%` : "—"}</TableCell>
+                      <TableCell className="num text-right">{pct !== null ? `${pct}%` : "—"}</TableCell>
                       <TableCell>
                         <Badge className={`${c.bg} ${c.color} border-0 text-xs`}>{c.label}</Badge>
                       </TableCell>
@@ -380,12 +380,12 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value, numeric = true }: { label: string; value: string; numeric?: boolean }) {
   return (
     <Card>
       <CardContent className="pt-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-xl font-bold mt-1">{value}</p>
+        <p className={`text-xl font-bold mt-1 ${numeric ? "num" : ""}`}>{value}</p>
       </CardContent>
     </Card>
   );

@@ -56,7 +56,7 @@ export function ReportSummaryTable({ projects, statuses }: ReportSummaryTablePro
                           }}
                         />
                       </div>
-                      <span className="text-xs text-muted-foreground w-8">
+                      <span className="num text-xs text-muted-foreground w-8">
                         {project.progress}%
                       </span>
                     </div>
@@ -91,7 +91,7 @@ export function ReportSummaryTable({ projects, statuses }: ReportSummaryTablePro
                     })}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-emerald-600">
+                    <span className="text-success">
                       {format(parseISO(launchDate), "dd MMM yy", {
                         locale: idLocale,
                       })}

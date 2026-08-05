@@ -29,10 +29,10 @@ interface TimelineRiskAssessmentProps {
 }
 
 const riskColors = {
-  low: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-  medium: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
-  high: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-  critical: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+  low: "bg-success-soft text-success border-success",
+  medium: "bg-warning-soft text-warning border-warning",
+  high: "bg-danger-soft text-danger border-danger",
+  critical: "bg-danger-soft text-danger border-danger",
 };
 
 const riskLabels = {
@@ -115,7 +115,7 @@ export function TimelineRiskAssessment(props: TimelineRiskAssessmentProps) {
               Risiko: {riskLabels[assessment.riskLevel]}
             </span>
             <span
-              className={`text-xs ${assessment.onTrack ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+              className={`text-xs ${assessment.onTrack ? "text-success" : "text-danger"}`}
             >
               {assessment.onTrack ? "On Track" : "Off Track"}
             </span>

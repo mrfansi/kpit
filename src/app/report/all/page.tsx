@@ -1,5 +1,5 @@
 import { getAllDomains, getKPIsWithLatestEntry, getBatchPeriodComparison, getReportActionPlansWithKPI } from "@/lib/queries";
-import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
+import { getAchievementPct, getKPIStatus, statusConfig, trendColor } from "@/lib/kpi-status";
 import { formatPeriodDate, formatValue, listLastNMonths } from "@/lib/period";
 import { PrintButton } from "@/components/print-button";
 import { ReportPeriodSelector } from "@/components/report-period-selector";
@@ -174,18 +174,18 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
         {/* Global summary */}
         <div className="mt-4 flex flex-wrap gap-6 items-center">
           <div className="flex gap-4 text-sm">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 inline-block" />{totalGreen} On Track</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-yellow-400 inline-block" />{totalYellow} At Risk</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" />{totalRed} Off Track</span>
-            {totalNoData > 0 && <span className="flex items-center gap-1.5 text-muted-foreground"><span className="w-3 h-3 rounded-full bg-muted-foreground/30 inline-block" />{totalNoData} No Data</span>}
-            <span className="text-muted-foreground">{total} KPI total</span>
+            <span className="flex items-center gap-1.5"><span className={`w-3 h-3 rounded-full inline-block ${statusConfig.green.solid}`} /><span className="num">{totalGreen}</span> On Track</span>
+            <span className="flex items-center gap-1.5"><span className={`w-3 h-3 rounded-full inline-block ${statusConfig.yellow.solid}`} /><span className="num">{totalYellow}</span> At Risk</span>
+            <span className="flex items-center gap-1.5"><span className={`w-3 h-3 rounded-full inline-block ${statusConfig.red.solid}`} /><span className="num">{totalRed}</span> Off Track</span>
+            {totalNoData > 0 && <span className="flex items-center gap-1.5 text-muted-foreground"><span className="w-3 h-3 rounded-full bg-muted-foreground/30 inline-block" /><span className="num">{totalNoData}</span> No Data</span>}
+            <span className="text-muted-foreground"><span className="num">{total}</span> KPI total</span>
           </div>
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-muted-foreground">Health Score</span>
             <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-green-500" style={{ width: `${healthPct}%` }} />
+              <div className={`h-full ${statusConfig.green.solid}`} style={{ width: `${healthPct}%` }} />
             </div>
-            <span className={`text-sm font-bold ${healthPct >= 80 ? "text-green-600 dark:text-green-400" : healthPct >= 50 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"}`}>
+            <span className={`num text-sm font-bold ${healthPct >= 80 ? "text-success" : healthPct >= 50 ? "text-warning" : "text-danger"}`}>
               {healthPct}%
             </span>
           </div>
@@ -193,12 +193,12 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
 
         {/* Period comparison overview */}
         {(healthDelta !== null || prevTotal > 0) && (
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Health Score Change */}
             <div className="border border-border rounded-lg p-3">
               <p className="text-xs text-muted-foreground mb-1">Dibanding {prevMonthLabel}</p>
               {healthDelta !== null ? (
-                <p className={`text-lg font-bold ${healthDelta > 0 ? "text-green-600 dark:text-green-400" : healthDelta < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+                <p className={`num text-lg font-bold ${healthDelta > 0 ? trendColor("up") : healthDelta < 0 ? trendColor("down") : "text-muted-foreground"}`}>
                   {healthDelta > 0 ? "+" : ""}{healthDelta}%
                   <span className="text-xs font-normal text-muted-foreground ml-1">health score</span>
                 </p>
@@ -212,10 +212,10 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
               <p className="text-xs text-muted-foreground mb-1">Pergerakan Status</p>
               {prevTotal > 0 ? (
                 <div className="flex items-baseline gap-2">
-                  {improved > 0 && <span className="text-lg font-bold text-green-600 dark:text-green-400">{improved} <span className="text-xs font-normal">naik</span></span>}
-                  {declined > 0 && <span className="text-lg font-bold text-red-600 dark:text-red-400">{declined} <span className="text-xs font-normal">turun</span></span>}
-                  {improved === 0 && declined === 0 && <span className="text-lg font-bold text-muted-foreground">{stable} <span className="text-xs font-normal">tetap</span></span>}
-                  {(improved > 0 || declined > 0) && stable > 0 && <span className="text-xs text-muted-foreground">{stable} tetap</span>}
+                  {improved > 0 && <span className={`num text-lg font-bold ${trendColor("up")}`}>{improved} <span className="text-xs font-normal">naik</span></span>}
+                  {declined > 0 && <span className={`num text-lg font-bold ${trendColor("down")}`}>{declined} <span className="text-xs font-normal">turun</span></span>}
+                  {improved === 0 && declined === 0 && <span className="num text-lg font-bold text-muted-foreground">{stable} <span className="text-xs font-normal">tetap</span></span>}
+                  {(improved > 0 || declined > 0) && stable > 0 && <span className="num text-xs text-muted-foreground">{stable} tetap</span>}
                 </div>
               ) : (
                 <p className="text-lg font-bold text-muted-foreground">—</p>
@@ -226,10 +226,10 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
             <div className="border border-border rounded-lg p-3">
               <p className="text-xs text-muted-foreground mb-1">Rata-rata Pencapaian</p>
               {avgAchievement !== null ? (
-                <p className="text-lg font-bold">
+                <p className="num text-lg font-bold">
                   {avgAchievement}%
                   {achievementDelta !== null && achievementDelta !== 0 && (
-                    <span className={`text-xs font-normal ml-1 ${achievementDelta > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                    <span className={`text-xs font-normal ml-1 ${achievementDelta > 0 ? trendColor("up") : trendColor("down")}`}>
                       ({achievementDelta > 0 ? "+" : ""}{achievementDelta}%)
                     </span>
                   )}
@@ -251,17 +251,17 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
 
       {/* KPIs that need attention */}
       {attentionKpis.length > 0 && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-          <h2 className="font-bold text-sm text-red-800 dark:text-red-300 mb-2">Perlu Perhatian</h2>
+        <div className={`mb-6 p-4 rounded-lg border ${statusConfig.red.bg} ${statusConfig.red.border}`}>
+          <h2 className={`font-bold text-sm mb-2 ${statusConfig.red.color}`}>Perlu Perhatian</h2>
           <div className="space-y-2">
             {attentionKpis.map(({ kpi, latestEntry, prevEntry, status, effectiveTarget }) => {
               const tgt = effectiveTarget ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
               return (
                 <div key={kpi.id} className="flex items-start gap-2 text-sm">
-                  <span className={`inline-block w-2 h-2 rounded-full mt-1.5 shrink-0 ${status === "red" ? "bg-red-500" : "bg-yellow-400"}`} />
+                  <span className={`inline-block w-2 h-2 rounded-full mt-1.5 shrink-0 ${status === "red" ? statusConfig.red.solid : statusConfig.yellow.solid}`} />
                   <div>
                     <span className="font-medium">{kpi.name}</span>
-                    <span className="text-muted-foreground">
+                    <span className="num text-muted-foreground">
                       {" — "}aktual {latestEntry ? formatValue(latestEntry.value, kpi.unit) : "—"}
                       {" "}dari target {formatValue(tgt.target, kpi.unit)}
                       {prevEntry && (
@@ -290,7 +290,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                 <h2 className="font-bold text-base">{domain.name}</h2>
                 {domain.description && <span className="text-muted-foreground text-xs">— {domain.description}</span>}
               </div>
-              <span className="text-xs text-muted-foreground">{kpis.length} KPI · {dGreen} on track{dRed > 0 ? ` · ${dRed} off track` : ""}</span>
+              <span className="num text-xs text-muted-foreground">{kpis.length} KPI · {dGreen} on track{dRed > 0 ? ` · ${dRed} off track` : ""}</span>
             </div>
 
             <table className="w-full text-xs border-collapse">
@@ -312,18 +312,18 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                   const status = getKPIStatus(latestEntry?.value, { ...kpi, ...tgt });
                   const pct = getAchievementPct(latestEntry?.value, tgt.target, kpi.direction);
                   const cfg = statusConfig[status];
-                  const dot = status === "green" ? "bg-green-500" : status === "yellow" ? "bg-yellow-400" : status === "red" ? "bg-red-500" : "bg-muted-foreground/30";
+                  const dot = statusConfig[status].solid;
 
                   return (
                     <tr key={kpi.id} className="border-b border-border/50 hover:bg-muted/50">
                       <td className="py-1.5 pr-3">
                         <span className="font-medium">{kpi.name}</span>
                       </td>
-                      <td className="text-right py-1.5 px-2 font-semibold">
+                      <td className="num text-right py-1.5 px-2 font-semibold">
                         {latestEntry ? formatValue(latestEntry.value, kpi.unit) : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="text-right py-1.5 px-2 text-muted-foreground">{formatValue(tgt.target, kpi.unit)}</td>
-                      <td className="text-right py-1.5 px-2">{pct !== null ? `${pct}%` : "—"}</td>
+                      <td className="num text-right py-1.5 px-2 text-muted-foreground">{formatValue(tgt.target, kpi.unit)}</td>
+                      <td className="num text-right py-1.5 px-2">{pct !== null ? `${pct}%` : "—"}</td>
                       <td className="py-1.5 pl-2">
                         <span className="flex items-center justify-center gap-1">
                           <span className={`inline-block w-2 h-2 rounded-full ${dot}`} />
@@ -375,7 +375,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
           href={`/api/report/presentation?period=${selectedPeriod ?? ""}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+          className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Presentasi
         </a>

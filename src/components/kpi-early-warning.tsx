@@ -6,9 +6,9 @@ interface KPIEarlyWarningProps {
 }
 
 const severityClass: Record<KPIEarlyWarning["severity"], string> = {
-  high: "border-red-300 bg-red-50 text-red-800 dark:border-red-900/70 dark:bg-red-950/20 dark:text-red-200",
-  medium: "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/20 dark:text-amber-200",
-  low: "border-slate-300 bg-slate-50 text-slate-800 dark:border-slate-800 dark:bg-slate-950/20 dark:text-slate-200",
+  high: "border-danger bg-danger-soft text-danger",
+  medium: "border-warning bg-warning-soft text-warning",
+  low: "border-border bg-muted text-muted-foreground",
 };
 
 export function KPIEarlyWarning({ warning }: KPIEarlyWarningProps) {

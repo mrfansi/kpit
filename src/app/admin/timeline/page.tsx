@@ -15,9 +15,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { DeleteStatusButton } from "./statuses/delete-button";
+import { AddProjectButton } from "./add-project-button";
 
 export const metadata = {
   title: "Kelola Timeline - KPI Dashboard",
@@ -33,14 +35,20 @@ export default async function AdminTimelinePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Kelola Timeline</h1>
-        <Link href="/timeline">
-          <Button variant="outline" size="sm">
-            Lihat Gantt Chart
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title="Kelola Timeline"
+        description="Kelola project dan status yang tampil di Gantt Chart"
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/timeline">
+              <Button variant="outline" size="sm">
+                Lihat Gantt Chart
+              </Button>
+            </Link>
+            <AddProjectButton statuses={statuses} />
+          </div>
+        }
+      />
 
       {/* Projects Table */}
       <Card>
@@ -52,7 +60,7 @@ export default async function AdminTimelinePage() {
         <CardContent>
           {projects.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Belum ada project. Tambahkan melalui halaman Timeline.
+              Belum ada project. Klik Tambah project untuk membuat yang pertama.
             </p>
           ) : (
             <Table>

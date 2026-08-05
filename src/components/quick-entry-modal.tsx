@@ -146,7 +146,7 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
                     </SelectContent>
                   </Select>
                   {smartPeriodHint && (
-                    <p className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    <p className="flex items-center gap-1 mt-1 text-xs text-info">
                       <Lightbulb className="w-3 h-3" />
                       {smartPeriodHint}
                     </p>

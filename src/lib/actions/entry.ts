@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { upsertKPIEntry } from "@/lib/db/entries";
 import { requireAdmin } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
+import { notifyRedEntries } from "@/lib/notify";
 
 const EntrySchema = z.object({
   kpiId: z.number().int().positive(),
@@ -26,6 +27,7 @@ export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
   if (!kpi) throw new Error("KPI tidak ditemukan");
   await upsertKPIEntry({ ...data, note: data.note ?? undefined });
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", entityId: String(data.kpiId), detail: `periode ${data.periodDate}` });
+  await notifyRedEntries([{ kpiId: data.kpiId, value: data.value, periodDate: data.periodDate }]);
   revalidatePath("/");
   revalidatePath(`/kpi/${data.kpiId}`);
 }
@@ -80,6 +82,8 @@ export async function bulkCreateEntries(rows: BulkEntryRow[]): Promise<{ saved: 
   await db.insert(kpiEntries).values(parsedRows);
 
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", detail: `bulk ${parsedRows.length} entri periode ${periodDate}` });
+
+  await notifyRedEntries(parsedRows);
 
   revalidatePath("/");
   for (const row of parsedRows) {

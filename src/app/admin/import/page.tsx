@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
 import { Upload, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 
 type PreviewRow = ImportRow & { rowIndex: number };
@@ -47,15 +48,15 @@ export default function ImportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Import Data CSV</h1>
-          <p className="text-muted-foreground text-sm mt-1">Upload file CSV untuk memasukkan data KPI secara massal</p>
-        </div>
-        <a href="/admin/import/targets" className="text-sm text-primary underline underline-offset-2 shrink-0">
-          Import Target →
-        </a>
-      </div>
+      <PageHeader
+        title="Import Data CSV"
+        description="Upload file CSV untuk memasukkan data KPI secara massal"
+        actions={
+          <a href="/admin/import/targets" className="text-sm text-primary underline underline-offset-2 shrink-0">
+            Import Target →
+          </a>
+        }
+      />
 
       {/* Format panduan */}
       <Card>
@@ -107,7 +108,7 @@ Tingkat Keterlambatan,2026-01-01,3.2,`}
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-yellow-500" />
+              <AlertTriangle className="w-4 h-4 text-warning" />
               Preview — {preview.length} baris siap diimport
             </CardTitle>
             <Button onClick={handleImport} disabled={isPending}>
@@ -131,7 +132,7 @@ Tingkat Keterlambatan,2026-01-01,3.2,`}
                     <TableCell className="text-muted-foreground text-xs">{row.rowIndex}</TableCell>
                     <TableCell className="font-medium">{row.kpiName}</TableCell>
                     <TableCell>{row.periodDate}</TableCell>
-                    <TableCell className="text-right">{row.value}</TableCell>
+                    <TableCell className="text-right num">{row.value}</TableCell>
                     <TableCell className="text-muted-foreground text-xs">{row.note ?? "—"}</TableCell>
                   </TableRow>
                 ))}
@@ -147,10 +148,10 @@ Tingkat Keterlambatan,2026-01-01,3.2,`}
       {/* Result */}
       {result && (
         <div className="space-y-3">
-          <Card className="border-green-500">
+          <Card className="border-success">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
+                <CheckCircle2 className="w-6 h-6 text-success" />
                 <div>
                   <p className="font-semibold">Import Selesai</p>
                   <p className="text-sm text-muted-foreground">

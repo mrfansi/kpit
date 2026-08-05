@@ -40,9 +40,76 @@ export function getAchievementPct(
   return Math.round((value / target) * 100);
 }
 
-export const statusConfig: Record<KPIStatus, { label: string; color: string; bg: string }> = {
-  green: { label: "On Track", color: "text-green-700", bg: "bg-green-100" },
-  yellow: { label: "At Risk", color: "text-yellow-700", bg: "bg-yellow-100" },
-  red: { label: "Off Track", color: "text-red-700", bg: "bg-red-100" },
-  "no-data": { label: "No Data", color: "text-gray-500", bg: "bg-gray-100" },
+/**
+ * Satu-satunya sumber warna status KPI. Semua kelas di sini memakai token
+ * semantik (--success/--warning/--danger di globals.css), bukan palet Tailwind
+ * mentah, supaya hijau/kuning/merah punya arti yang sama di seluruh aplikasi
+ * dan ikut berubah saat dark mode.
+ *
+ * `color` = teks, `bg` = latar chip, `solid` = isi bar (mis. progress),
+ * `rail` = pseudo-element rail di tepi kartu, `border` = garis tepi.
+ * `cssVar` untuk konteks yang tidak menerima kelas Tailwind (mis. atribut
+ * `stroke`/`fill` pada SVG Recharts) — tetap ikut berubah saat dark mode.
+ *
+ * Setiap kelas ditulis literal (bukan disusun dari string) karena Tailwind
+ * hanya meng-generate kelas yang muncul apa adanya di source.
+ */
+export const statusConfig: Record<
+  KPIStatus,
+  {
+    label: string;
+    color: string;
+    bg: string;
+    solid: string;
+    rail: string;
+    border: string;
+    cssVar: string;
+  }
+> = {
+  green: {
+    label: "On Track",
+    color: "text-success",
+    bg: "bg-success-soft",
+    solid: "bg-success-fill",
+    rail: "before:bg-success-fill",
+    border: "border-success",
+    cssVar: "var(--success-fill)",
+  },
+  yellow: {
+    label: "At Risk",
+    color: "text-warning",
+    bg: "bg-warning-soft",
+    solid: "bg-warning-fill",
+    rail: "before:bg-warning-fill",
+    border: "border-warning",
+    cssVar: "var(--warning-fill)",
+  },
+  red: {
+    label: "Off Track",
+    color: "text-danger",
+    bg: "bg-danger-soft",
+    solid: "bg-danger-fill",
+    rail: "before:bg-danger-fill",
+    border: "border-danger",
+    cssVar: "var(--danger-fill)",
+  },
+  "no-data": {
+    label: "No Data",
+    color: "text-muted-foreground",
+    bg: "bg-muted",
+    solid: "bg-muted-foreground/40",
+    rail: "before:bg-border",
+    border: "border-border",
+    cssVar: "var(--muted-foreground)",
+  },
 };
+
+/** Warna tren: naik/turun dinilai relatif terhadap arah KPI, bukan tanda angka. */
+export function trendColor(
+  trend: "up" | "down" | "flat",
+  direction?: KPIDirection
+): string {
+  if (trend === "flat") return "text-muted-foreground";
+  const isGood = (trend === "up") !== (direction === "lower_better");
+  return isGood ? "text-success" : "text-danger";
+}

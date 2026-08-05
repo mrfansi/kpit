@@ -2,6 +2,7 @@ import { getAllDomains, getArchivedKPIs } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RestoreKPIButton } from "@/components/restore-kpi-button";
+import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -16,10 +17,10 @@ export default async function ArchivedKPIPage() {
           <Link href="/admin/kpi"><ArrowLeft className="w-4 h-4 mr-1" /> Kembali</Link>
         </Button>
       </div>
-      <div>
-        <h1 className="text-2xl font-bold">KPI Diarsipkan</h1>
-        <p className="text-muted-foreground text-sm mt-1">{kpis.length} KPI tidak aktif — data historis tetap tersimpan</p>
-      </div>
+      <PageHeader
+        title="KPI Diarsipkan"
+        description={`${kpis.length} KPI tidak aktif — data historis tetap tersimpan`}
+      />
 
       {kpis.length === 0 ? (
         <p className="text-sm text-muted-foreground">Tidak ada KPI yang diarsipkan.</p>
@@ -41,7 +42,7 @@ export default async function ArchivedKPIPage() {
                 <TableCell className="font-medium">{kpi.name}</TableCell>
                 <TableCell>{domainMap[kpi.domainId]?.name ?? "—"}</TableCell>
                 <TableCell>{kpi.unit}</TableCell>
-                <TableCell className="text-right">{kpi.target}</TableCell>
+                <TableCell className="text-right num">{kpi.target}</TableCell>
                 <TableCell className="text-right">
                   <RestoreKPIButton id={kpi.id} name={kpi.name} />
                 </TableCell>

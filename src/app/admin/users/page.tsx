@@ -5,29 +5,38 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DeleteUserButton } from "@/components/delete-user-button";
 import { AddUserForm } from "@/components/add-user-form";
+import { PageHeader } from "@/components/page-header";
+import { TableSearch } from "@/components/table-search";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { Users } from "lucide-react";
 
-export default async function AdminUsersPage() {
-  const [userList, session] = await Promise.all([getAllUsers(), auth()]);
+interface Props {
+  searchParams: Promise<{ q?: string }>;
+}
+
+export default async function AdminUsersPage({ searchParams }: Props) {
+  const { q } = await searchParams;
+  const [allUsers, session] = await Promise.all([getAllUsers(), auth()]);
   const currentUserId = session?.user?.id;
+
+  const query = q?.trim().toLowerCase() ?? "";
+  const userList = query
+    ? allUsers.filter((u) => u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query))
+    : allUsers;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="w-6 h-6" /> Manajemen User
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">{userList.length} user terdaftar</p>
-        </div>
-      </div>
+      <PageHeader
+        title={<><Users className="w-6 h-6" /> Manajemen User</>}
+        description={`${allUsers.length} user terdaftar`}
+      />
 
       {/* Daftar User */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between gap-4">
           <CardTitle className="text-base">Daftar User</CardTitle>
+          <TableSearch placeholder="Cari nama/email..." />
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -45,7 +54,9 @@ export default async function AdminUsersPage() {
                 {userList.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      Belum ada user.
+                      {allUsers.length === 0
+                        ? "Belum ada user."
+                        : "Tidak ada user yang cocok dengan pencarian. Coba kata kunci lain."}
                     </TableCell>
                   </TableRow>
                 ) : (

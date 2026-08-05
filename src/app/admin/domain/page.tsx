@@ -3,33 +3,46 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
+import { TableSearch } from "@/components/table-search";
 import { PlusCircle, Pencil } from "lucide-react";
 import Link from "next/link";
 import { DeleteDomainButton } from "@/components/delete-domain-button";
 import { domainIconMap } from "@/lib/domain-icons";
 import { BarChart2 } from "lucide-react";
 
-export default async function AdminDomainPage() {
-  const domains = await getAllDomains();
+interface Props {
+  searchParams: Promise<{ q?: string }>;
+}
+
+export default async function AdminDomainPage({ searchParams }: Props) {
+  const { q } = await searchParams;
+  const allDomains = await getAllDomains();
+
+  const query = q?.trim().toLowerCase() ?? "";
+  const domains = query
+    ? allDomains.filter((d) => d.name.toLowerCase().includes(query))
+    : allDomains;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Kelola Domain</h1>
-          <p className="text-muted-foreground text-sm mt-1">Tambah, edit, atau hapus domain KPI</p>
-        </div>
-        <Button asChild>
-          <Link href="/admin/domain/new">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Tambah Domain
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Kelola Domain"
+        description="Tambah, edit, atau hapus domain KPI"
+        actions={
+          <Button asChild>
+            <Link href="/admin/domain/new">
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Tambah Domain
+            </Link>
+          </Button>
+        }
+      />
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{domains.length} Domain</CardTitle>
+        <CardHeader className="flex-row items-center justify-between gap-4">
+          <CardTitle className="text-base num">{domains.length} Domain</CardTitle>
+          <TableSearch placeholder="Cari nama domain..." />
         </CardHeader>
         <CardContent><div className="overflow-x-auto">
           <Table>
@@ -47,7 +60,11 @@ export default async function AdminDomainPage() {
               {domains.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    Belum ada domain. <Link href="/admin/domain/new" className="underline">Tambah sekarang</Link>.
+                    {allDomains.length === 0 ? (
+                      <>Belum ada domain. <Link href="/admin/domain/new" className="underline">Buat domain pertama untuk mulai mencatat KPI</Link>.</>
+                    ) : (
+                      "Tidak ada domain yang cocok dengan pencarian. Coba kata kunci lain."
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (

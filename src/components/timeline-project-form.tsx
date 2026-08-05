@@ -112,7 +112,7 @@ export function TimelineProjectFormDialog({
                 defaultValue={project?.name ?? ""}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Mulai</Label>
                 <Input
@@ -134,7 +134,7 @@ export function TimelineProjectFormDialog({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Warna</Label>
                 <input type="hidden" name="color" value={selectedColor} />
@@ -212,10 +212,10 @@ export function TimelineProjectFormDialog({
             {/* Launch Estimation Section */}
             <div className="space-y-2 rounded-lg border p-3 bg-muted/30">
               <div className="flex items-center gap-2 mb-2">
-                <Rocket className="w-3.5 h-3.5 text-emerald-600" />
+                <Rocket className="w-3.5 h-3.5 text-success" />
                 <Label className="text-sm font-medium">Estimasi Launching</Label>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="launchBufferDays" className="text-xs text-muted-foreground">
                     Buffer (hari setelah selesai)

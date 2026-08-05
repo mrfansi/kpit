@@ -1,5 +1,6 @@
 import { getAllDomains, getAllKPIs, getEntriesForPeriod } from "@/lib/queries";
 import { BulkTableInput } from "@/components/bulk-table-input";
+import { PageHeader } from "@/components/page-header";
 import { listLastNMonths } from "@/lib/period";
 
 interface Props {
@@ -19,12 +20,7 @@ export default async function AdminInputPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Input Data KPI</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Isi nilai aktual semua KPI untuk satu periode sekaligus
-        </p>
-      </div>
+      <PageHeader title="Input Data KPI" description="Isi nilai aktual semua KPI untuk satu periode sekaligus" />
       <BulkTableInput
         key={selectedPeriod}
         kpis={kpis}

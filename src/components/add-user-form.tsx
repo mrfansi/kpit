@@ -27,12 +27,12 @@ export function AddUserForm() {
             </div>
           )}
           {state.success && (
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-400 px-3 py-2 rounded-md">
+            <div className="flex items-center gap-2 text-sm text-success bg-success-soft px-3 py-2 rounded-md">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               User berhasil ditambahkan.
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label htmlFor="name">Nama</Label>
               <Input id="name" name="name" placeholder="John Doe" required />
@@ -42,7 +42,7 @@ export function AddUserForm() {
               <Input id="email" name="email" type="email" placeholder="john@example.com" required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label htmlFor="password">Password</Label>
               <Input

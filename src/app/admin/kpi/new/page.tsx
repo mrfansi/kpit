@@ -1,5 +1,6 @@
 import { getAllDomains } from "@/lib/queries";
 import { KPIForm } from "@/components/kpi-form";
+import { PageHeader } from "@/components/page-header";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -12,10 +13,7 @@ export default async function NewKPIPage() {
         <ArrowLeft className="w-4 h-4" />
         Kembali ke Kelola KPI
       </Link>
-      <div>
-        <h1 className="text-2xl font-bold">Tambah KPI Baru</h1>
-        <p className="text-muted-foreground text-sm mt-1">Isi form di bawah untuk menambahkan KPI baru</p>
-      </div>
+      <PageHeader title="Tambah KPI Baru" description="Isi form di bawah untuk menambahkan KPI baru" />
       <KPIForm domains={domains} />
     </div>
   );

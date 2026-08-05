@@ -2,25 +2,20 @@
 
 import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
 import type { KPIEntry } from "@/lib/db/schema";
-import type { KPIStatus } from "@/lib/kpi-status";
+import { statusConfig, type KPIStatus } from "@/lib/kpi-status";
 
 interface SparklineProps {
   entries: KPIEntry[];
   status: KPIStatus;
+  /** Tinggi grafik; baris tabel butuh lebih pendek daripada kartu. */
+  height?: number;
 }
 
-const statusColor: Record<KPIStatus, string> = {
-  green: "#22c55e",
-  yellow: "#eab308",
-  red: "#ef4444",
-  "no-data": "#94a3b8",
-};
-
-export function Sparkline({ entries, status }: SparklineProps) {
+export function Sparkline({ entries, status, height = 40 }: SparklineProps) {
   if (entries.length < 2) return null;
 
   const data = entries.map((e) => ({ v: e.value }));
-  const color = statusColor[status];
+  const color = statusConfig[status].cssVar;
 
   // Pastikan Y-axis punya range minimal agar garis tidak terlalu flat
   const values = entries.map((e) => e.value);
@@ -30,7 +25,7 @@ export function Sparkline({ entries, status }: SparklineProps) {
   const padding = range < 1 ? Math.max(min * 0.1, 1) : range * 0.15;
 
   return (
-    <ResponsiveContainer width="100%" height={40}>
+    <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data}>
         <YAxis hide domain={[min - padding, max + padding]} />
         <Line

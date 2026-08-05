@@ -88,10 +88,10 @@ export function DataEntryValidator({
         )}
       </Button>
 
-      {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
+      {error && <p className="text-danger text-xs mt-2">{error}</p>}
 
       {validated && flags.length === 0 && (
-        <p className="text-green-600 text-xs mt-2">
+        <p className="text-success text-xs mt-2">
           Semua nilai terlihat wajar.
         </p>
       )}
@@ -103,8 +103,8 @@ export function DataEntryValidator({
               key={i}
               className={`text-xs p-2 rounded ${
                 flag.severity === "warning"
-                  ? "bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300"
-                  : "bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300"
+                  ? "bg-warning-soft border border-warning text-warning"
+                  : "bg-info-soft border border-info/30 text-info"
               }`}
             >
               <span className="font-semibold">{flag.kpiName}:</span>{" "}

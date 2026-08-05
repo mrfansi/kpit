@@ -5,6 +5,7 @@ import { DeleteTargetButton } from "@/components/delete-target-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
 import { formatValue, formatPeriodDate } from "@/lib/period";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -30,13 +31,15 @@ export default async function KPITargetsPage({ params }: Props) {
         Kembali ke Kelola KPI
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-bold">Target per Periode</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          KPI: <span className="font-medium text-foreground">{kpi.name}</span>
-          &nbsp;·&nbsp; Target default: <span className="font-medium text-foreground">{formatValue(kpi.target, kpi.unit)}</span>
-        </p>
-      </div>
+      <PageHeader
+        title="Target per Periode"
+        description={
+          <>
+            KPI: <span className="font-medium text-foreground">{kpi.name}</span>
+            &nbsp;·&nbsp; Target default: <span className="num font-medium text-foreground">{formatValue(kpi.target, kpi.unit)}</span>
+          </>
+        }
+      />
 
       {/* Form tambah / ubah target */}
       <Card>
@@ -78,9 +81,9 @@ export default async function KPITargetsPage({ params }: Props) {
                 targets.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{formatPeriodDate(t.periodDate, "MMMM yyyy")}</TableCell>
-                    <TableCell className="text-right">{formatValue(t.target, kpi.unit)}</TableCell>
-                    <TableCell className="text-right">{formatValue(t.thresholdGreen, kpi.unit)}</TableCell>
-                    <TableCell className="text-right">{formatValue(t.thresholdYellow, kpi.unit)}</TableCell>
+                    <TableCell className="text-right num">{formatValue(t.target, kpi.unit)}</TableCell>
+                    <TableCell className="text-right num">{formatValue(t.thresholdGreen, kpi.unit)}</TableCell>
+                    <TableCell className="text-right num">{formatValue(t.thresholdYellow, kpi.unit)}</TableCell>
                     <TableCell className="text-right print:hidden">
                       <DeleteTargetButton id={t.id} kpiId={kpi.id} period={formatPeriodDate(t.periodDate, "MMMM yyyy")} />
                     </TableCell>

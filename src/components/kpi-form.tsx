@@ -5,7 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { AlertTriangle } from "lucide-react";
 import { kpiSchema, type KPIFormValues } from "@/lib/validations/kpi";
+import { checkThresholdCoherence } from "@/lib/kpi-coherence";
+import { cn } from "@/lib/utils";
 import { createKPI, updateKPI } from "@/lib/actions/kpi";
 import type { Domain, KPI } from "@/lib/db/schema";
 import {
@@ -182,7 +185,7 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
         <Separator />
 
         {/* Unit & Target & Direction */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <FormField
             control={form.control}
             name="unit"
@@ -227,7 +230,7 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
         </div>
 
         {/* Thresholds */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="thresholdGreen"
@@ -262,10 +265,17 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
           />
         </div>
 
+        <ThresholdCoherenceNotice
+          direction={form.watch("direction")}
+          target={form.watch("target")}
+          thresholdGreen={form.watch("thresholdGreen")}
+          thresholdYellow={form.watch("thresholdYellow")}
+        />
+
         <Separator />
 
         {/* Refresh Type & Period */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="refreshType"
@@ -318,5 +328,59 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
         </div>
       </form>
     </Form>
+  );
+}
+
+/**
+ * Target dan threshold adalah dua definisi "bagus" yang berdiri sendiri: status
+ * dihitung dari threshold, pencapaian dari target. Kalau keduanya melenceng jauh,
+ * KPI bisa tampil "On Track" sambil memampangkan pencapaian 10% di sebelahnya.
+ * Peringatan ini TIDAK memblokir — toleransi longgar kadang memang disengaja.
+ */
+function ThresholdCoherenceNotice({
+  direction,
+  target,
+  thresholdGreen,
+  thresholdYellow,
+}: {
+  direction?: string;
+  target?: number;
+  thresholdGreen?: number;
+  thresholdYellow?: number;
+}) {
+  if (
+    typeof target !== "number" ||
+    typeof thresholdGreen !== "number" ||
+    typeof thresholdYellow !== "number"
+  ) {
+    return null;
+  }
+
+  const issues = checkThresholdCoherence({
+    direction: direction === "lower_better" ? "lower_better" : "higher_better",
+    target,
+    thresholdGreen,
+    thresholdYellow,
+  });
+
+  if (issues.length === 0) return null;
+
+  return (
+    <div className="space-y-2" role="status">
+      {issues.map((issue, i) => (
+        <p
+          key={i}
+          className={cn(
+            "flex items-start gap-2 rounded-md border p-3 text-xs",
+            issue.level === "error"
+              ? "border-danger bg-danger-soft text-danger"
+              : "border-warning bg-warning-soft text-warning"
+          )}
+        >
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{issue.message}</span>
+        </p>
+      ))}
+    </div>
   );
 }

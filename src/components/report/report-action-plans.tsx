@@ -29,9 +29,9 @@ interface ReportActionPlansProps {
 }
 
 const statusClass: Record<ActionPlanStatus, string> = {
-  open: "bg-blue-100 text-blue-700 print:bg-white print:text-black",
-  in_progress: "bg-amber-100 text-amber-700 print:bg-white print:text-black",
-  done: "bg-green-100 text-green-700 print:bg-white print:text-black",
+  open: "bg-info-soft text-info print:bg-white print:text-black",
+  in_progress: "bg-warning-soft text-warning print:bg-white print:text-black",
+  done: "bg-success-soft text-success print:bg-white print:text-black",
   cancelled: "bg-muted text-muted-foreground print:bg-white print:text-black",
 };
 
@@ -61,17 +61,17 @@ export function ReportActionPlans({ rows, periodDate, showDomain = true }: Repor
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">Tindak lanjut aktif, overdue, dan selesai pada periode laporan.</p>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-right text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-right text-xs">
           <div>
-            <p className="font-bold text-foreground">{summary.active}</p>
+            <p className="num font-bold text-foreground">{summary.active}</p>
             <p className="text-muted-foreground">aktif</p>
           </div>
           <div>
-            <p className="font-bold text-red-600">{summary.overdue}</p>
+            <p className="num font-bold text-danger">{summary.overdue}</p>
             <p className="text-muted-foreground">overdue</p>
           </div>
           <div>
-            <p className="font-bold text-green-600">{summary.doneThisMonth}</p>
+            <p className="num font-bold text-success">{summary.doneThisMonth}</p>
             <p className="text-muted-foreground">done</p>
           </div>
         </div>
@@ -103,7 +103,7 @@ export function ReportActionPlans({ rows, periodDate, showDomain = true }: Repor
                 <td className="py-2 px-2">
                   <span>{formatDate(action.dueDate)}</span>
                   {overdue && (
-                    <span className="ml-1 inline-flex items-center gap-0.5 text-red-600">
+                    <span className="ml-1 inline-flex items-center gap-0.5 text-danger">
                       <AlertTriangle className="h-3 w-3" />
                       Overdue
                     </span>

@@ -26,9 +26,9 @@ interface KPITargetSuggestionProps {
 }
 
 const confidenceColors = {
-  low: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  high: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  low: "bg-danger-soft text-danger",
+  medium: "bg-warning-soft text-warning",
+  high: "bg-success-soft text-success",
 };
 
 const confidenceLabels = {
@@ -113,13 +113,13 @@ export function KPITargetSuggestion({
         <p className="text-xs text-muted-foreground">Minimal 3 periode data.</p>
       )}
 
-      {error && <p className="text-red-600 text-xs">{error}</p>}
+      {error && <p className="text-danger text-xs">{error}</p>}
 
       {suggestion && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800 text-sm max-w-sm">
+        <div className="max-w-sm rounded border border-info/30 bg-info-soft p-3 text-sm">
           <div className="flex items-center justify-between mb-1">
             <span className="font-semibold">
-              {suggestion.suggestedTarget} {unit}
+              <span className="num">{suggestion.suggestedTarget}</span> {unit}
             </span>
             <span
               className={`text-xs px-1.5 py-0.5 rounded ${confidenceColors[suggestion.confidence]}`}

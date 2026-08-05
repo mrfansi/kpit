@@ -32,11 +32,11 @@ export function GanttLaunchMarker({
         className="absolute top-0 w-0.5 h-full"
         style={{
           background:
-            "repeating-linear-gradient(to bottom, #10b981 0px, #10b981 4px, transparent 4px, transparent 8px)",
+            "repeating-linear-gradient(to bottom, var(--success) 0px, var(--success) 4px, transparent 4px, transparent 8px)",
         }}
       />
       {/* Label badge — positioned inside the row, at the top */}
-      <div className="absolute top-0 left-1 bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap flex items-center gap-0.5">
+      <div className="absolute top-0 left-1 bg-success text-white text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap flex items-center gap-0.5">
         <span>🚀</span>
         <span>{label}</span>
         {isManualOverride && (

@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { PageHeader } from "@/components/page-header";
 import { User } from "lucide-react";
 
 export default async function AdminAccountPage() {
@@ -10,12 +11,10 @@ export default async function AdminAccountPage() {
 
   return (
     <div className="space-y-6 max-w-lg">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <User className="w-6 h-6" /> Akun Saya
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">Kelola informasi akun Anda</p>
-      </div>
+      <PageHeader
+        title={<><User className="w-6 h-6" /> Akun Saya</>}
+        description="Kelola informasi akun Anda"
+      />
 
       <Card>
         <CardHeader>

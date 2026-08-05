@@ -89,11 +89,11 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
         <div className="flex items-center gap-2 ml-auto">
           {savedAt && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-success" />
               Disimpan {savedAt}
             </span>
           )}
-          <Badge variant="secondary">{filledCount}/{kpis.length} diisi</Badge>
+          <Badge variant="secondary" className="num">{filledCount}/{kpis.length} diisi</Badge>
           <Button size="sm" onClick={handleSave} disabled={isPending}>
             <Save className="w-3.5 h-3.5 mr-1.5" />
             {isPending ? "Menyimpan..." : "Simpan Semua"}
@@ -118,7 +118,7 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
               const domain = domainMap[kpi.domainId];
               const isFilled = values[kpi.id] !== undefined && values[kpi.id] !== "";
               return (
-                <TableRow key={kpi.id} className={isFilled ? "bg-green-50/50 dark:bg-green-950/10" : ""}>
+                <TableRow key={kpi.id} className={isFilled ? "bg-success-soft/50" : ""}>
                   <TableCell className="font-medium">{kpi.name}</TableCell>
                   <TableCell>
                     <span className="text-xs flex items-center gap-1.5">
@@ -127,7 +127,7 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">{kpi.unit}</TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground">
+                  <TableCell className="num text-right text-sm text-muted-foreground">
                     {formatValue(kpi.target, kpi.unit)}
                   </TableCell>
                   <TableCell>

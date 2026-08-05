@@ -8,6 +8,7 @@ import { parseCSV } from "@/lib/csv-parser";
 import { validatePeriodDate, validateNumericValue, buildRowError, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
+import { notifyRedEntries } from "@/lib/notify";
 
 export interface ImportRow {
   kpiName: string;
@@ -143,6 +144,15 @@ export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
   }
 
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", detail: `CSV import: ${imported} entri` });
+
+  // Hanya kalau transaksi benar-benar berhasil — jangan kirim alert untuk data
+  // yang di-rollback.
+  if (imported > 0) {
+    await notifyRedEntries(
+      validRows.map((r) => ({ kpiId: r.kpiId, value: r.value, periodDate: r.periodDate }))
+    );
+  }
+
   revalidatePath("/");
   return { imported, skipped, errors };
 }

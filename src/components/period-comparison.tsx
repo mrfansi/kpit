@@ -1,4 +1,5 @@
 import { formatValue } from "@/lib/period";
+import { trendColor } from "@/lib/kpi-status";
 import type { KPI, KPIEntry } from "@/lib/db/schema";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
@@ -20,14 +21,16 @@ function Delta({ current, compare, unit, lowerBetter }: { current: number | null
   const isFlat = abs === 0;
 
   const Icon = isFlat ? Minus : isUp ? TrendingUp : TrendingDown;
-  const isGood = isFlat ? false : lowerBetter ? !isUp : isUp;
-  const color = isFlat ? "text-muted-foreground" : isGood ? "text-green-600" : "text-red-600";
+  const trend = isFlat ? "flat" : isUp ? "up" : "down";
+  const color = trendColor(trend, lowerBetter ? "lower_better" : "higher_better");
 
   return (
     <span className={`flex items-center gap-1 text-sm font-medium ${color}`}>
       <Icon className="w-3.5 h-3.5 shrink-0" />
-      {abs > 0 ? "+" : ""}{formatValue(abs, unit)}
-      {pct !== null && <span className="font-normal text-xs">({abs > 0 ? "+" : ""}{pct}%)</span>}
+      <span className="num">
+        {abs > 0 ? "+" : ""}{formatValue(abs, unit)}
+        {pct !== null && <span className="font-normal text-xs"> ({abs > 0 ? "+" : ""}{pct}%)</span>}
+      </span>
     </span>
   );
 }
@@ -36,11 +39,11 @@ export function PeriodComparison({ kpi, current, prevMonth, prevYear }: PeriodCo
   if (!current) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {/* MoM */}
       <div className="rounded-lg border bg-card p-3 space-y-1">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Bulan Lalu (MoM)</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="num text-sm text-muted-foreground">
           {prevMonth ? formatValue(prevMonth.value, kpi.unit) : "—"}
         </p>
         <Delta current={current.value} compare={prevMonth} unit={kpi.unit} lowerBetter={kpi.direction === "lower_better"} />
@@ -49,7 +52,7 @@ export function PeriodComparison({ kpi, current, prevMonth, prevYear }: PeriodCo
       {/* YoY */}
       <div className="rounded-lg border bg-card p-3 space-y-1">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Tahun Lalu (YoY)</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="num text-sm text-muted-foreground">
           {prevYear ? formatValue(prevYear.value, kpi.unit) : "—"}
         </p>
         <Delta current={current.value} compare={prevYear} unit={kpi.unit} lowerBetter={kpi.direction === "lower_better"} />

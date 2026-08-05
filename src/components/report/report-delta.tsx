@@ -1,4 +1,5 @@
 import { formatValue } from "@/lib/period";
+import { trendColor } from "@/lib/kpi-status";
 import type { KPIEntry } from "@/lib/db/schema";
 
 interface ReportDeltaProps {
@@ -25,15 +26,16 @@ export function ReportDelta({ currentValue, compareEntry, unit, lowerBetter, sho
     ? ((diff / compareEntry.value) * 100).toFixed(1)
     : null;
   const isUp = diff > 0;
-  const isGood = lowerBetter ? !isUp : isUp;
-  const color = isGood ? "text-green-600" : "text-red-600";
+  const color = trendColor(isUp ? "up" : "down", lowerBetter ? "lower_better" : "higher_better");
   const arrow = isUp ? "\u2191" : "\u2193";
 
   return (
     <span className={`whitespace-nowrap ${color}`}>
-      {arrow} {pct !== null ? `${isUp ? "+" : ""}${pct}%` : `${isUp ? "+" : ""}${diff}`}
+      <span className="num">
+        {arrow} {pct !== null ? `${isUp ? "+" : ""}${pct}%` : `${isUp ? "+" : ""}${diff}`}
+      </span>
       {showPrevValue && (
-        <span className="text-muted-foreground font-normal"> (dari {formatValue(compareEntry.value, unit)})</span>
+        <span className="num text-muted-foreground font-normal"> (dari {formatValue(compareEntry.value, unit)})</span>
       )}
     </span>
   );

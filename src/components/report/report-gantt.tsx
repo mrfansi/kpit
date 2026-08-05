@@ -91,7 +91,7 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
                     <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                       <p className="font-semibold">{project.name}</p>
-                      <p className="text-muted-foreground mt-1">
+                      <p className="num text-muted-foreground mt-1">
                         Progress: {project.progress}%
                       </p>
                       <p className="text-muted-foreground">
@@ -99,7 +99,7 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
                         {" — "}
                         {format(parseISO(project.endDate), "dd MMM yy", { locale: idLocale })}
                       </p>
-                      <p className="text-emerald-600">
+                      <p className="text-success">
                         Launch: {format(parseISO(getEffectiveLaunchDate(project)), "dd MMM yy", { locale: idLocale })}
                       </p>
                     </div>

@@ -1,8 +1,9 @@
 import { getAllDomains, getAllKPIs } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { SortableKPITable } from "@/components/sortable-kpi-table";
+import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
-import { Plus, Archive } from "lucide-react";
+import { Plus, Archive, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default async function AdminKPIPage({ searchParams }: { searchParams: Promise<{ page?: string; success?: string }> }) {
   const page = Number((await searchParams).page ?? 1);
@@ -16,40 +17,44 @@ export default async function AdminKPIPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Kelola KPI</h1>
-          <p className="text-muted-foreground text-sm mt-1">{kpis.length} KPI aktif</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/admin/kpi/archived">
-              <Archive className="w-4 h-4 mr-1" /> Arsip
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/admin/kpi/new">
-              <Plus className="w-4 h-4 mr-1" /> Tambah KPI
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Kelola KPI"
+        description={`${kpis.length} KPI aktif`}
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href="/admin/kpi/archived">
+                <Archive className="w-4 h-4 mr-1" /> Arsip
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/kpi/new">
+                <Plus className="w-4 h-4 mr-1" /> Tambah KPI
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <div className="overflow-x-auto">
         <SortableKPITable kpis={pagedKpis} domainMap={domainMap} />
         {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-3 border-t text-sm text-muted-foreground">
-            <span>{kpis.length} KPI total</span>
-            <div className="flex gap-2">
-              {currentPage > 1 && (
-                <a href={`?page=${currentPage - 1}`} className="px-3 py-1 border rounded hover:bg-accent">← Sebelumnya</a>
-              )}
-              <span className="px-3 py-1">Hal {currentPage}/{totalPages}</span>
-              {currentPage < totalPages && (
-                <a href={`?page=${currentPage + 1}`} className="px-3 py-1 border rounded hover:bg-accent">Berikutnya →</a>
-              )}
+          <nav aria-label="Navigasi halaman" className="flex items-center justify-between pt-3 border-t text-sm text-muted-foreground">
+            <span className="num">{kpis.length} KPI total</span>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage <= 1}>
+                <Link href={`?page=${currentPage - 1}`} aria-label="Halaman sebelumnya">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </Link>
+              </Button>
+              <span className="num px-2" aria-current="page">Hal {currentPage}/{totalPages}</span>
+              <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage >= totalPages}>
+                <Link href={`?page=${currentPage + 1}`} aria-label="Halaman berikutnya">
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </Button>
             </div>
-          </div>
+          </nav>
         )}
       </div>
     </div>

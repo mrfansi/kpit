@@ -1,16 +1,14 @@
 import { Suspense } from "react";
 import { getActionPlanCountsByKPIIds, getAllDomains, getAllKPIs, getEntriesForPeriod, getKPIsWithLatestEntry } from "@/lib/queries";
-import { KPICard } from "@/components/kpi-card";
-import { StatSummary } from "@/components/stat-summary";
+import { KPITable } from "@/components/kpi-table";
+import { SummaryStrip } from "@/components/summary-strip";
+import { AttentionBar } from "@/components/attention-bar";
 import { DomainTabs } from "@/components/domain-tabs";
 import { ExportButtons } from "@/components/export-buttons";
 import { PeriodSelector } from "@/components/period-selector";
 import { KPIFilterBar } from "@/components/kpi-filter-bar";
 import { QuickEntryModal } from "@/components/quick-entry-modal";
-import { CompletenessTracker } from "@/components/completeness-tracker";
-import { KPIAlertBanner } from "@/components/kpi-alert-banner";
 import { DomainStatusBadges } from "@/components/domain-status-badges";
-import { Separator } from "@/components/ui/separator";
 import { formatPeriodDate, listLastNMonths } from "@/lib/period";
 import { getKPIStatus } from "@/lib/kpi-status";
 import { Pin, FileText } from "lucide-react";
@@ -63,6 +61,10 @@ export default async function OverviewPage({ searchParams }: Props) {
   for (const { kpi, latestEntry } of allKPIsWithEntries) {
     if (latestEntry) kpiLatestPeriods[kpi.id] = latestEntry.periodDate;
   }
+  // KPI yang belum punya entry untuk periode terpilih.
+  const entryKpiIds = new Set(entriesForPeriod.map((e) => e.kpiId));
+  const missingKPIs = allKPIs.filter((k) => !entryKpiIds.has(k.id));
+
   const redKPIs = allKPIsWithEntries
     .filter(({ kpi, latestEntry, effectiveTarget }) => {
       const kpiWithTarget = effectiveTarget ? { ...kpi, ...effectiveTarget } : kpi;
@@ -79,10 +81,10 @@ export default async function OverviewPage({ searchParams }: Props) {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Overview KPI</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Data per{" "}
-            <span className="font-medium text-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight">Overview KPI</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Posisi per{" "}
+            <span className="num font-medium text-foreground">
               {selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "—"}
             </span>
           </p>
@@ -102,54 +104,64 @@ export default async function OverviewPage({ searchParams }: Props) {
         </div>
       </div>
 
-      <StatSummary kpisWithEntries={allKPIsWithEntries} />
+      <SummaryStrip kpisWithEntries={allKPIsWithEntries} />
 
-      <KPIAlertBanner redKPIs={redKPIs} />
+      {!isFiltered && (
+        <AttentionBar
+          redKPIs={redKPIs}
+          missingKPIs={missingKPIs}
+          period={selectedPeriod ?? ""}
+        />
+      )}
 
-      <CompletenessTracker kpis={allKPIs} entriesForPeriod={entriesForPeriod} period={selectedPeriod ?? ""} />
+      <div className="flex flex-wrap items-center gap-3">
+        <Suspense>
+          <KPIFilterBar defaultQ={q} defaultStatus={status} />
+        </Suspense>
+        <DomainTabs domains={domains} />
+      </div>
 
-      <Suspense>
-        <KPIFilterBar defaultQ={q} defaultStatus={status} />
-      </Suspense>
-
-      <DomainTabs domains={domains} />
-      <Separator />
-
-      {/* Pinned KPIs section */}
+      {/* KPI yang dipinned */}
       {pinnedWithEntries.length > 0 && !isFiltered && (
-        <section className="space-y-3">
+        <section className="space-y-2">
           <div className="flex items-center gap-2">
-            <Pin className="w-4 h-4 text-primary" />
-            <h2 className="text-base font-semibold">KPI Dipinned</h2>
-            <span className="text-xs text-muted-foreground">({pinnedWithEntries.length} KPI)</span>
+            <Pin className="h-3.5 w-3.5 text-muted-foreground" />
+            <h2 className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              Dipinned
+            </h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {pinnedWithEntries.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
-              <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} activeActionCount={actionCounts.get(kpi.id) ?? 0} />
-            ))}
+          <div className="overflow-hidden rounded-lg border">
+            <KPITable
+              rows={pinnedWithEntries}
+              actionCounts={actionCounts}
+              selectedPeriod={selectedPeriod}
+              emptyMessage=""
+            />
           </div>
-          <Separator />
         </section>
       )}
 
       {byDomain.map(({ domain, kpisWithEntries }) => (
-        <section key={domain.id} className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: domain.color }} />
-            <h2 className="text-base font-semibold">{domain.name}</h2>
-            <span className="text-xs text-muted-foreground">({kpisWithEntries.length} KPI)</span>
+        <section key={domain.id} className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: domain.color }} />
+            <h2 className="text-sm font-semibold">{domain.name}</h2>
+            <span className="num text-xs text-muted-foreground">
+              {kpisWithEntries.length} KPI
+            </span>
             <DomainStatusBadges kpisWithEntries={kpisWithEntries} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {kpisWithEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground col-span-full">
-                {isFiltered ? "Tidak ada KPI yang cocok dengan filter." : "Belum ada KPI untuk domain ini."}
-              </p>
-            ) : (
-              kpisWithEntries.map(({ kpi, latestEntry, sparklineEntries, effectiveTarget }) => (
-                <KPICard key={kpi.id} kpi={kpi} latestEntry={latestEntry} sparklineEntries={sparklineEntries} effectiveTarget={effectiveTarget} activeActionCount={actionCounts.get(kpi.id) ?? 0} />
-              ))
-            )}
+          <div className="overflow-hidden rounded-lg border">
+            <KPITable
+              rows={kpisWithEntries}
+              actionCounts={actionCounts}
+              selectedPeriod={selectedPeriod}
+              emptyMessage={
+                isFiltered
+                  ? "Tidak ada KPI yang cocok dengan filter."
+                  : "Belum ada KPI untuk domain ini."
+              }
+            />
           </div>
         </section>
       ))}

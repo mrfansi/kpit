@@ -30,7 +30,7 @@ export function ChangePasswordForm() {
             </div>
           )}
           {state.success && (
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-400 px-3 py-2 rounded-md">
+            <div className="flex items-center gap-2 text-sm text-success bg-success-soft px-3 py-2 rounded-md">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               Password berhasil diubah.
             </div>
