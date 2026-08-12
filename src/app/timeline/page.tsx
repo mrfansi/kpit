@@ -19,12 +19,15 @@ export default async function TimelinePage() {
     // bukan 3rem/48px — selisihnya bikin Gantt melampaui viewport dan memicu scroll body.
     // dvh (bukan vh) supaya tidak meleset lagi saat address bar browser mobile muncul/hilang.
     <div className="-mx-4 lg:-mx-6 -my-4 lg:-my-6 h-[calc(100dvh-61px)] lg:h-screen">
-      <GanttChart
-        key={projects.map((project) => `${project.id}:${project.startDate}:${project.endDate}:${project.progress}`).join("|")}
-        projects={projects}
-        statuses={statuses}
-        canEdit={canEdit}
-      />
+      {/*
+        Dulu ada `key` dari id/tanggal/progress di sini untuk memaksa GanttChart
+        remount setiap data berubah. Key itu tidak memuat nama, status, warna,
+        maupun deskripsi -- jadi hasil edit field-field tersebut tidak pernah
+        tampil sampai halaman di-refresh manual. Remount juga membuang view mode,
+        posisi pan, dan scroll setiap kali satu bar digeser.
+        GanttChart sekarang menyinkronkan sendiri salinan lokalnya dari prop.
+      */}
+      <GanttChart projects={projects} statuses={statuses} canEdit={canEdit} />
     </div>
   );
 }

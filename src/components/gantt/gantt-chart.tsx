@@ -60,6 +60,27 @@ export function GanttChart({
     currentX: number;
   } | null>(null);
 
+  /*
+   * `localProjects` hanya ada untuk umpan balik optimistis saat bar digeser:
+   * bar harus pindah di detik yang sama dengan mouse, jauh sebelum server
+   * menjawab. Konsekuensinya seluruh Gantt -- nama, status, warna, deskripsi --
+   * ikut dirender dari salinan lokal itu.
+   *
+   * Begitu server mengirim data baru (revalidatePath setelah simpan atau
+   * hapus), salinan lokal harus menyerah pada kebenaran server. Tanpa ini,
+   * hasil edit dari dialog baru muncul setelah refresh manual.
+   *
+   * Ini pola resmi React untuk menyesuaikan state ketika prop berubah:
+   * bandingkan prop sebelumnya saat render. useEffect akan menambah satu paint
+   * berisi data basi lebih dulu, dan prop identity hanya berubah saat payload
+   * server benar-benar diperbarui -- bukan tiap kali state klien berubah.
+   */
+  const [syncedProjects, setSyncedProjects] = useState(initialProjects);
+  if (syncedProjects !== initialProjects) {
+    setSyncedProjects(initialProjects);
+    setLocalProjects(initialProjects);
+  }
+
   // Compute layout
   const layout = useMemo(
     () => computeGanttLayout(localProjects, viewMode, panOffset),
