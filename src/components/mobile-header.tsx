@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, Users, User, PenLine, Menu, Globe, Upload, LogIn, ClipboardList, ClipboardCheck, GanttChart } from "lucide-react";
+import { BarChart2, Settings, Home, Users, User, PenLine, Menu, Globe, Upload, LogIn, ClipboardList, ClipboardCheck, GanttChart, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
@@ -89,25 +89,25 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
               />
             ))}
 
+            {/* Sejajar dengan Sidebar: garis pemisah + perisai, bukan kartu. */}
             {isAdmin && (
-              <div className="mt-4 rounded-lg bg-sidebar-accent/40 p-1.5 ring-1 ring-sidebar-border">
-                <div className="px-2 pt-1 pb-1">
+              <div className="mt-3 space-y-1 border-t pt-1">
+                <div className="flex items-center gap-1.5 px-2 pt-3 pb-1">
+                  <ShieldCheck className="size-3 shrink-0 text-muted-foreground" />
                   <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
                     Admin
                   </span>
                 </div>
-                <div className="space-y-1">
-                  {adminItems.map(({ href, icon: Icon, label }) => (
-                    <MobileNavItem
-                      key={href}
-                      href={href}
-                      icon={Icon}
-                      label={label}
-                      active={pathname.startsWith(href)}
-                      onNavigate={() => setOpen(false)}
-                    />
-                  ))}
-                </div>
+                {adminItems.map(({ href, icon: Icon, label }) => (
+                  <MobileNavItem
+                    key={href}
+                    href={href}
+                    icon={Icon}
+                    label={label}
+                    active={pathname.startsWith(href)}
+                    onNavigate={() => setOpen(false)}
+                  />
+                ))}
               </div>
             )}
 

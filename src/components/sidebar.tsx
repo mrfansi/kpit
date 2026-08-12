@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, PenLine, Globe, Upload, User, ClipboardList, Users, GanttChart, ClipboardCheck } from "lucide-react";
+import { BarChart2, Settings, Home, PenLine, Globe, Upload, User, ClipboardList, Users, GanttChart, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -62,21 +62,22 @@ export function Sidebar({ domains, user }: SidebarProps) {
           );
         })}
 
-        {/* Area admin dipisah dengan latar sendiri: sekali lihat jelas ini bukan
-            navigasi baca-saja, tapi tempat data diubah. */}
+        {/* Admin ditandai garis pemisah + ikon perisai, bukan kartu. Kartu
+            membawa padding sendiri sehingga tiap item admin tidak lagi sebaris
+            dengan Overview/Domain di atasnya, rail penanda halaman aktif ikut
+            terdorong masuk, dan satu-satunya section yang dikotaki jadi terbaca
+            seperti popover yang nyasar alih-alih bagian dari navigasi. */}
         {isAdmin && (
-          <div className="mt-4 rounded-lg bg-sidebar-accent/40 p-1.5 ring-1 ring-sidebar-border">
-            <SectionLabel>Admin</SectionLabel>
-            <div className="space-y-1">
-              <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
-              <NavItem href="/admin/domain" icon={Globe} label="Kelola Domain" active={pathname.startsWith("/admin/domain")} />
-              <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
-              <NavItem href="/admin/actions" icon={ClipboardCheck} label="Action Plan" active={pathname.startsWith("/admin/actions")} />
-              <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
-              <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
-              <NavItem href="/admin/timeline" icon={GanttChart} label="Kelola Timeline" active={pathname.startsWith("/admin/timeline")} />
-              <NavItem href="/admin/audit" icon={ClipboardList} label="Audit Log" active={pathname.startsWith("/admin/audit")} />
-            </div>
+          <div className="mt-3 space-y-1 border-t pt-1">
+            <SectionLabel icon={ShieldCheck}>Admin</SectionLabel>
+            <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
+            <NavItem href="/admin/domain" icon={Globe} label="Kelola Domain" active={pathname.startsWith("/admin/domain")} />
+            <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
+            <NavItem href="/admin/actions" icon={ClipboardCheck} label="Action Plan" active={pathname.startsWith("/admin/actions")} />
+            <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
+            <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
+            <NavItem href="/admin/timeline" icon={GanttChart} label="Kelola Timeline" active={pathname.startsWith("/admin/timeline")} />
+            <NavItem href="/admin/audit" icon={ClipboardList} label="Audit Log" active={pathname.startsWith("/admin/audit")} />
           </div>
         )}
       </nav>
@@ -108,9 +109,10 @@ export function Sidebar({ domains, user }: SidebarProps) {
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, icon: Icon }: { children: React.ReactNode; icon?: React.ElementType }) {
   return (
-    <div className="px-2 pt-3 pb-1">
+    <div className="flex items-center gap-1.5 px-2 pt-3 pb-1">
+      {Icon && <Icon className="size-3 shrink-0 text-muted-foreground" />}
       <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
         {children}
       </span>
