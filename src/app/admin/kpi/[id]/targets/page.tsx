@@ -59,8 +59,18 @@ export default async function KPITargetsPage({ params }: Props) {
               <TableRow>
                 <TableHead>Periode</TableHead>
                 <TableHead className="text-right">Target</TableHead>
-                <TableHead className="text-right">Threshold Hijau</TableHead>
-                <TableHead className="text-right">Threshold Kuning</TableHead>
+                <TableHead className="text-right">
+                  <span className="inline-flex items-center justify-end gap-1.5">
+                    <span className="size-2 shrink-0 rounded-full bg-success-fill" aria-hidden />
+                    Threshold Hijau
+                  </span>
+                </TableHead>
+                <TableHead className="text-right">
+                  <span className="inline-flex items-center justify-end gap-1.5">
+                    <span className="size-2 shrink-0 rounded-full bg-warning-fill" aria-hidden />
+                    Threshold Kuning
+                  </span>
+                </TableHead>
                 <TableHead className="text-right print:hidden">Aksi</TableHead>
               </TableRow>
             </TableHeader>

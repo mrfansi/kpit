@@ -1,5 +1,5 @@
 import { AlertTriangle } from "lucide-react";
-import { checkThresholdCoherence } from "@/lib/kpi-coherence";
+import { checkThresholdCoherence, type CoherenceIssue } from "@/lib/kpi-coherence";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,11 +17,17 @@ export function ThresholdCoherenceNotice({
   target,
   thresholdGreen,
   thresholdYellow,
+  levels = ["error", "warning"],
 }: {
   direction?: string;
   target?: number;
   thresholdGreen?: number;
   thresholdYellow?: number;
+  /**
+   * Form yang sudah menampilkan isu `error` di bawah field-nya sendiri bisa
+   * membatasi ke `["warning"]` supaya pesan yang sama tidak muncul dua kali.
+   */
+  levels?: CoherenceIssue["level"][];
 }) {
   if (
     typeof target !== "number" ||
@@ -36,7 +42,7 @@ export function ThresholdCoherenceNotice({
     target,
     thresholdGreen,
     thresholdYellow,
-  });
+  }).filter((issue) => levels.includes(issue.level));
 
   if (issues.length === 0) return null;
 

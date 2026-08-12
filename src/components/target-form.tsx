@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { AlertTriangle } from "lucide-react";
 import { upsertTarget } from "@/lib/actions/target";
 import { checkThresholdCoherence } from "@/lib/kpi-coherence";
 import { listLastNMonths } from "@/lib/period";
@@ -71,6 +72,10 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
   });
 
   async function onSubmit(values: FormValues) {
+    // Root error itu sisa dari percobaan sebelumnya; kalau tidak dibersihkan,
+    // banner lama tetap menempel di layar sepanjang percobaan berikutnya.
+    form.clearErrors("root");
+
     try {
       const result = await upsertTarget(kpi.id, values.periodDate, {
         target: values.target,
@@ -94,38 +99,45 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="periodDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Periode</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger><SelectValue placeholder="Pilih bulan" /></SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {months.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        {/*
+          `items-start` bukan kosmetik: FormItem itu `grid gap-2`, jadi kalau sel
+          dibiarkan stretch, kolom yang sedang menampilkan pesan error ikut
+          menaikkan tinggi baris dan menggeser turun label/input kolom
+          tetangganya. Top-align mengunci semua baseline di tempatnya.
+        */}
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+          <FormField
+            control={form.control}
+            name="periodDate"
+            render={({ field }) => (
+              <FormItem className="content-start">
+                <FormLabel>Periode</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Pilih bulan" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {months.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription className="text-xs">Berlaku untuk bulan ini saja</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={form.control}
             name="target"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="content-start">
                 <FormLabel>Target ({kpi.unit})</FormLabel>
                 <FormControl>
                   <Input type="number" step="any" {...field} value={numberFieldValue(field.value)} onChange={(e) => field.onChange(parseNumberInput(e.target.value))} />
                 </FormControl>
+                <FormDescription className="text-xs">Dasar hitung % pencapaian</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -134,8 +146,11 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
             control={form.control}
             name="thresholdGreen"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Threshold Hijau 🟢</FormLabel>
+              <FormItem className="content-start">
+                <FormLabel className="gap-1.5">
+                  <span className="size-2 shrink-0 rounded-full bg-success-fill" aria-hidden />
+                  Threshold Hijau
+                </FormLabel>
                 <FormControl>
                   <Input type="number" step="any" {...field} value={numberFieldValue(field.value)} onChange={(e) => field.onChange(parseNumberInput(e.target.value))} />
                 </FormControl>
@@ -150,8 +165,11 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
             control={form.control}
             name="thresholdYellow"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Threshold Kuning 🟡</FormLabel>
+              <FormItem className="content-start">
+                <FormLabel className="gap-1.5">
+                  <span className="size-2 shrink-0 rounded-full bg-warning-fill" aria-hidden />
+                  Threshold Kuning
+                </FormLabel>
                 <FormControl>
                   <Input type="number" step="any" {...field} value={numberFieldValue(field.value)} onChange={(e) => field.onChange(parseNumberInput(e.target.value))} />
                 </FormControl>
@@ -166,20 +184,27 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
           />
         </div>
 
+        {/*
+          Isu `error` sudah tampil tepat di bawah field yang salah, jadi di sini
+          cuma peringatan lunak — kalau tidak difilter, kalimat yang sama muncul
+          dua kali untuk satu kesalahan yang sama.
+        */}
         <ThresholdCoherenceNotice
           direction={kpi.direction}
           target={form.watch("target")}
           thresholdGreen={form.watch("thresholdGreen")}
           thresholdYellow={form.watch("thresholdYellow")}
+          levels={["warning"]}
         />
 
         {rootError && (
-          <p role="alert" className="rounded-md border border-danger bg-danger-soft p-3 text-xs text-danger">
-            {rootError}
+          <p role="alert" className="flex items-start gap-2 rounded-md border border-danger bg-danger-soft p-3 text-xs text-danger">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+            <span>{rootError}</span>
           </p>
         )}
 
-        <div className="flex gap-3 pt-1">
+        <div className="flex gap-3 border-t pt-4">
           <Button type="submit" disabled={form.formState.isSubmitting}>
             {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Target"}
           </Button>

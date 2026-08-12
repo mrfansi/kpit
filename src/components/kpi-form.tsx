@@ -233,13 +233,16 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
         </div>
 
         {/* Thresholds */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="thresholdGreen"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Threshold Hijau 🟢</FormLabel>
+                <FormLabel className="gap-1.5">
+                  <span className="size-2 shrink-0 rounded-full bg-success-fill" aria-hidden />
+                  Threshold Hijau
+                </FormLabel>
                 <FormControl><Input type="number" step="any" placeholder="Nilai on track" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
                 <FormDescription className="text-xs">
                   {form.watch("direction") === "lower_better"
@@ -255,7 +258,10 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
             name="thresholdYellow"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Threshold Kuning 🟡</FormLabel>
+                <FormLabel className="gap-1.5">
+                  <span className="size-2 shrink-0 rounded-full bg-warning-fill" aria-hidden />
+                  Threshold Kuning
+                </FormLabel>
                 <FormControl><Input type="number" step="any" placeholder="Nilai at risk" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
                 <FormDescription className="text-xs">
                   {form.watch("direction") === "lower_better"
