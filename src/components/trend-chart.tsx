@@ -9,7 +9,14 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis, ReferenceLine } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+  ReferenceLine,
+} from "recharts";
 import { EmptyState } from "@/components/empty-state";
 
 interface TrendChartProps {
@@ -25,9 +32,20 @@ const chartConfig = {
   forecast: { label: "Forecast", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
-export function TrendChart({ entries, unit, target, color = "var(--chart-1)", forecastPoints = [] }: TrendChartProps) {
+export function TrendChart({
+  entries,
+  unit,
+  target,
+  color = "var(--chart-1)",
+  forecastPoints = [],
+}: TrendChartProps) {
   if (entries.length === 0) {
-    return <EmptyState title="Belum ada data historis" description="Grafik akan muncul setelah data KPI diisi." />;
+    return (
+      <EmptyState
+        title="Belum ada data historis"
+        description="Grafik akan muncul setelah data KPI diisi."
+      />
+    );
   }
 
   const actualData = entries.map((e) => ({
@@ -38,7 +56,8 @@ export function TrendChart({ entries, unit, target, color = "var(--chart-1)", fo
 
   // Bridge: titik terakhir aktual juga punya nilai forecast agar garis menyambung
   if (forecastPoints.length > 0 && actualData.length > 0) {
-    actualData[actualData.length - 1].forecast = actualData[actualData.length - 1].value;
+    actualData[actualData.length - 1].forecast =
+      actualData[actualData.length - 1].value;
   }
 
   const forecastData = forecastPoints.map((p) => ({
@@ -53,7 +72,12 @@ export function TrendChart({ entries, unit, target, color = "var(--chart-1)", fo
     <ChartContainer config={chartConfig} className="h-60 w-full">
       <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis dataKey="period" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+        <XAxis
+          dataKey="period"
+          tick={{ fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+        />
         <YAxis
           tick={{ fontSize: 11 }}
           tickLine={false}
@@ -66,7 +90,7 @@ export function TrendChart({ entries, unit, target, color = "var(--chart-1)", fo
             <ChartTooltipContent
               formatter={(value, name) => [
                 formatValue(Number(value), unit),
-                name === "forecast" ? "Forecast" : "Aktual",
+                name === "forecast" ? " Forecast" : " Aktual",
               ]}
             />
           }
