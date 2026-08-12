@@ -37,6 +37,10 @@ export function RichTextEditor({ content = "", onChange, placeholder = "Tulis ca
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
+        // StarterKit v3 sudah membawa extension Link sendiri. Dibiarkan aktif,
+        // ia bentrok dengan Link.configure() di bawah ("Duplicate extension
+        // names found: ['link']") dan opsi di sini yang menang secara diam-diam.
+        link: false,
       }),
       Image.configure({ inline: false, allowBase64: false }),
       Link.configure({ openOnClick: false, autolink: true }),
