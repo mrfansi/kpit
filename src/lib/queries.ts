@@ -89,9 +89,9 @@ export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?:
     }
   }
 
-  // Batch 2: last 12 entries per KPI for sparkline (reuse sorted data above)
+  // Batch 2: 12 newest entries per KPI for sparkline (rows are newest-first per KPI)
   const sparklineMap = new Map<number, typeof latestEntriesRaw>();
-  for (const entry of [...latestEntriesRaw].reverse()) {
+  for (const entry of latestEntriesRaw) {
     const arr = sparklineMap.get(entry.kpiId) ?? [];
     if (arr.length < 12) arr.push(entry);
     sparklineMap.set(entry.kpiId, arr);
@@ -113,6 +113,7 @@ export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?:
 
   return allKPIs.map((kpi) => {
     const latestEntry = latestEntryMap.get(kpi.id) ?? null;
+    // Chronological (oldest → newest): consumers draw left→right and treat the second-last entry as previous.
     const sparklineEntries = (sparklineMap.get(kpi.id) ?? []).slice().reverse();
 
     const override = latestEntry ? targetOverrideMap.get(`${kpi.id}:${latestEntry.periodDate}`) : undefined;
