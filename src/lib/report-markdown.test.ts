@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateUnifiedMarkdownReport, buildPresentationPrompt, type UnifiedMarkdownReportData } from "./report-markdown";
+import { generateUnifiedMarkdownReport, type UnifiedMarkdownReportData } from "./report-markdown";
 
 const reportData = {
   periodLabel: "April 2026",
@@ -126,15 +126,6 @@ test("generates an English unified markdown report with KPI, action plan, and al
   assert.match(markdown, /## All Projects Timeline/);
   assert.match(markdown, /\| Mobile Launch \| Customer mobile app \| 2026-04-01 \| 2026-05-15 \| 2026-05-22 \| Calculated \| 45% \| In Progress \|/);
   assert.match(markdown, /\| Data Warehouse \| - \| 2026-03-01 \| 2026-06-30 \| 2026-07-10 \| Manual \| 20% \| Planned \|/);
-});
-
-test("builds a presentation prompt that wraps the unified markdown report", () => {
-  const prompt = buildPresentationPrompt(reportData);
-
-  assert.match(prompt, /^Create an executive presentation from the KPI and timeline report below\./);
-  assert.match(prompt, /Audience: executive leadership/);
-  assert.match(prompt, /# KPIT Unified Report/);
-  assert.match(prompt, /Mobile Launch/);
 });
 
 test("includes all-period KPI history when historical domains are provided", () => {

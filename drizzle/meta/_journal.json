@@ -1,0 +1,23 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    { "idx": 0, "version": "6", "when": 1700000000000, "tag": "0000_tiresome_preak", "breakpoints": true },
+    { "idx": 1, "version": "6", "when": 1700000000001, "tag": "0001_lazy_stryfe", "breakpoints": true },
+    { "idx": 2, "version": "6", "when": 1700000000002, "tag": "0002_magenta_natasha_romanoff", "breakpoints": true },
+    { "idx": 3, "version": "6", "when": 1700000000003, "tag": "0003_sort_order_and_archive", "breakpoints": true },
+    { "idx": 4, "version": "6", "when": 1700000000004, "tag": "0003_supreme_sharon_ventura", "breakpoints": true },
+    { "idx": 5, "version": "6", "when": 1700000000005, "tag": "0004_users_table", "breakpoints": true },
+    { "idx": 6, "version": "6", "when": 1700000000006, "tag": "0005_audit_logs", "breakpoints": true },
+    { "idx": 7, "version": "6", "when": 1700000000007, "tag": "0006_indexes", "breakpoints": true },
+    { "idx": 8, "version": "6", "when": 1700000000008, "tag": "0007_timeline_gantt", "breakpoints": true },
+    { "idx": 9, "version": "6", "when": 1700000000009, "tag": "0008_timeline_progress_logs", "breakpoints": true },
+    { "idx": 10, "version": "6", "when": 1700000000010, "tag": "0009_launch_estimation", "breakpoints": true },
+    { "idx": 11, "version": "6", "when": 1700000000011, "tag": "0010_project_statuses", "breakpoints": true },
+    { "idx": 12, "version": "6", "when": 1700000000012, "tag": "0011_optimization_indexes", "breakpoints": true },
+    { "idx": 13, "version": "6", "when": 1700000000013, "tag": "0012_kpi_action_plans", "breakpoints": true },
+    { "idx": 14, "version": "6", "when": 1700000000014, "tag": "0013_kpi_targets_unique", "breakpoints": true },
+    { "idx": 15, "version": "6", "when": 1700000000015, "tag": "0014_kpi_value_bounds", "breakpoints": true },
+    { "idx": 16, "version": "6", "when": 1791072000000, "tag": "0015_monthly_reports", "breakpoints": true }
+  ]
+}

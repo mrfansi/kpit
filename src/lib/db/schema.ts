@@ -137,6 +137,32 @@ export const auditLogs = sqliteTable("audit_logs", {
 ]);
 export type AuditLog = typeof auditLogs.$inferSelect;
 
+export const monthlyReports = sqliteTable("monthly_reports", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  domainId: integer("domain_id").notNull().references(() => domains.id, { onDelete: "cascade" }),
+  period: text("period").notNull(),
+  content: text("content", { mode: "json" }).notNull(),
+  revision: integer("revision").notNull().default(1),
+  createdBy: text("created_by").notNull(),
+  updatedBy: text("updated_by").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("uq_monthly_reports_domain_period").on(table.domainId, table.period),
+  index("idx_monthly_reports_period").on(table.period),
+]);
+export const monthlyReportRevisions = sqliteTable("monthly_report_revisions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  reportId: integer("report_id").notNull().references(() => monthlyReports.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull(),
+  content: text("content", { mode: "json" }).notNull(),
+  authorId: text("author_id").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => [
+  uniqueIndex("uq_monthly_report_revisions_report_revision").on(table.reportId, table.revision),
+]);
+
+
 // Types
 export type Domain = typeof domains.$inferSelect;
 export type KPI = typeof kpis.$inferSelect;
