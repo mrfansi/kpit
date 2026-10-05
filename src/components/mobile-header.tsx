@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, Users, User, PenLine, Menu, Globe, Upload, LogIn, ClipboardList, ClipboardCheck, GanttChart, ShieldCheck } from "lucide-react";
+import { BarChart2, Settings, Home, Users, User, PenLine, Menu, Globe, Upload, LogIn, ClipboardList, ClipboardCheck, GanttChart, ShieldCheck, FileBarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
@@ -54,6 +54,7 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
     { href: "/admin/domain", icon: Globe, label: "Kelola Domain" },
     { href: "/admin/input", icon: PenLine, label: "Input Data" },
     { href: "/admin/actions", icon: ClipboardCheck, label: "Action Plan" },
+    { href: "/admin/reports/monthly", icon: FileBarChart2, label: "Laporan Bulanan" },
     { href: "/admin/import", icon: Upload, label: "Import CSV" },
     { href: "/admin/users", icon: Users, label: "Pengguna" },
     { href: "/admin/timeline", icon: GanttChart, label: "Kelola Timeline" },

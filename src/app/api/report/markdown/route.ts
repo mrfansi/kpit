@@ -12,6 +12,9 @@ import { getEffectiveLaunchDate, isManualLaunchDate } from "@/lib/launch-date";
 import { formatValue, defaultReportingPeriod } from "@/lib/period";
 import { actionPlanStatusLabels } from "@/lib/action-plan";
 import { generateMarkdownExport, type MarkdownExportFormat, type UnifiedMarkdownReportData } from "@/lib/report-markdown";
+import { getMonthlyReportBundle } from "@/lib/monthly-report-store";
+import { renderMonthlyReportMarkdown } from "@/lib/monthly-report-export";
+import { buildPresentationPrompt } from "@/lib/report-markdown";
 
 const exportFormats = new Set<MarkdownExportFormat>(["full", "brief", "presentation"]);
 const exportScopes = new Set(["selected", "all"]);
@@ -263,6 +266,34 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  if (!/^\d{4}-\d{2}-01$/.test(period)) {
+    return NextResponse.json({ error: "Periode harus tanggal pertama bulan (YYYY-MM-01)." }, { status: 400 });
+  }
+
+  const domain = searchParams.get("domain");
+  if (domain) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(domain)) {
+      return NextResponse.json({ error: "Domain tidak valid." }, { status: 400 });
+    }
+    const bundle = await getMonthlyReportBundle(domain, period);
+    if (!bundle) return NextResponse.json({ error: "Domain tidak ditemukan." }, { status: 404 });
+    const markdown = format === "presentation"
+      ? buildPresentationPrompt(renderMonthlyReportMarkdown(bundle, "presentation"))
+      : renderMonthlyReportMarkdown(bundle, format);
+    const filename = `kpit-${cleanFilenamePart(domain)}-${period}-${format}.md`;
+    return new NextResponse(markdown, {
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "private, no-store",
+        "Content-Disposition": searchParams.get("download") === "1"
+          ? `attachment; filename="${filename}"`
+          : `inline; filename="${filename}"`,
+      },
+    });
+  }
+  if (format === "presentation") {
+    return NextResponse.json({ error: "Pilih satu domain untuk prompt presentasi bulanan." }, { status: 400 });
+  }
   let data: UnifiedMarkdownReportData;
   try {
     data = await buildUnifiedMarkdownReportData(period, scope);

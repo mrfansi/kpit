@@ -10,6 +10,7 @@ import { ReportActionPlans } from "@/components/report/report-action-plans";
 import { MarkdownExportDialog } from "@/components/report/markdown-export-dialog";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { isAdminUser } from "@/lib/auth-utils";
 
 export const metadata: Metadata = { title: "Executive Report — Semua Domain" };
 
@@ -32,10 +33,11 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       })()
     : null;
 
-  const [domains, allKPIsWithEntries, actionPlanRows] = await Promise.all([
+  const [domains, allKPIsWithEntries, actionPlanRows, isAdmin] = await Promise.all([
     getAllDomains(),
     getKPIsWithLatestEntry(undefined, selectedPeriod),
     getReportActionPlansWithKPI(),
+    isAdminUser(),
   ]);
 
   const kpiIds = allKPIsWithEntries.map(({ kpi }) => kpi.id);
@@ -276,6 +278,19 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
         </div>
       )}
 
+      <section className="mb-8 rounded-md border p-4 print:hidden" aria-label="Laporan bulanan per domain">
+        <h2 className="font-semibold">Laporan bulanan per divisi</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Pilih domain untuk melihat laporan tersimpan dan menetapkan divisinya secara eksplisit.</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {domains.map((domain) => <div key={domain.id} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
+            <span className="font-medium">{domain.name}</span>
+            <span className="flex gap-3">
+              <Link className="underline underline-offset-2" href={`/report/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Lihat</Link>
+              {isAdmin && <Link className="underline underline-offset-2" href={`/admin/reports/monthly/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Sunting</Link>}
+            </span>
+          </div>)}
+        </div>
+      </section>
       {/* Per-domain sections */}
       {byDomain.map(({ domain, kpis }) => {
         const dGreen = kpis.filter(({ kpi, latestEntry, effectiveTarget }) => getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget }) === "green").length;
@@ -373,15 +388,8 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       {/* Controls (screen only) */}
       <div className="mt-8 flex gap-3 items-center print:hidden">
         <PrintButton />
-        {selectedPeriod && <MarkdownExportDialog period={selectedPeriod} />}
-        <a
-          href={`/api/report/presentation?period=${selectedPeriod ?? ""}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          Presentasi
-        </a>
+        {selectedPeriod && <MarkdownExportDialog period={selectedPeriod} domains={domains.map((domain) => ({ slug: domain.slug, name: domain.name }))} />}
+        {isAdmin && <Link href={`/admin/reports/monthly?period=${selectedPeriod}`} className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90">Susun laporan bulanan</Link>}
         <ReportPeriodSelector months={months} selectedPeriod={selectedPeriod ?? ""} />
         <Link href="/" className="px-4 py-2 border text-sm rounded hover:bg-muted transition-colors">&larr; Overview</Link>
       </div>

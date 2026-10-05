@@ -14,6 +14,7 @@ export function ReportPeriodSelector({ months, selectedPeriod }: ReportPeriodSel
 
   return (
     <select
+      aria-label="Periode laporan"
       value={selectedPeriod}
       onChange={(e) => {
         const url = new URL(window.location.href);
