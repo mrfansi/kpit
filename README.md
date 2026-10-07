@@ -90,7 +90,11 @@ DATABASE_URL=/absolute/path/kpit.db corepack pnpm db:migrate
 The migration runner preserves original SQL hashes in the Drizzle ledger,
 handles historical multi-statement SQL, and skips applied migrations regardless
 of old journal timestamps. Back up existing databases first. Databases with
-unmanaged tables, unknown hashes, or incomplete migration history fail closed;
-inspect and reconcile their baseline rather than blindly replaying migrations.
+unmanaged tables or unknown hashes fail closed. A ledger with gaps (schema
+partly built by `drizzle-kit push`) is reconciled against the live schema: the
+longest migration prefix whose tables and columns all exist is recorded without
+replaying its SQL, its missing named indexes are created, and later migrations
+run normally. If the schema does not cover the recorded migrations, the runner
+refuses; inspect and reconcile manually.
 Do not use `db:seed` to upgrade an existing database.
 
