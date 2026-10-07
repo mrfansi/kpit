@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -50,5 +51,44 @@ test("migration runner refuses nonempty databases without ledger", () => {
     sqlite.exec("CREATE TABLE existing(id integer PRIMARY KEY)");
     sqlite.close();
     assert.throws(() => migrateDatabase(path, folder), /no Drizzle migration ledger/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("ledger gaps adopt migrations whose schema exists, create their missing indexes, and refuse missing columns", () => {
+  const root = mkdtempSync(join(tmpdir(), "kpit-gap-"));
+  const folder = join(root, "migrations");
+  mkdirSync(join(folder, "meta"), { recursive: true });
+  const sqls = [
+    "CREATE TABLE base (id integer PRIMARY KEY);",
+    "ALTER TABLE base ADD COLUMN label text;\nCREATE INDEX idx_base_label ON base(label);",
+    "CREATE TABLE extra (id integer PRIMARY KEY);",
+    "DROP TABLE extra;\nCREATE TABLE extra (id integer PRIMARY KEY, note text);",
+    "CREATE TABLE fresh (id integer PRIMARY KEY);",
+  ];
+  sqls.forEach((sql, idx) => writeFileSync(join(folder, `000${idx}_m.sql`), sql));
+  writeFileSync(join(folder, "meta", "_journal.json"), JSON.stringify({ version: "7", dialect: "sqlite", entries: sqls.map((_, idx) => ({ idx, version: "6", when: idx, tag: `000${idx}_m`, breakpoints: true })) }));
+  // Ledger records 0000 and 0002 only; the rest of the schema came from drizzle-kit push.
+  const pushed = (labelColumn: string) => {
+    const path = join(root, `${labelColumn}.sqlite`);
+    const sqlite = new Database(path);
+    sqlite.exec(`CREATE TABLE base (id integer PRIMARY KEY, ${labelColumn} text);
+      CREATE TABLE extra (id integer PRIMARY KEY, note text);
+      INSERT INTO extra VALUES (1, 'keep');
+      CREATE TABLE __drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at numeric);`);
+    for (const sql of [sqls[0], sqls[2]]) sqlite.prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, 1)").run(createHash("sha256").update(sql).digest("hex"));
+    sqlite.close();
+    return path;
+  };
+  try {
+    const path = pushed("label");
+    assert.deepEqual(migrateDatabase(path, folder), { applied: 1, reconciled: 2 });
+    const sqlite = new Database(path);
+    assert.deepEqual(sqlite.prepare("SELECT note FROM extra").pluck().all(), ["keep"]);
+    assert.equal(sqlite.prepare("SELECT COUNT(*) FROM sqlite_master WHERE name IN ('idx_base_label', 'fresh')").pluck().get(), 2);
+    assert.equal(sqlite.prepare("SELECT COUNT(*) FROM __drizzle_migrations").pluck().get(), 5);
+    sqlite.close();
+    assert.deepEqual(migrateDatabase(path, folder), { applied: 0, reconciled: 0 });
+
+    assert.throws(() => migrateDatabase(pushed("other"), folder), /not a complete prefix/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
