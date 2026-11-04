@@ -36,7 +36,9 @@ function luminance(hex: string): number {
 
 export function contrastProblems(style: BrandStyle): string[] {
   const problems: string[] = [];
-  for (const [foreground, foregroundLabel, minimum] of [["text", "Teks", 4.5], ["mutedText", "Teks sekunder", 3], ["primary", "Warna utama", 3]] as const) {
+  // mutedText is body/small/footer text (16/14/12px): normal-size text needs 4.5:1.
+  // primary only colours non-text UI (number gradient, progress bar, borders): 3:1 (WCAG 1.4.11).
+  for (const [foreground, foregroundLabel, minimum] of [["text", "Teks", 4.5], ["mutedText", "Teks sekunder", 4.5], ["primary", "Warna utama", 3]] as const) {
     for (const [background, backgroundLabel] of [["background", "latar awal"], ["backgroundEnd", "latar akhir"], ...(foreground === "primary" ? [] : [["surface", "permukaan"]] as const)] as const) {
       const first = luminance(style.colors[foreground]);
       const second = luminance(style.colors[background]);

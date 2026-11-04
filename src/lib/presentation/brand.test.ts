@@ -18,6 +18,15 @@ test("contrast guard accepts default and identifies unreadable text/background p
   assert.ok(problems.some((problem) => problem.includes("Teks pada permukaan")));
 });
 
+test("muted body text needs 4.5:1 while primary (non-text UI) needs only 3:1", () => {
+  // #64748b on #0f172a is ~3.7:1: readable for large UI accents, not for 12–16px text.
+  const midContrast = "#64748b";
+  const muted = contrastProblems({ ...DEFAULT_BRAND_STYLE, colors: { ...DEFAULT_BRAND_STYLE.colors, mutedText: midContrast } });
+  assert.ok(muted.some((problem) => problem.startsWith("Teks sekunder pada latar awal") && problem.includes("minimal 4.5:1")), muted.join("; "));
+  const primary = contrastProblems({ ...DEFAULT_BRAND_STYLE, colors: { ...DEFAULT_BRAND_STYLE.colors, primary: midContrast } });
+  assert.deepEqual(primary, []);
+});
+
 test("preview sample uses the real report computation and includes a missed target", () => {
   const sample = presentationBrandSample();
   assert.equal(sample.ready, true, sample.questions.map((q) => q.question).join("; "));

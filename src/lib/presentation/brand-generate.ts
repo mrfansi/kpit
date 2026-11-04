@@ -19,7 +19,7 @@ export async function generatePresentationBrand(
 Skema persis (semua field wajib, jangan tambah field):
 {"name":"nama 1–60 karakter","mode":"dark atau light","colors":{"background":"#RRGGBB","backgroundEnd":"#RRGGBB","surface":"#RRGGBB","text":"#RRGGBB","mutedText":"#RRGGBB","primary":"#RRGGBB","accent":"#RRGGBB"},"fonts":{"heading":"font whitelist","body":"font whitelist"},"radius":"none atau small atau medium atau large","titleCase":"normal atau uppercase","footerText":"maksimal 80 karakter","guideline":"maksimal 600 karakter"}
 Whitelist font: ${BRAND_FONTS.join(", ")}.
-Warna harus heksadesimal enam digit. Kontras WCAG: text terhadap background/backgroundEnd/surface minimal 4.5:1; mutedText terhadap ketiganya minimal 3:1; primary terhadap background/backgroundEnd minimal 3:1.
+Warna harus heksadesimal enam digit. Kontras WCAG: text dan mutedText masing-masing terhadap background/backgroundEnd/surface minimal 4.5:1 (mutedText dipakai untuk teks isi dan teks kecil); primary terhadap background/backgroundEnd minimal 3:1.
 Jangan mengarang atau mengubah warna status KPI (sukses, peringatan, bahaya); warna status bukan bagian skema ini.
 Untuk penyempurnaan, pertahankan semua field gaya dasar yang tidak terkait instruksi. Jangan mengubah nama, footer, atau guideline tanpa diminta. Gunakan Bahasa Indonesia untuk teks deskriptif.
 Gaya dasar JSON:
