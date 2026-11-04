@@ -15,6 +15,7 @@ import { generateMarkdownExport, type MarkdownExportFormat, type UnifiedMarkdown
 import { getMonthlyReportBundle } from "@/lib/monthly-report-store";
 import { renderMonthlyReportMarkdown } from "@/lib/monthly-report-export";
 import { buildPresentationPrompt } from "@/lib/report-markdown";
+import { getActivePresentationBrand } from "@/lib/presentation/brand-store";
 
 const exportFormats = new Set<MarkdownExportFormat>(["full", "brief", "presentation"]);
 const exportScopes = new Set(["selected", "all"]);
@@ -278,7 +279,7 @@ export async function GET(request: NextRequest) {
     const bundle = await getMonthlyReportBundle(domain, period);
     if (!bundle) return NextResponse.json({ error: "Domain tidak ditemukan." }, { status: 404 });
     const markdown = format === "presentation"
-      ? buildPresentationPrompt(renderMonthlyReportMarkdown(bundle, "presentation"))
+      ? buildPresentationPrompt(renderMonthlyReportMarkdown(bundle, "presentation"), (await getActivePresentationBrand())?.style)
       : renderMonthlyReportMarkdown(bundle, format);
     const filename = `kpit-${cleanFilenamePart(domain)}-${period}-${format}.md`;
     return new NextResponse(markdown, {

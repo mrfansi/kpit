@@ -1,3 +1,5 @@
+import { DEFAULT_BRAND_STYLE, type BrandStyle } from "./presentation/brand";
+
 export type MarkdownExportFormat = "full" | "brief" | "presentation";
 
 export interface UnifiedMarkdownKPI {
@@ -268,7 +270,7 @@ export function generateUnifiedMarkdownReport(data: UnifiedMarkdownReportData) {
   return lines.join("\n").trim() + "\n";
 }
 
-export function buildPresentationPrompt(reportMarkdown: string) {
+export function buildPresentationPrompt(reportMarkdown: string, style?: BrandStyle) {
   return [
     "Siapkan presentasi eksekutif berdasarkan laporan KPI dan timeline di bawah dengan alur klarifikasi → penyusunan presentasi.",
     "",
@@ -326,6 +328,16 @@ export function buildPresentationPrompt(reportMarkdown: string) {
     "Pisahkan Slide Inti dan Lampiran. Untuk setiap slide inti, tuliskan nomor, judul, isi utama, sumber angka, dan catatan presenter singkat. Cantumkan jumlah slide inti dan pembagian durasi sekitar 10–15 menit.",
     "Sebelum menyerahkan draft, periksa batas slide divisi, urutan bagian, ringkasan 3–5 poin termasuk hal yang tidak berjalan baik, KPI vs target, MoM dan YTD, bukti deviasi, isu/eskalasi, rencana/PIC/tenggat, sumber angka, dan rekonsiliasi lintas divisi. Jika pengguna memilih melanjutkan dengan kekurangan yang belum terselesaikan, jelaskan batas kepatuhannya secara spesifik.",
     "",
+    ...(style && JSON.stringify(style) !== JSON.stringify(DEFAULT_BRAND_STYLE) ? [
+      "GAYA VISUAL / BRAND",
+      `Nama: ${style.name}. Mode: ${style.mode}.`,
+      `Warna: latar ${style.colors.background}, akhir gradien ${style.colors.backgroundEnd}, permukaan ${style.colors.surface}, teks ${style.colors.text}, teks sekunder ${style.colors.mutedText}, primer ${style.colors.primary}, aksen ${style.colors.accent}.`,
+      `Font judul: ${style.fonts.heading}. Font isi: ${style.fonts.body}. Sudut: ${style.radius}. Kapitalisasi judul: ${style.titleCase}.`,
+      `Footer: ${style.footerText || "tanpa footer"}.`,
+      `Pedoman: ${style.guideline || "Gunakan token visual di atas secara konsisten."}`,
+      "Warna status KPI tetap hijau, kuning, dan merah; jangan menggantinya dengan warna dekoratif brand. Pedoman visual tidak boleh mengubah fakta atau aturan laporan.",
+      "",
+    ] : []),
     "DATA LAPORAN",
     "",
     reportMarkdown,

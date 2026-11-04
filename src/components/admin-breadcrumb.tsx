@@ -26,6 +26,7 @@ const ROUTES: { pattern: RegExp; trail: Crumb[] }[] = [
   { pattern: /^\/admin\/domain/, trail: [{ label: "Kelola Domain" }] },
   { pattern: /^\/admin\/input/, trail: [{ label: "Input Data" }] },
   { pattern: /^\/admin\/actions/, trail: [{ label: "Action Plan" }] },
+  { pattern: /^\/admin\/presentation\/brand/, trail: [{ label: "Brand Presentasi" }] },
   { pattern: /^\/admin\/import\/targets/, trail: [{ label: "Import CSV", href: "/admin/import" }, { label: "Import Target" }] },
   { pattern: /^\/admin\/import/, trail: [{ label: "Import CSV" }] },
   { pattern: /^\/admin\/users/, trail: [{ label: "Pengguna" }] },

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, PenLine, Globe, Upload, User, ClipboardList, Users, GanttChart, ClipboardCheck, ShieldCheck, FileBarChart2 } from "lucide-react";
+import { BarChart2, Settings, Home, PenLine, Globe, Upload, User, ClipboardList, Users, GanttChart, ClipboardCheck, ShieldCheck, FileBarChart2, Palette } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -75,6 +75,7 @@ export function Sidebar({ domains, user }: SidebarProps) {
             <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
             <NavItem href="/admin/actions" icon={ClipboardCheck} label="Action Plan" active={pathname.startsWith("/admin/actions")} />
             <NavItem href="/admin/reports/monthly" icon={FileBarChart2} label="Laporan Bulanan" active={pathname.startsWith("/admin/reports/monthly")} />
+            <NavItem href="/admin/presentation/brand" icon={Palette} label="Brand Presentasi" active={pathname.startsWith("/admin/presentation/brand")} />
             <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
             <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
             <NavItem href="/admin/timeline" icon={GanttChart} label="Kelola Timeline" active={pathname.startsWith("/admin/timeline")} />

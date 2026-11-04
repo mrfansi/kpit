@@ -70,6 +70,9 @@ export class DeepSeekProvider implements AIService {
           thinking: { type: "disabled" },
           max_tokens: maxOutputTokens,
           stream: false,
+          ...(options?.responseFormat === "json" && {
+            response_format: { type: "json_object" },
+          }),
           ...(options?.temperature !== undefined && {
             temperature: options.temperature,
           }),

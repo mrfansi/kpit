@@ -26,9 +26,11 @@ const nextConfig: NextConfig = {
               isDev
                 ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
                 : "script-src 'self' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
+              // Google Fonts: the brand preview iframe (srcdoc) inherits this policy and
+              // loads the brand's chosen fonts, same origins the exported deck allows.
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob:",
-              "font-src 'self' data:",
+              "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self'",
               "object-src 'none'",
               "base-uri 'self'",
