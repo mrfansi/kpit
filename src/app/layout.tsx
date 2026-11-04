@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   description: "Dashboard laporan Key Performance Indicators",
 };
 
+// Every page reads D1, which only exists per request on Workers; skip build-time prerendering.
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [domains, session] = await Promise.all([getAllDomains(), auth()]);
 
