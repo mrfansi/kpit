@@ -1,4 +1,4 @@
-import { WorkersAIProvider } from "./workers-ai-provider";
+import { DeepSeekProvider } from "./deepseek-provider";
 import type { AIService } from "./types";
 import { AIServiceError } from "./types";
 
@@ -10,34 +10,17 @@ let instance: AIService | null = null;
 
 /**
  * Get the AI service singleton.
- * @throws AIServiceError with code "no_api_key" if Workers AI credentials are missing.
+ * @throws AIServiceError with code "no_api_key" if DEEPSEEK_API_KEY is missing.
  */
 export function getAIService(): AIService {
   if (instance) return instance;
 
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-
-  // Keduanya wajib, dan yang hilang disebutkan namanya: pesan "kredensial belum
-  // lengkap" mengirim orang membaca ulang seluruh .env untuk menemukan satu
-  // baris yang salah.
-  const missing = [
-    !accountId && "CLOUDFLARE_ACCOUNT_ID",
-    !apiToken && "CLOUDFLARE_API_TOKEN",
-  ].filter(Boolean);
-
-  if (missing.length > 0) {
-    throw new AIServiceError(
-      `AI tidak tersedia. ${missing.join(" dan ")} belum dikonfigurasi.`,
-      "no_api_key"
-    );
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) {
+    throw new AIServiceError("AI tidak tersedia. DEEPSEEK_API_KEY belum dikonfigurasi.", "no_api_key");
   }
 
-  instance = new WorkersAIProvider(
-    accountId!,
-    apiToken!,
-    process.env.CLOUDFLARE_AI_MODEL
-  );
+  instance = new DeepSeekProvider(apiKey, process.env.DEEPSEEK_MODEL);
   return instance;
 }
 

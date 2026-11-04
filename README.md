@@ -32,10 +32,10 @@ trusted Workers deployment. `NEXTAUTH_URL` is the legacy alternative to
 Optional runtime settings (set with `wrangler secret put <NAME>`):
 
 - `NOTIFY_WEBHOOK_URL`: leave unset to disable notifications.
-- `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`: configure together for the
-  existing Workers AI integration; not required for manual reports or HTML
-  export. The API token must permit the intended Workers AI usage.
-- `CLOUDFLARE_AI_MODEL`: optional model override (see `.env.example`).
+- `DEEPSEEK_API_KEY`: enables the AI features through the DeepSeek API
+  (`https://api.deepseek.com`); not required for manual reports or HTML export.
+- `DEEPSEEK_MODEL`: optional model override, default `deepseek-flash` (see
+  `.env.example`).
 
 Secrets are not committed. `.env.example` lists the seed/AI settings; copy the
 runtime values you need to an ignored `.dev.vars` for local OpenNext development:
@@ -222,8 +222,7 @@ presentation exports require a selected domain.
 
 **Periksa / Bantu dengan AI** returns clarification questions before making any
 provider call. Once a saved report is complete, it can generate factual draft
-speaker notes using the existing Cloudflare Workers AI configuration in
-`.env.example`. No configured provider returns an explicit unavailable error;
+speaker notes using the DeepSeek configuration in `.env.example`. No configured provider returns an explicit unavailable error;
 manual reporting and deterministic HTML export do not require AI. Review AI
 notes before use. The exported presentation prompt also supports clarification
 in an external conversational AI tool.

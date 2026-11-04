@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { WorkersAIProvider } from "./workers-ai-provider";
+import { DeepSeekProvider } from "./deepseek-provider";
 import { AIServiceError } from "./types";
 
-const ACCOUNT = "acc123";
-const TOKEN = "tok456";
+const KEY = "sk-test456";
 
 /** Ganti global fetch untuk satu test, lalu kembalikan aslinya. */
 function withFetch(
@@ -26,29 +25,36 @@ function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status });
 }
 
-test("posts to the account-scoped endpoint with bearer auth and the prompt", async () => {
+test("posts to DeepSeek chat completions with bearer auth, thinking off and a token cap", async () => {
   await withFetch(
     async () => jsonResponse({ choices: [{ message: { content: "halo" } }] }),
     async (calls) => {
-      const provider = new WorkersAIProvider(ACCOUNT, TOKEN);
+      const provider = new DeepSeekProvider(KEY);
       const result = await provider.generateText("apa kabar");
 
       assert.equal(result.text, "halo");
       assert.equal(calls.length, 1);
-      assert.equal(
-        calls[0].url,
-        `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/ai/v1/chat/completions`
-      );
+      assert.equal(calls[0].url, "https://api.deepseek.com/chat/completions");
 
       const headers = calls[0].init.headers as Record<string, string>;
-      assert.equal(headers.Authorization, `Bearer ${TOKEN}`);
+      assert.equal(headers.Authorization, `Bearer ${KEY}`);
 
       const body = JSON.parse(calls[0].init.body as string);
-      assert.equal(body.model, "@cf/openai/gpt-oss-120b");
+      assert.equal(body.model, "deepseek-flash");
       assert.deepEqual(body.messages, [{ role: "user", content: "apa kabar" }]);
-      // max_completion_tokens, bukan max_tokens yang sudah deprecated.
-      assert.equal(body.max_completion_tokens, 4096);
-      assert.equal("max_tokens" in body, false);
+      // Thinking mode would ignore temperature and spend the cap on reasoning.
+      assert.deepEqual(body.thinking, { type: "disabled" });
+      assert.equal(body.max_tokens, 4096);
+    }
+  );
+});
+
+test("empty DEEPSEEK_MODEL falls back to the default model", async () => {
+  await withFetch(
+    async () => jsonResponse({ choices: [{ message: { content: "x" } }] }),
+    async (calls) => {
+      await new DeepSeekProvider(KEY, "").generateText("a");
+      assert.equal(JSON.parse(calls[0].init.body as string).model, "deepseek-flash");
     }
   );
 });
@@ -57,13 +63,13 @@ test("model dari konstruktor dan dari options saling menimpa dengan benar", asyn
   await withFetch(
     async () => jsonResponse({ choices: [{ message: { content: "x" } }] }),
     async (calls) => {
-      const provider = new WorkersAIProvider(ACCOUNT, TOKEN, "@cf/custom/default");
+      const provider = new DeepSeekProvider(KEY, "deepseek-v4-pro");
 
       await provider.generateText("a");
-      assert.equal(JSON.parse(calls[0].init.body as string).model, "@cf/custom/default");
+      assert.equal(JSON.parse(calls[0].init.body as string).model, "deepseek-v4-pro");
 
-      await provider.generateText("a", { model: "@cf/per/call" });
-      assert.equal(JSON.parse(calls[1].init.body as string).model, "@cf/per/call");
+      await provider.generateText("a", { model: "deepseek-per-call" });
+      assert.equal(JSON.parse(calls[1].init.body as string).model, "deepseek-per-call");
     }
   );
 });
@@ -72,7 +78,7 @@ test("temperature hanya dikirim kalau pemanggil menyetelnya", async () => {
   await withFetch(
     async () => jsonResponse({ choices: [{ message: { content: "x" } }] }),
     async (calls) => {
-      const provider = new WorkersAIProvider(ACCOUNT, TOKEN);
+      const provider = new DeepSeekProvider(KEY);
 
       await provider.generateText("a");
       assert.equal("temperature" in JSON.parse(calls[0].init.body as string), false);
@@ -89,7 +95,7 @@ test("status non-2xx jadi provider_error tanpa membocorkan body ke pesan", async
   await withFetch(
     async () => new Response("akun xyz tidak punya kuota", { status: 429 }),
     async () => {
-      const provider = new WorkersAIProvider(ACCOUNT, TOKEN);
+      const provider = new DeepSeekProvider(KEY);
       const error = await provider
         .generateText("a")
         .then(() => null, (e: unknown) => e);
@@ -101,17 +107,14 @@ test("status non-2xx jadi provider_error tanpa membocorkan body ke pesan", async
   );
 });
 
-test("anggaran token habis sebelum menjawab dijelaskan sebagai itu, bukan 'respons kosong'", async () => {
-  // Kasus nyata: model reasoning seperti glm-5.2 menghabiskan seluruh anggaran
-  // untuk bernalar dan mengembalikan 200 dengan content kosong. Pesan generik
-  // mengirim orang mencari kesalahan di prompt atau kredensial.
+test("token cap reached with no answer is reported as such, not as 'empty response'", async () => {
   await withFetch(
     async () =>
       jsonResponse({
         choices: [{ finish_reason: "length", message: { content: "" } }],
       }),
     async () => {
-      const provider = new WorkersAIProvider(ACCOUNT, TOKEN);
+      const provider = new DeepSeekProvider(KEY);
       const error = await provider
         .generateText("a")
         .then(() => null, (e: unknown) => e);
@@ -119,7 +122,7 @@ test("anggaran token habis sebelum menjawab dijelaskan sebagai itu, bukan 'respo
       assert.ok(error instanceof AIServiceError);
       assert.equal(error.code, "invalid_response");
       assert.match(error.message, /4096 token/);
-      assert.match(error.message, /reasoning/);
+      assert.match(error.message, /habis/);
     }
   );
 });
@@ -135,7 +138,7 @@ test("respons 200 dengan konten kosong ditolak, bukan diteruskan sebagai string 
     await withFetch(
       async () => jsonResponse(payload),
       async () => {
-        const provider = new WorkersAIProvider(ACCOUNT, TOKEN);
+        const provider = new DeepSeekProvider(KEY);
         const error = await provider
           .generateText("a")
           .then(() => null, (e: unknown) => e);
@@ -156,7 +159,7 @@ test("kegagalan jaringan jadi provider_error, bukan lolos sebagai TypeError", as
       throw new Error("network down");
     },
     async () => {
-      const provider = new WorkersAIProvider(ACCOUNT, TOKEN);
+      const provider = new DeepSeekProvider(KEY);
       const error = await provider
         .generateText("a")
         .then(() => null, (e: unknown) => e);
