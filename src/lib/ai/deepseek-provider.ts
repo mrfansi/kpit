@@ -106,17 +106,25 @@ export class DeepSeekProvider implements AIService {
 
     const choice = payload.choices?.[0];
     const text = choice?.message?.content;
+    const finishReason = choice?.finish_reason;
+
+    // Selain "stop", setiap finish_reason (length, content_filter,
+    // insufficient_system_resource, aborted) berarti jawaban terpotong.
+    // Teks parsial jangan sampai tampil di laporan seolah sudah lengkap.
+    if (finishReason && finishReason !== "stop") {
+      throw new AIServiceError(
+        finishReason === "length"
+          ? `Batas ${maxOutputTokens} token habis sebelum model selesai menjawab.`
+          : `DeepSeek menghentikan jawaban sebelum selesai (${finishReason}).`,
+        "invalid_response",
+        payload
+      );
+    }
 
     // Model bisa mengembalikan 200 dengan konten kosong. Itu bukan jawaban,
     // jadi jangan diteruskan sebagai string "".
     if (typeof text !== "string" || text.trim() === "") {
-      throw new AIServiceError(
-        choice?.finish_reason === "length"
-          ? `Batas ${maxOutputTokens} token habis sebelum model selesai menjawab.`
-          : "DeepSeek mengembalikan respons kosong.",
-        "invalid_response",
-        payload
-      );
+      throw new AIServiceError("DeepSeek mengembalikan respons kosong.", "invalid_response", payload);
     }
 
     return { text, metadata: { model: modelName, usage: payload.usage } };

@@ -107,22 +107,33 @@ test("status non-2xx jadi provider_error tanpa membocorkan body ke pesan", async
   );
 });
 
-test("token cap reached with no answer is reported as such, not as 'empty response'", async () => {
-  await withFetch(
-    async () =>
-      jsonResponse({
-        choices: [{ finish_reason: "length", message: { content: "" } }],
-      }),
-    async () => {
-      const provider = new DeepSeekProvider(KEY);
-      const error = await provider
-        .generateText("a")
-        .then(() => null, (e: unknown) => e);
+test("truncated answers are rejected even when partial text exists", async () => {
+  for (const [finish_reason, content, expected] of [
+    ["length", "", /4096 token.*habis/],
+    ["length", "Narasi laporan yang terpotong di tengah kal", /4096 token.*habis/],
+    ["insufficient_system_resource", "Sebagian jawaban", /insufficient_system_resource/],
+    ["aborted", "Sebagian jawaban", /aborted/],
+  ] as const) {
+    await withFetch(
+      async () => jsonResponse({ choices: [{ finish_reason, message: { content } }] }),
+      async () => {
+        const error = await new DeepSeekProvider(KEY)
+          .generateText("a")
+          .then(() => null, (e: unknown) => e);
 
-      assert.ok(error instanceof AIServiceError);
-      assert.equal(error.code, "invalid_response");
-      assert.match(error.message, /4096 token/);
-      assert.match(error.message, /habis/);
+        assert.ok(error instanceof AIServiceError, `${finish_reason} + ${JSON.stringify(content)} must be rejected`);
+        assert.equal(error.code, "invalid_response");
+        assert.match(error.message, expected);
+      }
+    );
+  }
+});
+
+test("finish_reason stop returns the text", async () => {
+  await withFetch(
+    async () => jsonResponse({ choices: [{ finish_reason: "stop", message: { content: "lengkap" } }] }),
+    async () => {
+      assert.equal((await new DeepSeekProvider(KEY).generateText("a")).text, "lengkap");
     }
   );
 });
