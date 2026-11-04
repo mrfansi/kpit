@@ -86,6 +86,12 @@ corepack pnpm d1:migrate:remote
 corepack pnpm deploy
 ```
 
+Production deploys run automatically: Workers Builds (connected GitHub repo) builds
+every push to `main` with `pnpm exec opennextjs-cloudflare build` and deploys with
+`npx wrangler deploy` to https://kpit.mrfansi.dev. pnpm comes from `packageManager`
+in `package.json`; plain `pnpm run build` (only `next build`) cannot deploy. Apply
+any new migration with `d1:migrate:remote` **before** merging code that needs it.
+
 `deploy` builds OpenNext and deploys the Worker; it does not apply migrations.
 `preview` builds and previews the Worker locally; `cf-typegen` regenerates binding
 types. D1 migrations use the committed `drizzle/*.sql` files and Wrangler's
