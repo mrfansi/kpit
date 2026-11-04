@@ -45,6 +45,7 @@ test("posts to DeepSeek chat completions with bearer auth, thinking off and a to
       // Thinking mode would ignore temperature and spend the cap on reasoning.
       assert.deepEqual(body.thinking, { type: "disabled" });
       assert.equal(body.max_tokens, 4096);
+      assert.equal("response_format" in body, false);
     }
   );
 });

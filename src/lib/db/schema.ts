@@ -252,3 +252,13 @@ export const timelineProjectLogs = sqliteTable("timeline_project_logs", {
 
 export type TimelineProjectLog = typeof timelineProjectLogs.$inferSelect;
 export type NewTimelineProjectLog = typeof timelineProjectLogs.$inferInsert;
+
+export const presentationBrandStyles = sqliteTable("presentation_brand_styles", {
+  revision: integer("revision").primaryKey(),
+  style: text("style", { mode: "json" }).notNull(),
+  description: text("description").notNull(),
+  updatedBy: text("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+});

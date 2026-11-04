@@ -1,25 +1,38 @@
-export function getPresentationStyles(): string {
+import { DEFAULT_BRAND_STYLE, type BrandStyle } from "./brand";
+
+export function getPresentationStyles(style: BrandStyle = DEFAULT_BRAND_STYLE): string {
+  const fonts = [...new Set([style.fonts.heading, style.fonts.body])];
+  const fontQuery = fonts.map((font) => `family=${font.replace(/ /g, "+")}:wght@400;600;700;900`).join("&");
+  const defaultSurface = style.colors.background === DEFAULT_BRAND_STYLE.colors.background && style.colors.surface === DEFAULT_BRAND_STYLE.colors.surface;
+  const radius = { none: "0", small: ".375rem", medium: ".75rem", large: "1rem" }[style.radius];
   return `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?${fontQuery}&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg-start: #0f172a;
-      --bg-end: #1e293b;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --card-bg: rgba(255,255,255,0.08);
-      --card-border: rgba(255,255,255,0.12);
+      color-scheme: ${style.mode};
+      --bg-start: ${style.colors.background};
+      --bg-end: ${style.colors.backgroundEnd};
+      --text: ${style.colors.text};
+      --text-muted: ${style.colors.mutedText};
+      --card-bg: ${defaultSurface ? "rgba(255,255,255,0.08)" : style.colors.surface};
+      --card-border: ${style.mode === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"};
+      --primary: ${style.colors.primary};
+      --accent: ${style.colors.accent};
+      --radius: ${radius};
+      --font-heading: '${style.fonts.heading}', system-ui, sans-serif;
+      --font-body: '${style.fonts.body}', system-ui, sans-serif;
+      --title-case: ${style.titleCase === "uppercase" ? "uppercase" : "none"};
       --green: #22c55e;
       --yellow: #eab308;
       --red: #ef4444;
-      --blue: #3b82f6;
+      --blue: var(--primary);
     }
 
     html, body {
       width: 100%; height: 100%; overflow: hidden;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-family: var(--font-body);
       background: linear-gradient(135deg, var(--bg-start), var(--bg-end));
       color: var(--text);
     }
@@ -44,6 +57,8 @@ export function getPresentationStyles(): string {
     }
 
     /* Typography */
+    h1, h2, h3, .title-huge, .title-large, .title-medium { font-family: var(--font-heading); text-transform: var(--title-case); }
+    .brand-footer { position: fixed; bottom: 2.5rem; left: 2rem; right: 2rem; text-align: center; font-size: .75rem; color: var(--text-muted); z-index: 95; overflow-wrap: anywhere; pointer-events: none; }
     .title-huge { font-size: 3rem; font-weight: 900; line-height: 1.1; }
     .title-large { font-size: 2rem; font-weight: 700; }
     .title-medium { font-size: 1.5rem; font-weight: 600; }
@@ -51,7 +66,7 @@ export function getPresentationStyles(): string {
     .text-small { font-size: 0.875rem; color: var(--text-muted); }
     .number-huge {
       font-size: 4rem; font-weight: 900;
-      background: linear-gradient(135deg, var(--green), var(--blue));
+      background: linear-gradient(135deg, var(--accent), var(--primary));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
     }
@@ -59,7 +74,7 @@ export function getPresentationStyles(): string {
     /* Cards */
     .card {
       background: var(--card-bg); border: 1px solid var(--card-border);
-      border-radius: 1rem; padding: 1.5rem;
+      border-radius: var(--radius); padding: 1.5rem;
     }
 
     /* Status badges */
@@ -92,7 +107,7 @@ export function getPresentationStyles(): string {
     .tooltip-wrap { position: relative; cursor: pointer; }
     .tooltip-wrap .tooltip {
       position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(-4px);
-      background: #1e293b; border: 1px solid var(--card-border); border-radius: 0.5rem;
+      background: var(--bg-end); border: 1px solid var(--card-border); border-radius: var(--radius);
       padding: 0.5rem 0.75rem; font-size: 0.75rem; white-space: nowrap;
       opacity: 0; pointer-events: none; transition: opacity 0.2s;
       z-index: 100;
@@ -102,7 +117,7 @@ export function getPresentationStyles(): string {
     /* Progress bar at bottom */
     .progress-bar {
       position: fixed; bottom: 0; left: 0; height: 3px;
-      background: linear-gradient(90deg, var(--green), var(--blue));
+      background: linear-gradient(90deg, var(--accent), var(--primary));
       transition: width 0.3s ease; z-index: 50;
     }
 

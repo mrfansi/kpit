@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/ai/api-helpers";
 import { isValidCalendarDate } from "@/lib/date-utils";
 import { getMonthlyReportBundle } from "@/lib/monthly-report-store";
 import { renderMonthlyReportPresentation } from "@/lib/monthly-report-export";
+import { getActivePresentationBrand } from "@/lib/presentation/brand-store";
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuth();
@@ -18,7 +19,8 @@ export async function GET(request: NextRequest) {
   if (!bundle) return NextResponse.json({ error: "Domain tidak ditemukan." }, { status: 404 });
   if (!bundle.ready) return NextResponse.json({ error: "Laporan belum siap dipresentasikan.", questions: bundle.questions }, { status: 409 });
 
-  return new NextResponse(renderMonthlyReportPresentation(bundle), {
+  const brand = await getActivePresentationBrand();
+  return new NextResponse(renderMonthlyReportPresentation(bundle, brand?.style), {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'" },
   });
 }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderMonthlyReportMarkdown, renderMonthlyReportPresentation } from "./monthly-report-export";
 import type { MonthlyReportBundle } from "./monthly-report-types";
+import { DEFAULT_BRAND_STYLE } from "./presentation/brand";
 
 function bundle(division: MonthlyReportBundle["content"]["division"] = "operation", decisions = false): MonthlyReportBundle {
   const observation = { month: "2026-10-01", actual: 4, target: 5, source: "ledger <script>alert(1)</script> | ref", targetSource: "approved target", state: "provided" as const, numerator: null, denominator: null };
@@ -70,4 +71,20 @@ test("all-untracked measurements do not claim targets were met", () => {
   assert.doesNotMatch(presentation, /Semua KPI terukur memenuhi target/);
   assert.match(markdown, /Sumber: management report/);
   assert.match(presentation, /Sumber: management report/);
+});
+
+test("brand reaches deck and appendix with escaped footer and independent red status", () => {
+  const output = renderMonthlyReportPresentation(bundle(), {
+    ...DEFAULT_BRAND_STYLE,
+    colors: { ...DEFAULT_BRAND_STYLE.colors, primary: "#663399", accent: "#cc5500" },
+    footerText: '<script>alert("footer")</script> & Company',
+  });
+  assert.match(output, /--primary: #663399/);
+  assert.match(output, /--accent: #cc5500/);
+  assert.match(output, /--red: #ef4444/);
+  assert.match(output, /class="badge badge-red">1 KPI: Target meleset/);
+  assert.match(output, /<footer class="brand-footer">&lt;script&gt;alert\(&quot;footer&quot;\)&lt;\/script&gt; &amp; Company<\/footer>/);
+  assert.doesNotMatch(output, /<script>alert\("footer"\)<\/script>/);
+  assert.match(output, /background: var\(--card-bg\); border: 1px solid var\(--card-border\); border-radius: var\(--radius\)/);
+  assert.match(output, /background: var\(--bg-start\); color: var\(--text\); font-family: var\(--font-body\)/);
 });

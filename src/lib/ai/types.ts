@@ -5,6 +5,8 @@ export interface AIGenerateOptions {
   temperature?: number;
   /** Model override. If not set, provider uses its default. */
   model?: string;
+  /** Request a JSON object instead of free-form text. */
+  responseFormat?: "json";
 }
 
 export interface AIGenerateResult {
