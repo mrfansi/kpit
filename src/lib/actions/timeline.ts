@@ -5,7 +5,7 @@ import { timelineProjects, timelineProjectLogs, timelineProjectStatuses } from "
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
-import { logAudit } from "@/lib/db/audit";
+import { auditInsert } from "@/lib/db/audit";
 import { projectSchema } from "@/lib/validations/timeline";
 import { isValidCalendarDate } from "@/lib/date-utils";
 
@@ -23,8 +23,8 @@ export async function createProject(formData: FormData) {
 
   const launchDate = parsed.data.estimatedLaunchDate || null;
 
-  db.transaction((tx) => {
-    tx.insert(timelineProjects).values({
+  await db.batch([
+    db.insert(timelineProjects).values({
       name: parsed.data.name,
       color: parsed.data.color,
       description: parsed.data.description,
@@ -37,8 +37,8 @@ export async function createProject(formData: FormData) {
       statusId: parsed.data.statusId ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }).run();
-    logAudit(
+    }),
+    auditInsert(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -46,9 +46,8 @@ export async function createProject(formData: FormData) {
         entity: "timeline_project",
         detail: parsed.data.name,
       },
-      tx
-    );
-  });
+    ),
+  ]);
   revalidateTimeline();
 }
 
@@ -106,9 +105,8 @@ export async function updateProject(id: number, formData: FormData) {
   }
 
   // Entity update, auto-changelog, and audit log committed atomically.
-  db.transaction((tx) => {
-    tx
-      .update(timelineProjects)
+  await db.batch([
+    db.update(timelineProjects)
       .set({
         name: parsed.data.name,
         color: parsed.data.color,
@@ -122,21 +120,18 @@ export async function updateProject(id: number, formData: FormData) {
         statusId: parsed.data.statusId ?? null,
         updatedAt: new Date(),
       })
-      .where(eq(timelineProjects.id, id))
-      .run();
-
-    if (oldProject && logParts.length > 0) {
-      tx.insert(timelineProjectLogs).values({
+      .where(eq(timelineProjects.id, id)),
+    ...(oldProject && logParts.length > 0 ? [
+      db.insert(timelineProjectLogs).values({
         projectId: id,
         content: logParts.join(", "),
         progressBefore: oldProject.progress,
         progressAfter: newProgress,
         author,
         createdAt: new Date(),
-      }).run();
-    }
-
-    logAudit(
+      }),
+    ] : []),
+    auditInsert(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -145,9 +140,8 @@ export async function updateProject(id: number, formData: FormData) {
         entityId: String(id),
         detail: parsed.data.name,
       },
-      tx
-    );
-  });
+    ),
+  ]);
   revalidateTimeline();
 }
 
@@ -186,30 +180,26 @@ export async function updateProjectDates(
   }
   const author = session.user.name ?? session.user.email ?? "Admin";
 
-  db.transaction((tx) => {
-    tx
-      .update(timelineProjects)
+  await db.batch([
+    db.update(timelineProjects)
       .set({
         startDate,
         endDate,
         ...(clearLaunch ? { estimatedLaunchDate: null } : {}),
         updatedAt: new Date(),
       })
-      .where(eq(timelineProjects.id, id))
-      .run();
-
-    if (logParts.length > 0) {
-      tx.insert(timelineProjectLogs).values({
+      .where(eq(timelineProjects.id, id)),
+    ...(logParts.length > 0 ? [
+      db.insert(timelineProjectLogs).values({
         projectId: id,
         content: logParts.join(", "),
         progressBefore: existing.progress,
         progressAfter: existing.progress,
         author,
         createdAt: new Date(),
-      }).run();
-    }
-
-    logAudit(
+      }),
+    ] : []),
+    auditInsert(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -218,9 +208,8 @@ export async function updateProjectDates(
         entityId: String(id),
         detail: `dates ${startDate} - ${endDate}`,
       },
-      tx
-    );
-  });
+    ),
+  ]);
   revalidateTimeline();
 }
 
@@ -248,16 +237,16 @@ export async function createProgressLog(
 
   const author = session.user.name ?? session.user.email ?? "Admin";
 
-  db.transaction((tx) => {
-    tx.insert(timelineProjectLogs).values({
+  await db.batch([
+    db.insert(timelineProjectLogs).values({
       projectId,
       content: clean,
       progressBefore: progressBefore ?? null,
       progressAfter: progressAfter ?? null,
       author,
       createdAt: new Date(),
-    }).run();
-    logAudit(
+    }),
+    auditInsert(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -265,9 +254,8 @@ export async function createProgressLog(
         entity: "timeline_project_log",
         entityId: String(projectId),
       },
-      tx
-    );
-  });
+    ),
+  ]);
 
   revalidateTimeline();
 }
@@ -275,9 +263,9 @@ export async function createProgressLog(
 export async function deleteProgressLog(id: number) {
   const session = await requireAdmin();
 
-  db.transaction((tx) => {
-    tx.delete(timelineProjectLogs).where(eq(timelineProjectLogs.id, id)).run();
-    logAudit(
+  await db.batch([
+    db.delete(timelineProjectLogs).where(eq(timelineProjectLogs.id, id)),
+    auditInsert(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -285,9 +273,8 @@ export async function deleteProgressLog(id: number) {
         entity: "timeline_project_log",
         entityId: String(id),
       },
-      tx
-    );
-  });
+    ),
+  ]);
   revalidateTimeline();
 }
 
@@ -300,9 +287,9 @@ export async function fetchProjectLogs(projectId: number) {
 export async function deleteProject(id: number) {
   const session = await requireAdmin();
 
-  db.transaction((tx) => {
-    tx.delete(timelineProjects).where(eq(timelineProjects.id, id)).run();
-    logAudit(
+  await db.batch([
+    db.delete(timelineProjects).where(eq(timelineProjects.id, id)),
+    auditInsert(
       {
         userId: session.user.id,
         userEmail: session.user.email ?? undefined,
@@ -310,8 +297,7 @@ export async function deleteProject(id: number) {
         entity: "timeline_project",
         entityId: String(id),
       },
-      tx
-    );
-  });
+    ),
+  ]);
   revalidateTimeline();
 }

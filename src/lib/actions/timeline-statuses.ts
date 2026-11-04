@@ -1,11 +1,11 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { timelineProjectStatuses, timelineProjects } from "@/lib/db/schema";
-import { eq, count, sql } from "drizzle-orm";
+import { auditLogs, timelineProjectStatuses, timelineProjects } from "@/lib/db/schema";
+import { and, eq, count, notExists, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-utils";
-import { logAudit } from "@/lib/db/audit";
+import { auditInsert } from "@/lib/db/audit";
 import { statusSchema } from "@/lib/validations/timeline-status";
 
 function slugify(name: string): string {
@@ -28,34 +28,22 @@ export async function createStatus(formData: FormData) {
 
   const slug = slugify(parsed.data.name);
 
-  db.transaction((tx) => {
-    // Next position = MAX(sort_order) + 1 (NOT count(), which collides with
-    // existing rows after any deletion). Read + insert atomic.
-    const [row] = tx
-      .select({ max: sql<number>`COALESCE(MAX(sort_order), -1)` })
-      .from(timelineProjectStatuses)
-      .all();
-    const nextOrder = (row?.max ?? -1) + 1;
-
-    tx.insert(timelineProjectStatuses).values({
+  await db.batch([
+    db.insert(timelineProjectStatuses).values({
       name: parsed.data.name,
       slug,
       color: parsed.data.color,
-      sortOrder: nextOrder,
+      sortOrder: sql`(SELECT COALESCE(MAX(sort_order), -1) + 1 FROM timeline_project_statuses)`,
       createdAt: new Date(),
-    }).run();
-
-    logAudit(
-      {
-        userId: session.user.id,
-        userEmail: session.user.email ?? undefined,
-        action: "create",
-        entity: "timeline_project_status",
-        detail: parsed.data.name,
-      },
-      tx
-    );
-  });
+    }),
+    auditInsert({
+      userId: session.user.id,
+      userEmail: session.user.email ?? undefined,
+      action: "create",
+      entity: "timeline_project_status",
+      detail: parsed.data.name,
+    }),
+  ]);
   revalidateAll();
 }
 
@@ -67,61 +55,51 @@ export async function updateStatus(id: number, formData: FormData) {
 
   const slug = slugify(parsed.data.name);
 
-  db.transaction((tx) => {
-    tx
-      .update(timelineProjectStatuses)
+  await db.batch([
+    db.update(timelineProjectStatuses)
       .set({ name: parsed.data.name, slug, color: parsed.data.color })
-      .where(eq(timelineProjectStatuses.id, id))
-      .run();
-
-    logAudit(
-      {
-        userId: session.user.id,
-        userEmail: session.user.email ?? undefined,
-        action: "update",
-        entity: "timeline_project_status",
-        entityId: String(id),
-        detail: parsed.data.name,
-      },
-      tx
-    );
-  });
+      .where(eq(timelineProjectStatuses.id, id)),
+    auditInsert({
+      userId: session.user.id,
+      userEmail: session.user.email ?? undefined,
+      action: "update",
+      entity: "timeline_project_status",
+      entityId: String(id),
+      detail: parsed.data.name,
+    }),
+  ]);
   revalidateAll();
 }
 
 export async function deleteStatus(id: number) {
   const session = await requireAdmin();
 
-  db.transaction((tx) => {
-    // Usage check and delete must be atomic, else a project assigned between
-    // the two statements is left pointing at a deleted status.
-    const usage = tx
-      .select({ cnt: count() })
-      .from(timelineProjects)
-      .where(eq(timelineProjects.statusId, id))
-      .all();
-
-    if ((usage[0]?.cnt ?? 0) > 0) {
-      throw new Error(
-        `Status ini masih digunakan oleh ${usage[0].cnt} project. Ubah status project tersebut terlebih dahulu.`
-      );
-    }
-
-    tx
-      .delete(timelineProjectStatuses)
-      .where(eq(timelineProjectStatuses.id, id))
-      .run();
-
-    logAudit(
-      {
-        userId: session.user.id,
-        userEmail: session.user.email ?? undefined,
-        action: "delete",
-        entity: "timeline_project_status",
-        entityId: String(id),
-      },
-      tx
+  const [deleted, , usage] = await db.batch([
+    db.delete(timelineProjectStatuses)
+      .where(and(
+        eq(timelineProjectStatuses.id, id),
+        notExists(db.select({ id: timelineProjects.id }).from(timelineProjects)
+          .where(eq(timelineProjects.statusId, id))),
+      ))
+      .returning({ id: timelineProjectStatuses.id }),
+    // changes() refers to the guarded DELETE immediately above in this batch.
+    db.insert(auditLogs).select(db.select({
+      id: sql<number>`NULL`.as("id"),
+      userId: sql<string>`${session.user.id}`.as("user_id"),
+      userEmail: sql<string | null>`${session.user.email ?? null}`.as("user_email"),
+      action: sql<string>`'delete'`.as("action"),
+      entity: sql<string>`'timeline_project_status'`.as("entity"),
+      entityId: sql<string>`${String(id)}`.as("entity_id"),
+      detail: sql<string | null>`NULL`.as("detail"),
+      createdAt: sql<Date>`${Math.floor(Date.now() / 1000)}`.as("created_at"),
+    }).from(sql`(SELECT 1)`).where(sql`changes() > 0`)),
+    db.select({ cnt: count() }).from(timelineProjects)
+      .where(eq(timelineProjects.statusId, id)),
+  ]);
+  if (!deleted.length && (usage[0]?.cnt ?? 0) > 0) {
+    throw new Error(
+      `Status ini masih digunakan oleh ${usage[0].cnt} project. Ubah status project tersebut terlebih dahulu.`
     );
-  });
+  }
   revalidateAll();
 }

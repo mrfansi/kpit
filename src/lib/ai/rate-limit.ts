@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
  * In-memory per-user rate limiter for AI endpoints.
  *
  * Guards against cost-explosion DoS: every AI call hits a paid Workers AI API.
- * Single-process better-sqlite3 deployment, so a module-level Map is sufficient.
+ * shortcut: the Map lives per Worker isolate, so limits are per isolate rather than
+ * global; move counters to a Durable Object / KV if AI spend ever needs a hard cap.
  * Two layers: a short sliding window (burst control) + a daily cap (cost ceiling).
  */
 

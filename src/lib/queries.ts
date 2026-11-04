@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, or } from "drizzle-orm";
 import { db } from "./db";
 import { domains, kpiActionPlans, kpiComments, kpiEntries, kpiTargets, kpis, type KPI, type KPIActionPlan, type KPIComment, type KPIEntry, type KPITarget } from "./db/schema";
 import { activeActionPlanStatuses, getActionPlanSummary } from "./action-plan";
@@ -74,12 +74,15 @@ export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?:
   const kpiIds = allKPIs.map((k) => k.id);
   const dateCondition = atOrBeforeDate ? lte(kpiEntries.periodDate, atOrBeforeDate) : undefined;
 
-  // Batch 1: latest entry per KPI (single query via row_number window function emulated with MAX)
-  const latestEntriesRaw = await db
-    .select()
-    .from(kpiEntries)
-    .where(and(inArray(kpiEntries.kpiId, kpiIds), ...(dateCondition ? [dateCondition] : [])))
-    .orderBy(kpiEntries.kpiId, desc(kpiEntries.periodDate));
+  // Reserve one parameter for the optional period cutoff.
+  const latestEntriesRaw: KPIEntry[] = [];
+  for (let offset = 0; offset < kpiIds.length; offset += 99) {
+    latestEntriesRaw.push(...await db
+      .select()
+      .from(kpiEntries)
+      .where(and(inArray(kpiEntries.kpiId, kpiIds.slice(offset, offset + 99)), dateCondition))
+      .orderBy(kpiEntries.kpiId, desc(kpiEntries.periodDate)));
+  }
 
   // Build map: kpiId → latest entry
   const latestEntryMap = new Map<number, typeof latestEntriesRaw[0]>();
@@ -98,13 +101,17 @@ export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?:
   }
 
   // Batch 3: target overrides for all KPIs at their latest period
-  const periodDates = [...latestEntryMap.values()].map((e) => e.periodDate);
-  const targetOverrides = periodDates.length > 0
-    ? await db
-        .select()
-        .from(kpiTargets)
-        .where(and(inArray(kpiTargets.kpiId, kpiIds), inArray(kpiTargets.periodDate, periodDates)))
-    : [];
+  const targetOverrides: KPITarget[] = [];
+  const entriesWithPeriods = [...latestEntryMap.values()];
+  // Exact KPI/period pairs cost two parameters each.
+  for (let offset = 0; offset < entriesWithPeriods.length; offset += 50) {
+    targetOverrides.push(...await db
+      .select()
+      .from(kpiTargets)
+      .where(or(...entriesWithPeriods.slice(offset, offset + 50).map((entry) =>
+        and(eq(kpiTargets.kpiId, entry.kpiId), eq(kpiTargets.periodDate, entry.periodDate))
+      ))));
+  }
 
   const targetOverrideMap = new Map<string, typeof targetOverrides[0]>();
   for (const t of targetOverrides) {
@@ -188,16 +195,20 @@ export async function getBatchPeriodComparison(
   const prevMonthDate = `${prevMonthD.getFullYear()}-${String(prevMonthD.getMonth() + 1).padStart(2, "0")}-01`;
   const prevYearDate = `${y - 1}-${String(m).padStart(2, "0")}-01`;
 
-  const [prevMonthEntries, prevYearEntries] = await Promise.all([
-    db
-      .select()
-      .from(kpiEntries)
-      .where(and(inArray(kpiEntries.kpiId, kpiIds), eq(kpiEntries.periodDate, prevMonthDate))),
-    db
-      .select()
-      .from(kpiEntries)
-      .where(and(inArray(kpiEntries.kpiId, kpiIds), eq(kpiEntries.periodDate, prevYearDate))),
-  ]);
+  const prevMonthEntries: KPIEntry[] = [];
+  const prevYearEntries: KPIEntry[] = [];
+  const uniqueIds = [...new Set(kpiIds)];
+  for (let offset = 0; offset < uniqueIds.length; offset += 99) {
+    const ids = uniqueIds.slice(offset, offset + 99);
+    const [monthEntries, yearEntries] = await Promise.all([
+      db.select().from(kpiEntries)
+        .where(and(inArray(kpiEntries.kpiId, ids), eq(kpiEntries.periodDate, prevMonthDate))),
+      db.select().from(kpiEntries)
+        .where(and(inArray(kpiEntries.kpiId, ids), eq(kpiEntries.periodDate, prevYearDate))),
+    ]);
+    prevMonthEntries.push(...monthEntries);
+    prevYearEntries.push(...yearEntries);
+  }
 
   const prevMonthMap = new Map<number, KPIEntry>();
   for (const e of prevMonthEntries) prevMonthMap.set(e.kpiId, e);
@@ -236,13 +247,17 @@ export async function getActionPlanCountsByKPIIds(kpiIds: number[]): Promise<Map
   const counts = new Map<number, number>();
   if (kpiIds.length === 0) return counts;
 
-  const actions = await db
-    .select({ kpiId: kpiActionPlans.kpiId })
-    .from(kpiActionPlans)
-    .where(and(inArray(kpiActionPlans.kpiId, kpiIds), inArray(kpiActionPlans.status, activeActionPlanStatuses)));
+  const uniqueIds = [...new Set(kpiIds)];
+  const chunkSize = 100 - activeActionPlanStatuses.length;
+  for (let offset = 0; offset < uniqueIds.length; offset += chunkSize) {
+    const actions = await db
+      .select({ kpiId: kpiActionPlans.kpiId })
+      .from(kpiActionPlans)
+      .where(and(inArray(kpiActionPlans.kpiId, uniqueIds.slice(offset, offset + chunkSize)), inArray(kpiActionPlans.status, activeActionPlanStatuses)));
 
-  for (const action of actions) {
-    counts.set(action.kpiId, (counts.get(action.kpiId) ?? 0) + 1);
+    for (const action of actions) {
+      counts.set(action.kpiId, (counts.get(action.kpiId) ?? 0) + 1);
+    }
   }
   return counts;
 }
@@ -301,13 +316,14 @@ export async function getAllKPIEntriesBatch(
   to?: string
 ) {
   if (kpiIds.length === 0) return [];
-  const conditions = [inArray(kpiEntries.kpiId, kpiIds)];
-  if (from) conditions.push(gte(kpiEntries.periodDate, from));
-  if (to) conditions.push(lte(kpiEntries.periodDate, to));
-  return db
-    .select()
-    .from(kpiEntries)
-    .where(and(...conditions))
-    .orderBy(kpiEntries.periodDate)
-    .all();
+  const entries: KPIEntry[] = [];
+  const uniqueIds = [...new Set(kpiIds)];
+  // Reserve two parameters for the optional date bounds.
+  for (let offset = 0; offset < uniqueIds.length; offset += 98) {
+    const conditions = [inArray(kpiEntries.kpiId, uniqueIds.slice(offset, offset + 98))];
+    if (from) conditions.push(gte(kpiEntries.periodDate, from));
+    if (to) conditions.push(lte(kpiEntries.periodDate, to));
+    entries.push(...await db.select().from(kpiEntries).where(and(...conditions)));
+  }
+  return entries.sort((a, b) => a.periodDate.localeCompare(b.periodDate) || a.id - b.id);
 }

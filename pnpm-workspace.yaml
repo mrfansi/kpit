@@ -4,6 +4,23 @@ allowBuilds:
   msw: true
   sharp: true
   unrs-resolver: true
+  workerd: true
 minimumReleaseAgeExclude:
   - '@shadcn/registry@0.1.1'
   - shadcn@4.21.2
+  - '@next/env@16.4.5'
+  - '@next/swc-darwin-arm64@16.4.5'
+  - '@next/swc-darwin-x64@16.4.5'
+  - '@next/swc-linux-arm64-gnu@16.4.5'
+  - '@next/swc-linux-arm64-musl@16.4.5'
+  - '@next/swc-linux-x64-gnu@16.4.5'
+  - '@next/swc-linux-x64-musl@16.4.5'
+  - '@next/swc-win32-arm64-msvc@16.4.5'
+  - '@next/swc-win32-x64-msvc@16.4.5'
+  - '@opennextjs/aws@4.1.15'
+  - '@opennextjs/cloudflare@1.20.16'
+  - next@16.4.5
+  - '@next/eslint-plugin-next@16.4.5'
+  - eslint-config-next@16.4.5
+  - miniflare@5.20261103.0-beta
+  - wrangler@4.157.0

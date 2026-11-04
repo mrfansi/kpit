@@ -1,46 +1,32 @@
 import bcrypt from "bcryptjs";
-import { randomUUID } from "crypto";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
-import { users } from "../lib/db/schema";
-import { eq } from "drizzle-orm";
-import path from "path";
+import { randomUUID } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { parseTarget, queryD1, targetArgs, wrangler } from "./export-to-d1";
 
 const email = process.env.SEED_ADMIN_EMAIL;
 const password = process.env.SEED_ADMIN_PASSWORD;
 
-if (!email || !password) {
-  console.error("ERROR: SEED_ADMIN_EMAIL dan SEED_ADMIN_PASSWORD wajib diisi.");
-  console.error("Set environment variables sebelum menjalankan seed:admin.");
-  process.exit(1);
+try {
+  const target = parseTarget(process.argv.slice(2));
+  if (!email || !password) throw new Error("SEED_ADMIN_EMAIL dan SEED_ADMIN_PASSWORD wajib diisi.");
+  if (password.length < 12 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) throw new Error("SEED_ADMIN_PASSWORD minimal 12 karakter dan harus mengandung huruf dan angka.");
+  // Hex text literals preserve quotes, Unicode and embedded NUL without SQL interpolation.
+  const emailSql = `CAST(X'${Buffer.from(email).toString("hex")}' AS TEXT)`;
+  if (queryD1(`SELECT id FROM users WHERE email = ${emailSql} LIMIT 1`, target).length) {
+    console.log(`User ${email} sudah ada, skip.`);
+  } else {
+    const hash = bcrypt.hashSync(password, 12);
+    const folder = mkdtempSync(join(tmpdir(), "kpit-admin-"));
+    try {
+      const file = join(folder, "seed.sql");
+      writeFileSync(file, `INSERT INTO users (id,email,name,password_hash,role,created_at) VALUES ('${randomUUID()}',${emailSql},'Administrator','${hash}','admin',${Math.floor(Date.now() / 1000)}) ON CONFLICT(email) DO NOTHING;`, { mode: 0o600 });
+      wrangler(["d1", "execute", "DB", ...targetArgs(target), "--yes", "--file", file]);
+      console.log(`Admin user tersedia: ${email}`);
+    } finally { rmSync(folder, { recursive: true, force: true }); }
+  }
+} catch (error) {
+  console.error(`ERROR: ${error instanceof Error ? error.message : error}`);
+  process.exitCode = 1;
 }
-
-if (password.length < 12 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-  console.error("ERROR: SEED_ADMIN_PASSWORD minimal 12 karakter dan harus mengandung huruf dan angka.");
-  process.exit(1);
-}
-
-const sqlite = new Database(path.join(process.cwd(), "kpit.db"));
-const db = drizzle(sqlite);
-
-const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-if (existing.length > 0) {
-  console.log(`User ${email} sudah ada, skip.`);
-  sqlite.close();
-  process.exit(0);
-}
-
-const hash = bcrypt.hashSync(password, 12);
-const id = randomUUID();
-
-await db.insert(users).values({
-  id,
-  email,
-  name: "Administrator",
-  passwordHash: hash,
-  role: "admin",
-  createdAt: new Date(),
-});
-
-console.log(`Admin user dibuat: ${email}`);
-sqlite.close();

@@ -51,9 +51,12 @@ next-env.d.ts
 
 .omc/
 
-# Uploaded files (keep directory, ignore content)
-public/uploads/comments/*
-!public/uploads/comments/.gitkeep
 
 # Worktrees
 .worktrees/
+
+# Cloudflare / OpenNext
+.open-next/
+.wrangler/
+.dev.vars*
+!.dev.vars.example

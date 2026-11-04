@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const isDev = process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["better-sqlite3"],
   async headers() {
     return [
       {
@@ -43,3 +43,6 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Exposes wrangler.jsonc bindings (D1, R2) to `next dev` via getCloudflareContext().
+initOpenNextCloudflareForDev();

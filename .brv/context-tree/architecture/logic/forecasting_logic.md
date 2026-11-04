@@ -8,6 +8,7 @@ maturity: draft
 updateCount: 1
 createdAt: '2026-03-04T17:58:26.002Z'
 updatedAt: '2026-03-04T18:03:48.366Z'
+related: [architecture/logic/data_queries.md]
 ---
 ## Raw Concept
 **Task:**

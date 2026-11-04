@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { kpis, kpiTargets } from "@/lib/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
@@ -111,13 +111,16 @@ export async function resolveTargetCSVRows(text: string): Promise<{
   // Cek target lama yang bertabrakan, supaya preview bisa memperingatkan
   // admin sebelum target lama ditimpa.
   if (resolved.length > 0) {
-    const rowKpiIds = [...new Set(resolved.map((r) => r.kpiId))];
-    const rowPeriodDates = [...new Set(resolved.map((r) => r.periodDate))];
-    const existing = await db
-      .select({ kpiId: kpiTargets.kpiId, periodDate: kpiTargets.periodDate, target: kpiTargets.target })
-      .from(kpiTargets)
-      .where(and(inArray(kpiTargets.kpiId, rowKpiIds), inArray(kpiTargets.periodDate, rowPeriodDates)));
-    const existingMap = new Map(existing.map((e) => [`${e.kpiId}:${e.periodDate}`, e.target]));
+    const existingMap = new Map<string, number>();
+    for (let i = 0; i < resolved.length; i += 50) {
+      const existing = await db
+        .select({ kpiId: kpiTargets.kpiId, periodDate: kpiTargets.periodDate, target: kpiTargets.target })
+        .from(kpiTargets)
+        .where(or(...resolved.slice(i, i + 50).map((row) =>
+          and(eq(kpiTargets.kpiId, row.kpiId), eq(kpiTargets.periodDate, row.periodDate))
+        )));
+      for (const entry of existing) existingMap.set(`${entry.kpiId}:${entry.periodDate}`, entry.target);
+    }
     for (const row of resolved) {
       row.existingTarget = existingMap.get(`${row.kpiId}:${row.periodDate}`);
     }
@@ -140,8 +143,8 @@ export async function importTargetRows(rows: TargetImportRow[]): Promise<{ impor
   const existingKpiIds = new Set((await db.select({ id: kpis.id }).from(kpis)).map((k) => k.id));
 
   try {
-    db.transaction((tx) => {
-      for (const raw of rows) {
+    const statements = [];
+    for (const raw of rows) {
         const rowNum = raw?.rowIndex ?? 0;
         const parsed = TargetRowSchema.safeParse(raw);
         if (!parsed.success) {
@@ -156,17 +159,15 @@ export async function importTargetRows(rows: TargetImportRow[]): Promise<{ impor
         const { kpiId, periodDate, target, thresholdGreen, thresholdYellow } = parsed.data;
         const data = { target, thresholdGreen, thresholdYellow };
 
-        const existing = tx.select({ id: kpiTargets.id }).from(kpiTargets)
-          .where(and(eq(kpiTargets.kpiId, kpiId), eq(kpiTargets.periodDate, periodDate))).limit(1).all();
-
-        if (existing[0]) {
-          tx.update(kpiTargets).set(data).where(eq(kpiTargets.id, existing[0].id)).run();
-        } else {
-          tx.insert(kpiTargets).values({ kpiId, periodDate, ...data }).run();
-        }
-        imported++;
+        statements.push(db.insert(kpiTargets).values({ kpiId, periodDate, ...data })
+          .onConflictDoUpdate({
+            target: [kpiTargets.kpiId, kpiTargets.periodDate],
+            set: data,
+          }));
       }
-    });
+    const [first, ...rest] = statements;
+    if (first) await db.batch([first, ...rest]);
+    imported = statements.length;
   } catch (err) {
     errors.push({ row: 0, message: err instanceof Error ? err.message : "Gagal menyimpan" });
     imported = 0;

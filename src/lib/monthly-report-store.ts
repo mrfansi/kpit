@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { auditLogs, domains, kpiEntries, kpis, kpiTargets, monthlyReports, monthlyReportRevisions } from "@/lib/db/schema";
+import { auditInsert } from "@/lib/db/audit";
+import { domains, kpiEntries, kpis, kpiTargets, monthlyReports, monthlyReportRevisions } from "@/lib/db/schema";
 import type { MonthlyReportBundle, MonthlyReportContent, MonthlyReportMetric, MonthlyObservation } from "@/lib/monthly-report-types";
 import { computeMonthlyReport, emptyMonthlyReportContent, previousReportMonth, reportMonths } from "@/lib/monthly-report";
 import { monthlyReportContentSchema, monthSchema } from "@/lib/validations/monthly-report";
@@ -34,8 +35,15 @@ async function initialContent(domainId: number, period: string): Promise<Monthly
   for (const metric of previous?.metrics ?? []) ids.add(metric.kpiId);
   if (previous) content.division = previous.division;
   const months = [...new Set([previousReportMonth(period), ...reportMonths(period)])].sort();
-  const allEntries = ids.size ? await db.select().from(kpiEntries).where(and(inArray(kpiEntries.kpiId, [...ids]), inArray(kpiEntries.periodDate, months))).orderBy(desc(kpiEntries.createdAt), desc(kpiEntries.id)) : [];
-  const allTargets = ids.size ? await db.select().from(kpiTargets).where(and(inArray(kpiTargets.kpiId, [...ids]), inArray(kpiTargets.periodDate, months))) : [];
+  const allEntries: (typeof kpiEntries.$inferSelect)[] = [];
+  const allTargets: (typeof kpiTargets.$inferSelect)[] = [];
+  const kpiIds = [...ids];
+  const chunkSize = 100 - months.length;
+  for (let offset = 0; offset < kpiIds.length; offset += chunkSize) {
+    const chunk = kpiIds.slice(offset, offset + chunkSize);
+    allEntries.push(...await db.select().from(kpiEntries).where(and(inArray(kpiEntries.kpiId, chunk), inArray(kpiEntries.periodDate, months))).orderBy(desc(kpiEntries.createdAt), desc(kpiEntries.id)));
+    allTargets.push(...await db.select().from(kpiTargets).where(and(inArray(kpiTargets.kpiId, chunk), inArray(kpiTargets.periodDate, months))));
+  }
   const entries = new Map<string, typeof allEntries[number]>();
   for (const entry of allEntries) if (!entries.has(`${entry.kpiId}:${entry.periodDate}`)) entries.set(`${entry.kpiId}:${entry.periodDate}`, entry);
   const targets = new Map(allTargets.map((t) => [`${t.kpiId}:${t.periodDate}`, t]));
@@ -126,26 +134,35 @@ export async function saveMonthlyReport(domainSlug: string, period: string, inpu
     if (required.observations.some((o) => !metric.observations.some((row) => row.month === o.month))) throw new MonthlyReportError(400, `Missing required month for ${metric.name}`);
   }
   if (!user.id) throw new MonthlyReportError(403, "Authenticated editor required");
+  if ((found.record?.revision ?? 0) !== expectedRevision) throw new MonthlyReportError(409, "Report has changed. Reload the latest revision.");
   const now = new Date();
+  const guard = and(eq(monthlyReports.domainId, found.domain.id), eq(monthlyReports.period, period), eq(monthlyReports.revision, expectedRevision || 1));
+  const revisionInsert = db.insert(monthlyReportRevisions).values({
+    // A stale scalar lookup yields NULL: the NOT NULL guard aborts the whole batch.
+    reportId: sql`(select ${monthlyReports.id} from ${monthlyReports} where ${guard})`,
+    revision: expectedRevision + 1, content, authorId: user.id, createdAt: now,
+  });
+  const audit = auditInsert({ userId: user.id, userEmail: user.email ?? undefined, action: expectedRevision === 0 ? "create" : "update", entity: "monthly_report", entityId: `${found.domain.id}:${period}`, detail: `Revision ${expectedRevision + 1}` });
   try {
-    db.transaction((tx) => {
-      let reportId: number;
-      if (expectedRevision === 0) {
-        const [inserted] = tx.insert(monthlyReports).values({ domainId: found.domain.id, period, content, revision: 1, createdBy: user.id, updatedBy: user.id, createdAt: now, updatedAt: now }).returning({ id: monthlyReports.id }).all();
-        reportId = inserted.id;
-      } else {
-        const [changed] = tx.update(monthlyReports).set({ content, revision: expectedRevision + 1, updatedBy: user.id, updatedAt: now })
-          .where(and(eq(monthlyReports.domainId, found.domain.id), eq(monthlyReports.period, period), eq(monthlyReports.revision, expectedRevision)))
-          .returning({ id: monthlyReports.id }).all();
-        if (!changed) throw new MonthlyReportError(409, "Report has changed. Reload the latest revision.");
-        reportId = changed.id;
-      }
-      tx.insert(monthlyReportRevisions).values({ reportId, revision: expectedRevision + 1, content, authorId: user.id, createdAt: now }).run();
-      tx.insert(auditLogs).values({ userId: user.id, userEmail: user.email ?? null, action: expectedRevision === 0 ? "create" : "update", entity: "monthly_report", entityId: `${found.domain.id}:${period}`, detail: `Revision ${expectedRevision + 1}` }).run();
-    });
+    if (expectedRevision === 0) {
+      await db.batch([
+        db.insert(monthlyReports).values({ domainId: found.domain.id, period, content, revision: 1, createdBy: user.id, updatedBy: user.id, createdAt: now, updatedAt: now }),
+        revisionInsert,
+        audit,
+      ]);
+    } else {
+      await db.batch([
+        revisionInsert,
+        db.update(monthlyReports).set({ content, revision: expectedRevision + 1, updatedBy: user.id, updatedAt: now }).where(guard),
+        audit,
+      ]);
+    }
   } catch (error) {
-    if (error instanceof MonthlyReportError) throw error;
-    if (error instanceof Error && /UNIQUE constraint failed: monthly_reports/.test(error.message)) throw new MonthlyReportError(409, "Report has changed. Reload the latest revision.");
+    let cause: unknown = error;
+    while (cause instanceof Error) {
+      if (/UNIQUE constraint failed: monthly_report(?:s|_revisions)\.|NOT NULL constraint failed: monthly_report_revisions\.report_id/.test(cause.message)) throw new MonthlyReportError(409, "Report has changed. Reload the latest revision.");
+      cause = cause.cause;
+    }
     throw error;
   }
   const result = await getMonthlyReportBundle(domainSlug, period);
