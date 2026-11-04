@@ -26,5 +26,7 @@
 		// Comment image uploads (previously public/uploads/comments on disk).
 		{ "binding": "UPLOADS", "bucket_name": "kpit-uploads" }
 	],
-	"observability": { "enabled": true }
+	"observability": { "enabled": true },
+	// Keep plaintext vars set in the Cloudflare dashboard on `wrangler deploy` (secrets are always kept).
+	"keep_vars": true
 }
