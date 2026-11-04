@@ -27,6 +27,8 @@
 		// Comment image uploads (previously public/uploads/comments on disk).
 		{ "binding": "UPLOADS", "bucket_name": "kpit-uploads" }
 	],
+	// Canonical origin; must match the AUTH_URL secret.
+	"routes": [{ "pattern": "kpit.mrfansi.dev", "custom_domain": true }],
 	"observability": { "enabled": true },
 	// Keep plaintext vars set in the Cloudflare dashboard on `wrangler deploy` (secrets are always kept).
 	"keep_vars": true
