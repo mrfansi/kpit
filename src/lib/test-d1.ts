@@ -15,7 +15,7 @@ export async function createTestD1(): Promise<{ env: CloudflareEnv; dispose(): P
   const context = globalThis as unknown as Record<symbol, unknown>;
   const previous = context[contextSymbol];
   try {
-    await execute("corepack", ["pnpm", "exec", "wrangler", "d1", "migrations", "apply", "DB", "--local", "--persist-to", directory], {
+    await execute(process.execPath, [resolve("node_modules/wrangler/bin/wrangler.js"), "d1", "migrations", "apply", "DB", "--local", "--persist-to", directory], {
       cwd: resolve("."),
       env: { ...process.env, CI: "1", WRANGLER_SEND_METRICS: "false" },
     });
