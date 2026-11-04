@@ -1,11 +1,9 @@
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isAllowedImageUpload } from "@/lib/upload-validation";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-const UPLOAD_DIR = path.join(process.cwd(), "public/uploads/comments");
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -48,8 +46,10 @@ export async function POST(req: NextRequest) {
   }
 
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  await mkdir(UPLOAD_DIR, { recursive: true });
-  await writeFile(path.join(UPLOAD_DIR, filename), buffer);
+  // Served back by src/app/uploads/comments/[file]/route.ts under the same public URL as before.
+  await getCloudflareContext().env.UPLOADS.put(`comments/${filename}`, buffer, {
+    httpMetadata: { contentType: validation.mimeType },
+  });
 
   return NextResponse.json({ url: `/uploads/comments/${filename}` });
 }

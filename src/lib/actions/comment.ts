@@ -5,7 +5,7 @@ import { kpiComments, kpis, type KPIComment } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-utils";
-import { logAudit } from "@/lib/db/audit";
+import { auditInsert, logAudit } from "@/lib/db/audit";
 import { isValidCalendarDate } from "@/lib/date-utils";
 import { isEmptyHtml } from "@/lib/html-utils";
 import sanitizeHtml from "sanitize-html";
@@ -99,14 +99,13 @@ export async function createCommentsBatch(
   });
 
   if (rows.length > 0) {
-    await db.insert(kpiComments).values(rows);
-    await logAudit({
+    await db.batch([auditInsert({
       userId: session.user.id,
       userEmail: session.user.email ?? undefined,
       action: "create",
       entity: "kpi_comment",
       detail: `batch ${rows.length} catatan periode ${periodDate}`,
-    });
+    }), ...rows.map((row) => db.insert(kpiComments).values(row))]);
     for (const row of rows) revalidatePath(`/kpi/${row.kpiId}`);
   }
 

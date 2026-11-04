@@ -1,0 +1,30 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "kpit",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-11-01",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"services": [
+		// Self-reference required by OpenNext; must match "name".
+		{ "binding": "WORKER_SELF_REFERENCE", "service": "kpit" }
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "kpit",
+			// Fill from `wrangler d1 create kpit` output before any --remote command (see README "Cloudflare Workers + D1").
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			// Same SQL files Drizzle generates; wrangler tracks them in its own d1_migrations table.
+			"migrations_dir": "drizzle"
+		}
+	],
+	"r2_buckets": [
+		// Comment image uploads (previously public/uploads/comments on disk).
+		{ "binding": "UPLOADS", "bucket_name": "kpit-uploads" }
+	],
+	"observability": { "enabled": true }
+}

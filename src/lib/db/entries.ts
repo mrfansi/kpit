@@ -8,11 +8,9 @@ export async function upsertKPIEntry(data: {
   value: number;
   note?: string;
 }) {
-  db.transaction((tx) => {
-    tx
-      .delete(kpiEntries)
-      .where(and(eq(kpiEntries.kpiId, data.kpiId), eq(kpiEntries.periodDate, data.periodDate)))
-      .run();
-    tx.insert(kpiEntries).values(data).run();
-  });
+  await db.batch([
+    db.delete(kpiEntries)
+      .where(and(eq(kpiEntries.kpiId, data.kpiId), eq(kpiEntries.periodDate, data.periodDate))),
+    db.insert(kpiEntries).values(data),
+  ]);
 }

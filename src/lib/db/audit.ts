@@ -2,11 +2,8 @@ import { db } from "@/lib/db";
 import { auditLogs } from "@/lib/db/schema";
 import { desc, sql } from "drizzle-orm";
 
-/**
- * Append an audit log entry. Pass a transaction handle as `executor` to make
- * the audit write atomic with the entity mutation it records.
- */
-export function logAudit(
+/** Build an audit insert so it can commit atomically in a D1 batch. */
+export function auditInsert(
   data: {
     userId?: string;
     userEmail?: string;
@@ -14,18 +11,17 @@ export function logAudit(
     entity: string;
     entityId?: string;
     detail?: string;
-  },
-  executor: Pick<typeof db, "insert"> = db
+  }
 ) {
-  // better-sqlite3 is synchronous; .run() executes the insert immediately so
-  // this works both standalone and inside a synchronous db.transaction(tx).
-  executor
-    .insert(auditLogs)
+  return db.insert(auditLogs)
     .values({
       ...data,
       createdAt: new Date(),
-    })
-    .run();
+    });
+}
+
+export async function logAudit(data: Parameters<typeof auditInsert>[0]) {
+  await auditInsert(data);
 }
 
 export async function getRecentAuditLogs(limit = 50, offset = 0) {

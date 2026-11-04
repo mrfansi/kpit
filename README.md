@@ -1,39 +1,182 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KPIT
 
-## Getting Started
+KPI and monthly reporting on Next.js, deployed to Cloudflare Workers through
+OpenNext, with D1 for application data and R2 for comment images.
 
-First, run the development server:
+## Cloudflare Workers + D1
+
+Use Node.js and `corepack pnpm install`. Runtime code uses the `DB` D1 binding,
+not `kpit.db` or `DATABASE_URL`. `better-sqlite3` is only a development dependency
+for offline migration/export tooling and tests.
+
+### Provisioning and configuration
+
+The commands below create or modify Cloudflare resources. Run them deliberately
+in the intended account; local development does not require provisioning them.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+corepack pnpm exec wrangler login
+corepack pnpm exec wrangler d1 create kpit
+# Copy database_id from the result into wrangler.jsonc (replace the zero UUID).
+corepack pnpm exec wrangler r2 bucket create kpit-uploads
+corepack pnpm exec wrangler secret put AUTH_SECRET
+corepack pnpm exec wrangler secret put AUTH_URL
+corepack pnpm exec wrangler secret put AUTH_TRUST_HOST
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Use a random `AUTH_SECRET` of at least 32 characters, `AUTH_URL` equal to the
+canonical HTTPS application origin, and Auth.js `AUTH_TRUST_HOST=true` on the
+trusted Workers deployment. `NEXTAUTH_URL` is the legacy alternative to
+`AUTH_URL`; monthly mutation origin checks prefer `AUTH_URL`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Optional runtime settings (set with `wrangler secret put <NAME>`):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `NOTIFY_WEBHOOK_URL`: leave unset to disable notifications.
+- `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`: configure together for the
+  existing Workers AI integration; not required for manual reports or HTML
+  export. The API token must permit the intended Workers AI usage.
+- `CLOUDFLARE_AI_MODEL`: optional model override (see `.env.example`).
 
-## Learn More
+Secrets are not committed. `.env.example` lists the seed/AI settings; copy the
+runtime values you need to an ignored `.dev.vars` for local OpenNext development:
 
-To learn more about Next.js, take a look at the following resources:
+```dotenv
+AUTH_SECRET=replace-with-a-random-local-secret-at-least-32-characters
+AUTH_URL=http://localhost:3000
+AUTH_TRUST_HOST=true
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For `corepack pnpm preview` (Worker on http://localhost:8787) set
+`AUTH_URL=http://localhost:8787`. Without it the middleware treats the request as
+HTTPS, looks for the `__Secure-` session cookie and bounces every login back to
+`/login`; deployed HTTPS origins are unaffected.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are shell environment variables for
+the seed script only, not Worker secrets. Password hashing and login use bcrypt
+cost 12. A Workers Paid plan with a suitable CPU limit is likely needed: bcrypt
+is unlikely to fit the [free plan's 10ms CPU allowance](https://developers.cloudflare.com/workers/platform/limits/#cpu-time);
+measure your deployment.
 
-## Deploy on Vercel
+### Local development
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+corepack pnpm d1:migrate:local
+# For a NEW database only; supply a strong password via your shell environment.
+SEED_ADMIN_EMAIL=admin@example.com SEED_ADMIN_PASSWORD="$ADMIN_PASSWORD" corepack pnpm seed:admin --local
+corepack pnpm dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open http://localhost:3000. OpenNext supplies local D1/R2 bindings during `dev`;
+default persisted state is under `.wrangler/state`. Import without
+`--persist-to` to use this same state. An explicit `--persist-to /absolute/dir`
+isolates a rehearsal from the development database.
+
+`seed:admin` requires exactly one of `--local` / `--remote`, supports
+`--persist-to` with `--local`, skips an existing email, and never writes a
+SQLite file. The old dated sample-data seed was removed: it was not an upgrade
+path and would duplicate demo domains rather than preserve production data.
+
+### Schema changes and deployment
+
+```bash
+corepack pnpm db:generate
+corepack pnpm d1:migrate:local
+# Review generated SQL and back up production before applying remotely.
+corepack pnpm d1:migrate:remote
+corepack pnpm deploy
+```
+
+`deploy` builds OpenNext and deploys the Worker; it does not apply migrations.
+`preview` builds and previews the Worker locally; `cf-typegen` regenerates binding
+types. D1 migrations use the committed `drizzle/*.sql` files and Wrangler's
+`d1_migrations` ledger. Do not use `drizzle-kit push`: Workers only see schema
+applied through `d1:migrate:*`. The old `db:migrate`, `db:studio` and `start`
+npm commands are gone (they targeted `kpit.db` / a Node server);
+`src/scripts/migrate-db.ts` remains the export tool's snapshot-upgrade library.
+
+### Production SQLite and upload migration runbook
+
+Keep the Mac deployment and its original data intact throughout cutover.
+Do not send users to Workers until the imported data and login have passed smoke
+tests. All remote commands below are operator actions, not automatic setup.
+
+1. **Freeze writes**: stop the Mac application for the maintenance window.
+   SQLite backup is WAL-safe even while writing, but writes after the export
+   snapshot are **not carried over**. Do not run both deployments accepting
+   writes.
+2. **Keep a raw backup**: after stopping the app cleanly, copy `kpit.db` and retain
+   any `kpit.db-wal` / `kpit.db-shm` sidecars together if still present. Back up
+   `public/uploads/comments` separately. Never copy just the main DB from a
+   running WAL database and assume it includes recent writes.
+3. **Export** from the intact database (or a complete stopped-app backup):
+
+   ```bash
+   corepack pnpm d1:export --source /absolute/path/kpit.db --uploads-dir /absolute/path/public/uploads/comments --out /absolute/path/kpit-export
+   ```
+
+   The output directory must not already exist or overlap the source/uploads.
+   Export opens the source read-only and uses SQLite's consistent backup API.
+   Only its private `snapshot.sqlite` is upgraded, including reconciliation of
+   historical push-built migration ledgers. A fresh reference schema rejects
+   extra/missing tables or columns, dropped rows, invalid constraints and orphan
+   foreign keys. Resolve drift/orphans deliberately in a separate copy and
+   re-export; do not disable constraints or discard rows to force an import.
+   `data.sql` has one explicit-column INSERT per row, no BEGIN/COMMIT, and a
+   100KB per-statement ceiling. It excludes internal migration/system tables.
+   `manifest.json` records row counts, ordered typed-value SHA-256 hashes, the
+   SQL checksum, migration filenames and upload sizes/hashes.
+
+   Review **every warning**: missing referenced images and unsupported filenames
+   are listed. All text columns are scanned for `/uploads/comments/<name>`.
+   The app serves filenames matching `^[\w-]+\.(jpe?g|png|gif|webp)$` only.
+   Exported uploads retain their URLs, backed by R2 keys `comments/<name>`.
+   Without `--uploads-dir`, database export works but images are not transferred.
+   Treat the whole bundle as a sensitive backup: it contains emails, password
+   hashes and application data; keep it private and out of Git.
+4. **Rehearse in isolated local D1/R2**:
+
+   ```bash
+   corepack pnpm exec wrangler d1 migrations apply DB --local --persist-to /absolute/path/kpit-rehearsal
+   corepack pnpm d1:import --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
+   corepack pnpm d1:verify --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
+   ```
+
+   Import refuses missing migrations and nonempty application tables. The only
+   exception is the exact fresh-migration default status set from migration
+   0010 (all fields checked, with its shared `unixepoch()` creation time
+   normalized). Those seed rows are replaced inside the import SQL, not with a
+   separate operator DELETE. A second import is refused.
+5. **Prepare remote resources and secrets**, check the `database_id` and account,
+   then apply migrations to a **fresh** D1 target:
+
+   ```bash
+   corepack pnpm d1:migrate:remote
+   corepack pnpm d1:import --out /absolute/path/kpit-export --remote
+   corepack pnpm d1:verify --out /absolute/path/kpit-export --remote
+   ```
+
+   Verification paginates every table, casts int64 to text before Wrangler JSON
+   serialization, preserves SQLite value types (including BLOBs), and compares
+   counts plus SHA-256. It downloads each R2 object and checks size plus SHA-256.
+   Keep the target closed to writes throughout import/verify.
+6. **Deploy**, smoke-test login, KPI/report/timeline reads and writes, and existing
+   comment images. Only then point users at Workers.
+
+Wrangler's remote `d1 execute --file` import promises to restore the original
+database if SQL execution does not complete (Wrangler 4.157.0 import implementation).
+The status cleanup and inserts share that one file. This guarantee does **not**
+cover R2 uploads or the earlier prechecks, and local behavior is not proof of
+remote success. D1 and R2 are not a distributed transaction. If SQL succeeds
+but an image upload fails, the target is already nonempty: do not repeat the
+whole import or delete data blindly. Re-upload the listed objects with
+`wrangler r2 object put kpit-uploads/comments/<name> --file <bundle>/uploads/<name>
+--content-type <image/jpeg|image/png|image/gif|image/webp> --remote`, then run
+`d1:verify` again. See [D1 import documentation](https://developers.cloudflare.com/d1/best-practices/import-export-data/).
+
+**Rollback before opening Workers to writes**: restart the old Mac app and route
+users back; export never modifies its source. After Workers accepts new writes,
+the old DB is no longer current: freeze writes and reconcile/export those new
+records first. Redeploying Worker code does not roll back D1/R2 data.
 
 ## Dependency Notes
 
@@ -79,22 +222,8 @@ manual reporting and deterministic HTML export do not require AI. Review AI
 notes before use. The exported presentation prompt also supports clarification
 in an external conversational AI tool.
 
-### Database upgrade
+### Database upgrades
 
-Apply migrations before starting the updated application:
-
-```bash
-DATABASE_URL=/absolute/path/kpit.db corepack pnpm db:migrate
-```
-
-The migration runner preserves original SQL hashes in the Drizzle ledger,
-handles historical multi-statement SQL, and skips applied migrations regardless
-of old journal timestamps. Back up existing databases first. Databases with
-unmanaged tables or unknown hashes fail closed. A ledger with gaps (schema
-partly built by `drizzle-kit push`) is reconciled against the live schema: the
-longest migration prefix whose tables and columns all exist is recorded without
-replaying its SQL, its missing named indexes are created, and later migrations
-run normally. If the schema does not cover the recorded migrations, the runner
-refuses; inspect and reconcile manually.
-Do not use `db:seed` to upgrade an existing database.
-
+Apply D1 migrations before deploying code that depends on the new schema, as
+described in **Cloudflare Workers + D1** above. Existing self-hosted SQLite data
+must go through the production export/import runbook rather than a sample seed.

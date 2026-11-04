@@ -2,11 +2,11 @@
 
 import { db } from "@/lib/db";
 import { kpiTargets, kpis } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-utils";
-import { logAudit } from "@/lib/db/audit";
+import { auditInsert, logAudit } from "@/lib/db/audit";
 import { z } from "zod";
 import { checkThresholdCoherence } from "@/lib/kpi-coherence";
 
@@ -35,12 +35,11 @@ export async function upsertTarget(kpiId: number, periodDate: string, data: {
     return { error: parsed.error.issues[0]?.message ?? "Nilai target tidak valid." };
   }
 
-  const kpi = db
+  const [kpi] = await db
     .select({ direction: kpis.direction })
     .from(kpis)
     .where(eq(kpis.id, kpiId))
-    .limit(1)
-    .all()[0];
+    .limit(1);
 
   if (!kpi) return { error: "KPI tidak ditemukan." };
 
@@ -61,24 +60,14 @@ export async function upsertTarget(kpiId: number, periodDate: string, data: {
     thresholdYellow: parsed.data.thresholdYellow,
   };
 
-  // Select-then-write atomic; the UNIQUE(kpi_id, period_date) index plus this
-  // transaction prevent duplicate target rows under concurrent saves.
-  db.transaction((tx) => {
-    const existing = tx
-      .select({ id: kpiTargets.id })
-      .from(kpiTargets)
-      .where(and(eq(kpiTargets.kpiId, kpiId), eq(kpiTargets.periodDate, periodDate)))
-      .limit(1)
-      .all();
-
-    if (existing[0]) {
-      tx.update(kpiTargets).set(targetData).where(eq(kpiTargets.id, existing[0].id)).run();
-    } else {
-      tx.insert(kpiTargets).values({ kpiId, periodDate, ...targetData }).run();
-    }
-
-    logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi_target", entityId: String(kpiId), detail: `periode ${periodDate}` }, tx);
-  });
+  await db.batch([
+    db.insert(kpiTargets).values({ kpiId, periodDate, ...targetData })
+      .onConflictDoUpdate({
+        target: [kpiTargets.kpiId, kpiTargets.periodDate],
+        set: targetData,
+      }),
+    auditInsert({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi_target", entityId: String(kpiId), detail: `periode ${periodDate}` }),
+  ]);
   revalidatePath("/");
   revalidatePath(`/kpi/${kpiId}`);
   redirect(`/admin/kpi/${kpiId}/targets?success=Target+periode+berhasil+disimpan`);

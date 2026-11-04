@@ -101,17 +101,20 @@ export async function bulkCreateEntries(rows: BulkEntryRow[]): Promise<{ saved: 
   const kpiIds = parsedRows.map((r) => r.kpiId);
 
   // Verify every referenced KPI exists before writing (no orphan entries).
-  const kpiRows = await db
-    .select({
-      id: kpis.id,
-      name: kpis.name,
-      unit: kpis.unit,
-      minValue: kpis.minValue,
-      maxValue: kpis.maxValue,
-    })
-    .from(kpis)
-    .where(inArray(kpis.id, kpiIds));
-  const kpiById = new Map(kpiRows.map((k) => [k.id, k]));
+  const kpiById = new Map<number, Pick<typeof kpis.$inferSelect, "id" | "name" | "unit" | "minValue" | "maxValue">>();
+  for (let i = 0; i < kpiIds.length; i += 100) {
+    const kpiRows = await db
+      .select({
+        id: kpis.id,
+        name: kpis.name,
+        unit: kpis.unit,
+        minValue: kpis.minValue,
+        maxValue: kpis.maxValue,
+      })
+      .from(kpis)
+      .where(inArray(kpis.id, kpiIds.slice(i, i + 100)));
+    for (const kpi of kpiRows) kpiById.set(kpi.id, kpi);
+  }
   if (kpiIds.some((id) => !kpiById.has(id))) {
     throw new Error("Sebagian KPI tidak ditemukan");
   }
@@ -128,11 +131,11 @@ export async function bulkCreateEntries(rows: BulkEntryRow[]): Promise<{ saved: 
     throw new Error(boundsErrors.join(" "));
   }
 
-  await db.delete(kpiEntries).where(
-    and(inArray(kpiEntries.kpiId, kpiIds), eq(kpiEntries.periodDate, periodDate))
-  );
-
-  await db.insert(kpiEntries).values(parsedRows);
+  const deletes = kpiIds.map((kpiId) => db.delete(kpiEntries).where(
+    and(eq(kpiEntries.kpiId, kpiId), eq(kpiEntries.periodDate, periodDate))
+  ));
+  const [first, ...rest] = deletes;
+  await db.batch([first!, ...rest, ...parsedRows.map((row) => db.insert(kpiEntries).values(row))]);
 
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", detail: `bulk ${parsedRows.length} entri periode ${periodDate}` });
 

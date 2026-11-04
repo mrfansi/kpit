@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { kpis, kpiTargets } from "@/lib/db/schema";
+import { kpis, kpiTargets, type KPI } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { getKPIStatus } from "@/lib/kpi-status";
 
@@ -40,7 +40,10 @@ export async function notifyRedEntries(entries: EnteredValue[]) {
 
   try {
     const kpiIds = [...new Set(entries.map((e) => e.kpiId))];
-    const rows = await db.select().from(kpis).where(inArray(kpis.id, kpiIds));
+    const rows: KPI[] = [];
+    for (let offset = 0; offset < kpiIds.length; offset += 100) {
+      rows.push(...await db.select().from(kpis).where(inArray(kpis.id, kpiIds.slice(offset, offset + 100))));
+    }
     const kpiById = new Map(rows.map((k) => [k.id, k]));
 
     for (const entry of entries) {

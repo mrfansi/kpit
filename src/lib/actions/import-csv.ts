@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { kpis, kpiEntries } from "@/lib/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
 import { validatePeriodDate, validateNumericValue, buildRowError, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
@@ -95,13 +95,16 @@ export async function resolveCSVRows(text: string): Promise<{
   // Cek entri lama yang bertabrakan dengan baris yang akan diimport, supaya
   // preview bisa memperingatkan admin sebelum data lama ditimpa.
   if (resolved.length > 0) {
-    const rowKpiIds = [...new Set(resolved.map((r) => r.kpiId!))];
-    const rowPeriodDates = [...new Set(resolved.map((r) => r.periodDate))];
-    const existing = await db
-      .select({ kpiId: kpiEntries.kpiId, periodDate: kpiEntries.periodDate, value: kpiEntries.value })
-      .from(kpiEntries)
-      .where(and(inArray(kpiEntries.kpiId, rowKpiIds), inArray(kpiEntries.periodDate, rowPeriodDates)));
-    const existingMap = new Map(existing.map((e) => [`${e.kpiId}:${e.periodDate}`, e.value]));
+    const existingMap = new Map<string, number>();
+    for (let i = 0; i < resolved.length; i += 50) {
+      const existing = await db
+        .select({ kpiId: kpiEntries.kpiId, periodDate: kpiEntries.periodDate, value: kpiEntries.value })
+        .from(kpiEntries)
+        .where(or(...resolved.slice(i, i + 50).map((row) =>
+          and(eq(kpiEntries.kpiId, row.kpiId!), eq(kpiEntries.periodDate, row.periodDate))
+        )));
+      for (const entry of existing) existingMap.set(`${entry.kpiId}:${entry.periodDate}`, entry.value);
+    }
     for (const row of resolved) {
       row.existingValue = existingMap.get(`${row.kpiId}:${row.periodDate}`);
     }
@@ -137,20 +140,19 @@ export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
   }
 
   try {
-    db.transaction((tx) => {
-      for (const row of validRows) {
-        tx.delete(kpiEntries).where(
-          and(eq(kpiEntries.kpiId, row.kpiId), eq(kpiEntries.periodDate, row.periodDate))
-        ).run();
-        tx.insert(kpiEntries).values({
-          kpiId: row.kpiId,
-          periodDate: row.periodDate,
-          value: row.value,
-          note: row.note,
-        }).run();
-        imported++;
-      }
-    });
+    const [first, ...rest] = validRows.map((row) => [
+      db.delete(kpiEntries).where(
+        and(eq(kpiEntries.kpiId, row.kpiId), eq(kpiEntries.periodDate, row.periodDate))
+      ),
+      db.insert(kpiEntries).values({
+        kpiId: row.kpiId,
+        periodDate: row.periodDate,
+        value: row.value,
+        note: row.note,
+      }),
+    ] as const).flat();
+    if (first) await db.batch([first, ...rest]);
+    imported = validRows.length;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Gagal menyimpan ke database";
     for (const row of validRows) {
