@@ -5,7 +5,7 @@ OpenNext, with D1 for application data and R2 for comment images.
 
 ## Cloudflare Workers + D1
 
-Use Node.js and `corepack pnpm install`. Runtime code uses the `DB` D1 binding,
+Use Node.js and `npm ci` (npm version pinned by `packageManager`). Runtime code uses the `DB` D1 binding,
 not `kpit.db` or `DATABASE_URL`. `better-sqlite3` is only a development dependency
 for offline migration/export tooling and tests.
 
@@ -15,13 +15,13 @@ The commands below create or modify Cloudflare resources. Run them deliberately
 in the intended account; local development does not require provisioning them.
 
 ```bash
-corepack pnpm exec wrangler login
-corepack pnpm exec wrangler d1 create kpit
+npx wrangler login
+npx wrangler d1 create kpit
 # Copy database_id from the result into wrangler.jsonc (replace the zero UUID).
-corepack pnpm exec wrangler r2 bucket create kpit-uploads
-corepack pnpm exec wrangler secret put AUTH_SECRET
-corepack pnpm exec wrangler secret put AUTH_URL
-corepack pnpm exec wrangler secret put AUTH_TRUST_HOST
+npx wrangler r2 bucket create kpit-uploads
+npx wrangler secret put AUTH_SECRET
+npx wrangler secret put AUTH_URL
+npx wrangler secret put AUTH_TRUST_HOST
 ```
 
 Use a random `AUTH_SECRET` of at least 32 characters, `AUTH_URL` equal to the
@@ -46,7 +46,7 @@ AUTH_URL=http://localhost:3000
 AUTH_TRUST_HOST=true
 ```
 
-For `corepack pnpm preview` (Worker on http://localhost:8787) set
+For `npm run preview` (Worker on http://localhost:8787) set
 `AUTH_URL=http://localhost:8787`. Without it the middleware treats the request as
 HTTPS, looks for the `__Secure-` session cookie and bounces every login back to
 `/login`; deployed HTTPS origins are unaffected.
@@ -60,10 +60,10 @@ measure your deployment.
 ### Local development
 
 ```bash
-corepack pnpm d1:migrate:local
+npm run d1:migrate:local
 # For a NEW database only; supply a strong password via your shell environment.
-SEED_ADMIN_EMAIL=admin@example.com SEED_ADMIN_PASSWORD="$ADMIN_PASSWORD" corepack pnpm seed:admin --local
-corepack pnpm dev
+SEED_ADMIN_EMAIL=admin@example.com SEED_ADMIN_PASSWORD="$ADMIN_PASSWORD" npm run seed:admin -- --local
+npm run dev
 ```
 
 Open http://localhost:3000. OpenNext supplies local D1/R2 bindings during `dev`;
@@ -79,17 +79,17 @@ path and would duplicate demo domains rather than preserve production data.
 ### Schema changes and deployment
 
 ```bash
-corepack pnpm db:generate
-corepack pnpm d1:migrate:local
+npm run db:generate
+npm run d1:migrate:local
 # Review generated SQL and back up production before applying remotely.
-corepack pnpm d1:migrate:remote
-corepack pnpm deploy
+npm run d1:migrate:remote
+npm run deploy
 ```
 
 Production deploys run automatically: Workers Builds (connected GitHub repo) builds
-every push to `main` with `pnpm exec opennextjs-cloudflare build` and deploys with
-`npx wrangler deploy` to https://kpit.mrfansi.dev. pnpm comes from `packageManager`
-in `package.json`; plain `pnpm run build` (only `next build`) cannot deploy. Apply
+every push to `main` with `npx opennextjs-cloudflare build` and deploys with
+`npx wrangler deploy` to https://kpit.mrfansi.dev. npm comes from `packageManager`
+in `package.json`; plain `npm run build` (only `next build`) cannot deploy. Apply
 any new migration with `d1:migrate:remote` **before** merging code that needs it.
 
 `deploy` builds OpenNext and deploys the Worker; it does not apply migrations.
@@ -117,7 +117,7 @@ tests. All remote commands below are operator actions, not automatic setup.
 3. **Export** from the intact database (or a complete stopped-app backup):
 
    ```bash
-   corepack pnpm d1:export --source /absolute/path/kpit.db --uploads-dir /absolute/path/public/uploads/comments --out /absolute/path/kpit-export
+   npm run d1:export -- --source /absolute/path/kpit.db --uploads-dir /absolute/path/public/uploads/comments --out /absolute/path/kpit-export
    ```
 
    The output directory must not already exist or overlap the source/uploads.
@@ -142,9 +142,9 @@ tests. All remote commands below are operator actions, not automatic setup.
 4. **Rehearse in isolated local D1/R2**:
 
    ```bash
-   corepack pnpm exec wrangler d1 migrations apply DB --local --persist-to /absolute/path/kpit-rehearsal
-   corepack pnpm d1:import --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
-   corepack pnpm d1:verify --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
+   npx wrangler d1 migrations apply DB --local --persist-to /absolute/path/kpit-rehearsal
+   npm run d1:import -- --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
+   npm run d1:verify -- --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
    ```
 
    Import refuses missing migrations and nonempty application tables. The only
@@ -156,9 +156,9 @@ tests. All remote commands below are operator actions, not automatic setup.
    then apply migrations to a **fresh** D1 target:
 
    ```bash
-   corepack pnpm d1:migrate:remote
-   corepack pnpm d1:import --out /absolute/path/kpit-export --remote
-   corepack pnpm d1:verify --out /absolute/path/kpit-export --remote
+   npm run d1:migrate:remote
+   npm run d1:import -- --out /absolute/path/kpit-export --remote
+   npm run d1:verify -- --out /absolute/path/kpit-export --remote
    ```
 
    Verification paginates every table, casts int64 to text before Wrangler JSON
