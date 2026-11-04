@@ -1,6 +1,8 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "kpit",
+	// Mrfansi account; pins deploys/remote commands so they never hit another account.
+	"account_id": "9eff0ff52ac1e3b3c6d955c9fe3a8ad0",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-11-01",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -16,8 +18,7 @@
 		{
 			"binding": "DB",
 			"database_name": "kpit",
-			// Fill from `wrangler d1 create kpit` output before any --remote command (see README "Cloudflare Workers + D1").
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "52360490-904e-4c4d-9fe0-a2536628f154",
 			// Same SQL files Drizzle generates; wrangler tracks them in its own d1_migrations table.
 			"migrations_dir": "drizzle"
 		}
@@ -26,5 +27,7 @@
 		// Comment image uploads (previously public/uploads/comments on disk).
 		{ "binding": "UPLOADS", "bucket_name": "kpit-uploads" }
 	],
-	"observability": { "enabled": true }
+	"observability": { "enabled": true },
+	// Keep plaintext vars set in the Cloudflare dashboard on `wrangler deploy` (secrets are always kept).
+	"keep_vars": true
 }
