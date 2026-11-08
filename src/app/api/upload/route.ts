@@ -2,14 +2,34 @@ import { requireApiSession } from "@/lib/ai/api-helpers";
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "cloudflare:workers";
 import { isAllowedImageUpload } from "@/lib/upload-validation";
+import { consumeRateLimit } from "@/lib/rate-limit-d1";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const MULTIPART_OVERHEAD = 64 * 1024; // boundaries + part headers
+const UPLOADS_PER_HOUR = 30;
 
 export async function POST(req: NextRequest) {
   const { session, error } = await requireApiSession();
   if (error) return error;
   if (session.user.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Reject before parsing: formData() would buffer the whole body first.
+  const contentLength = Number(req.headers.get("content-length"));
+  if (!Number.isFinite(contentLength) || contentLength <= 0 || contentLength > MAX_SIZE + MULTIPART_OVERHEAD) {
+    return NextResponse.json(
+      { error: "Ukuran unggahan tidak valid atau melebihi 5MB." },
+      { status: 413 }
+    );
+  }
+
+  const quota = await consumeRateLimit(`upload:${session.user.id}`, 3600, UPLOADS_PER_HOUR);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      { error: "Terlalu banyak unggahan. Coba lagi nanti." },
+      { status: 429, headers: { "Retry-After": String(quota.retryAfterSec) } }
+    );
   }
 
   const contentType = req.headers.get("content-type") ?? "";

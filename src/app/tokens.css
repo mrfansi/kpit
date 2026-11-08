@@ -66,13 +66,15 @@
   /*
    * Sinyal status KPI, tiga peran karena syarat kontrasnya beda:
    * warna utama = TEKS (4.5:1), `-fill` = isian grafis (3:1), `-soft` = latar chip.
+   * Terukur terhadap jalur gauge (--color-paper-3, 96%): success-fill 3.57:1,
+   * warning-fill 3.17:1, danger-fill 3.90:1 (WCAG 2.x, dihitung dari OKLCH ke sRGB).
    */
   --success: oklch(50% 0.13 155);
   --success-soft: oklch(94% 0.045 155);
-  --success-fill: oklch(63% 0.15 155);
+  --success-fill: oklch(58% 0.14 155);
   --warning: oklch(52% 0.11 78);
   --warning-soft: oklch(95% 0.06 85);
-  --warning-fill: oklch(78% 0.16 82);
+  --warning-fill: oklch(63% 0.13 80);
   --danger: oklch(53% 0.2 25);
   --danger-soft: oklch(95% 0.035 25);
   --danger-fill: oklch(60% 0.21 25);

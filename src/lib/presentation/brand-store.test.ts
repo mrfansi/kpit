@@ -11,7 +11,7 @@ test("brand revisions persist append-only with optimistic concurrency in local D
   const environment = await createTestD1();
   t.after(() => environment.dispose());
   const userId = "brand-test-admin";
-  await db.insert(users).values({ id: userId, email: "brand@example.test", name: "Brand Admin", passwordHash: "test-only", role: "admin" });
+  await db.insert(users).values({ id: userId, email: "brand@example.test", name: "Brand Admin", role: "admin" });
   assert.equal(await getActivePresentationBrand(), null);
   assert.deepEqual(await savePresentationBrand({ style: DEFAULT_BRAND_STYLE, description: "Awal", expectedRevision: 0 }, userId), { revision: 1 });
   const first = await getActivePresentationBrand();

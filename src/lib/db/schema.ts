@@ -181,14 +181,11 @@ export type NewKPIComment = typeof kpiComments.$inferInsert;
 export type NewKPIActionPlan = typeof kpiActionPlans.$inferInsert;
 
 // `users` is better-auth's user model (modelName "users"). The credential lives in
-// `account.password`; `password_hash` is a legacy next-auth column that is no longer
-// written (it keeps the "" default only because the column is NOT NULL and better-auth
-// refuses a required column it never writes).
+// `account.password`.
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
-  passwordHash: text("password_hash").notNull().$defaultFn(() => ""),
   role: text("role", { enum: ["admin", "viewer"] }).notNull().default("viewer"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())

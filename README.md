@@ -142,19 +142,19 @@ are created by admins (`/admin/users`) or `npm run seed:admin`. `users.role`
 Passwords are `pbkdf2-sha256$100000$<salt>$<key>` (`src/lib/password.ts`) and live
 only in `account.password` (the `credential` account of each user; written by
 `createUser`, `updateUserPassword` in `src/lib/db/users.ts` and `seed:admin`).
-`users.password_hash` is a legacy NOT NULL column that is no longer written (new
-users get `''`); migration `0017_better_auth.sql` adds
-`session`/`account`/`verification` and three columns on `users`, then backfilled
-one `credential` account per user from it
-and lower-cased stored emails (better-auth looks users up by lower-cased email;
-a row that would collide with another is left unchanged). Rolling back to the
-previous next-auth worker is not supported: it reads `password_hash`, which
-is stale or empty for every user created or changed since.
+The legacy `users.password_hash` column was dropped by migration
+`0022_drop_users_password_hash.sql`; `0017_better_auth.sql` had added
+`session`/`account`/`verification` and three columns on `users`, backfilled
+one `credential` account per user and lower-cased stored emails (better-auth
+looks users up by lower-cased email; a row that would collide with another is
+left unchanged). Rolling back to the previous next-auth worker is not
+supported.
 
-Rollout order: apply the migration to the database first (it is additive, so
-the running old worker is unaffected), then deploy. Sessions issued by
-next-auth are not valid for better-auth: everyone signs in once after the
-deploy.
+Rollout order: `0022` is not additive: a worker from before it still lists
+`password_hash` when inserting a user, so creating users fails between
+applying the migration and deploying (logins keep working). Deploy right after
+applying it. Sessions issued by next-auth are not valid for better-auth:
+everyone signed in once after that deploy.
 
 ## Monthly Reports
 

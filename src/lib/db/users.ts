@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { account, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
-/** The password hash lives only in `account.password` (read by better-auth); `users.password_hash` is no longer written. */
+/** The password hash lives only in `account.password` (read by better-auth). */
 function credentialRow(userId: string, password: string) {
   const now = new Date();
   return { id: crypto.randomUUID(), accountId: userId, providerId: "credential", userId, password, createdAt: now, updatedAt: now };
@@ -22,7 +22,7 @@ export async function createUser(data: {
   id: string;
   email: string;
   name: string;
-  passwordHash: string;
+  password: string; // already hashed
   role?: "admin" | "viewer";
 }) {
   const now = new Date();
@@ -35,7 +35,7 @@ export async function createUser(data: {
       createdAt: now,
       updatedAt: now,
     }),
-    db.insert(account).values(credentialRow(data.id, data.passwordHash)),
+    db.insert(account).values(credentialRow(data.id, data.password)),
   ]);
 }
 
@@ -43,11 +43,11 @@ export async function deleteUser(id: string) {
   return db.delete(users).where(eq(users.id, id)).run();
 }
 
-export async function updateUserPassword(id: string, passwordHash: string) {
-  const row = credentialRow(id, passwordHash);
+export async function updateUserPassword(id: string, password: string) {
+  const row = credentialRow(id, password);
   // Upsert so a user whose credential row is missing is healed.
   return db.insert(account).values(row).onConflictDoUpdate({
     target: [account.providerId, account.accountId],
-    set: { password: passwordHash, updatedAt: row.updatedAt },
+    set: { password, updatedAt: row.updatedAt },
   });
 }

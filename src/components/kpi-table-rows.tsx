@@ -40,16 +40,31 @@ interface KPITableRowsProps {
 export function KPITableRows({ rows, selectedPeriod, canEdit }: KPITableRowsProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full table-fixed border-collapse text-sm">
+        {/* Lebar kolom tetap dan sama di setiap tabel, supaya tabel per domain di
+            Overview berbaris lurus; kolom KPI mengambil sisa lebar. */}
+        <colgroup>
+          <col />
+          <col className="w-28" />
+          <col className="hidden w-28 sm:table-column" />
+          <col className="hidden w-44 sm:table-column" />
+          <col className="hidden w-24 md:table-column" />
+          <col className="hidden w-32 lg:table-column" />
+          {canEdit && <col className="w-10" />}
+        </colgroup>
         <thead>
           <tr className="border-b text-muted-foreground">
             <Th className="pl-0 text-left">KPI</Th>
             <Th className="text-right">Nilai</Th>
             <Th className="hidden text-right sm:table-cell">Target</Th>
-            <Th className="hidden w-44 text-left sm:table-cell">Pencapaian</Th>
-            <Th className="hidden w-24 text-right md:table-cell">Tren</Th>
-            <Th className="hidden w-32 lg:table-cell">12 bulan</Th>
-            {canEdit && <Th className="w-10" />}
+            <Th className="hidden text-left sm:table-cell">Pencapaian</Th>
+            <Th className="hidden text-right md:table-cell">Tren</Th>
+            <Th className="hidden lg:table-cell">12 bulan</Th>
+            {canEdit && (
+              <Th>
+                <span className="sr-only">Sematkan</span>
+              </Th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -82,11 +97,11 @@ export function KPITableRows({ rows, selectedPeriod, canEdit }: KPITableRowsProp
               >
                 {/* Status dibawa readout-nya sendiri (isi gauge + persen berwarna),
                     bukan rail tebal di tepi baris. */}
-                {/* w-full + max-w-0: kolom nama mengambil sisa lebar dan memotong deskripsi
+                {/* Kolom nama mengambil sisa lebar (table-fixed) dan memotong deskripsi
                     di dalam selnya sendiri, tidak meluber ke bawah kolom nilai. */}
-                <td className="w-full max-w-0 py-3 pr-4 pl-0">
+                <td className="py-3 pr-4 pl-0">
                   <div className="flex items-center gap-2">
-                    <Link href={`/kpi/${id}`} className="font-semibold underline-offset-4 hover:underline">
+                    <Link href={`/kpi/${id}`} prefetch={false} className="font-semibold underline-offset-4 hover:underline">
                       {name}
                     </Link>
                     {isStale && (
@@ -97,6 +112,7 @@ export function KPITableRows({ rows, selectedPeriod, canEdit }: KPITableRowsProp
                     {actionCount > 0 && (
                       <Link
                         href={`/kpi/${id}#actions`}
+                        prefetch={false}
                         className="inline-flex items-center gap-1 rounded-sm bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground transition-colors duration-[var(--dur-micro)] hover:text-foreground"
                         title={`${actionCount} action plan aktif`}
                       >
