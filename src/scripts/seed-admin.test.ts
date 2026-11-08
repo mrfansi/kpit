@@ -28,9 +28,15 @@ test("D1 admin seed requires an explicit target and preserves existing accounts"
     assert.equal(first[0].email, env.SEED_ADMIN_EMAIL);
     assert.equal(bcrypt.getRounds(String(first[0].password_hash)), 12);
     assert.ok(bcrypt.compareSync(env.SEED_ADMIN_PASSWORD, String(first[0].password_hash)));
+    const accounts = queryD1("SELECT a.provider_id,a.account_id,a.password,u.id FROM account a JOIN users u ON u.id = a.user_id", target);
+    assert.equal(accounts.length, 1);
+    assert.equal(accounts[0].provider_id, "credential");
+    assert.equal(accounts[0].account_id, accounts[0].id);
+    assert.equal(accounts[0].password, first[0].password_hash);
     const repeated = seed(args, { SEED_ADMIN_PASSWORD: "AnotherPassword456!" });
     assert.equal(repeated.status, 0, repeated.stderr);
     assert.match(repeated.stdout, /sudah ada, skip/);
     assert.deepEqual(queryD1("SELECT email,password_hash FROM users", target), first);
+    assert.equal(queryD1("SELECT id FROM account", target).length, 1);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

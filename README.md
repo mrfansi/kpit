@@ -1,7 +1,8 @@
 # KPIT
 
-KPI and monthly reporting on Next.js, deployed to Cloudflare Workers through
-OpenNext, with D1 for application data and R2 for comment images.
+KPI and monthly reporting on Next.js (run by [vinext](https://vinext.dev) on Vite),
+deployed to Cloudflare Workers with the `cf` CLI, with D1 for application data and
+R2 for comment images. All Worker settings and bindings live in `cloudflare.config.ts`.
 
 ## Cloudflare Workers + D1
 
@@ -15,21 +16,30 @@ The commands below create or modify Cloudflare resources. Run them deliberately
 in the intended account; local development does not require provisioning them.
 
 ```bash
-npx wrangler login
-npx wrangler d1 create kpit
-# Copy database_id from the result into wrangler.jsonc (replace the zero UUID).
-npx wrangler r2 bucket create kpit-uploads
-npx wrangler secret put AUTH_SECRET
-npx wrangler secret put AUTH_URL
-npx wrangler secret put AUTH_TRUST_HOST
+npx cf auth login   # or export CLOUDFLARE_API_TOKEN (and CLOUDFLARE_ACCOUNT_ID)
+npx cf d1 create --help   # then create D1 `kpit`
+# Put the database id in cloudflare.config.ts (env.DB) and in the d1:migrate:* scripts.
+npx cf r2 bucket create --help   # then create R2 bucket `kpit-uploads`
+# `cf` cannot set a single secret yet; wrangler can (it reads no config, so pass the name):
+npx wrangler secret put AUTH_SECRET --name kpit
+npx wrangler secret put AUTH_URL --name kpit
+npx wrangler secret put AUTH_TRUST_HOST --name kpit
 ```
 
-Use a random `AUTH_SECRET` of at least 32 characters, `AUTH_URL` equal to the
-canonical HTTPS application origin, and Auth.js `AUTH_TRUST_HOST=true` on the
-trusted Workers deployment. `NEXTAUTH_URL` is the legacy alternative to
-`AUTH_URL`; monthly mutation origin checks prefer `AUTH_URL`.
+`cf deploy` replaces every binding that `cloudflare.config.ts` does not declare
+(there is no `keep_vars` equivalent). Secrets that already exist on the Worker are
+therefore declared there with `bindings.secret()` (the deploy keeps their values), and
+the one plain variable, `DEEPSEEK_MODEL`, is declared with its value. When you add a
+secret or variable, add it to `cloudflare.config.ts` in the same change.
 
-Optional runtime settings (set with `wrangler secret put <NAME>`):
+Use a random `AUTH_SECRET` of at least 32 characters, `AUTH_URL` equal to the
+canonical HTTPS application origin, and `AUTH_TRUST_HOST=true` on the
+trusted Workers deployment (better-auth then accepts the request's own origin).
+The names are unchanged from the next-auth setup, so no new secret is needed.
+`NEXTAUTH_URL` is only a legacy fallback for the monthly mutation origin check,
+which prefers `AUTH_URL`.
+
+Optional runtime settings (secrets via `wrangler secret put <NAME> --name kpit`):
 
 - `NOTIFY_WEBHOOK_URL`: leave unset to disable notifications.
 - `DEEPSEEK_API_KEY`: enables the AI features through the DeepSeek API
@@ -38,7 +48,8 @@ Optional runtime settings (set with `wrangler secret put <NAME>`):
   `.env.example`).
 
 Secrets are not committed. `.env.example` lists the seed/AI settings; copy the
-runtime values you need to an ignored `.dev.vars` for local OpenNext development:
+runtime values you need to an ignored `.dev.vars` for local development (declared secrets
+missing from it, such as `DEEPSEEK_API_KEY`, only print a warning):
 
 ```dotenv
 AUTH_SECRET=replace-with-a-random-local-secret-at-least-32-characters
@@ -46,8 +57,8 @@ AUTH_URL=http://localhost:3000
 AUTH_TRUST_HOST=true
 ```
 
-For `npm run preview` (Worker on http://localhost:8787) set
-`AUTH_URL=http://localhost:8787`. Without it the middleware treats the request as
+For `npm run preview` (Worker on http://localhost:4173) set
+`AUTH_URL=http://localhost:4173`. Without it the proxy treats the request as
 HTTPS, looks for the `__Secure-` session cookie and bounces every login back to
 `/login`; deployed HTTPS origins are unaffected.
 
@@ -66,9 +77,10 @@ SEED_ADMIN_EMAIL=admin@example.com SEED_ADMIN_PASSWORD="$ADMIN_PASSWORD" npm run
 npm run dev
 ```
 
-Open http://localhost:3000. OpenNext supplies local D1/R2 bindings during `dev`;
-default persisted state is under `.wrangler/state`. Import without
-`--persist-to` to use this same state. An explicit `--persist-to /absolute/dir`
+Open http://localhost:3000. `npm run dev` (Vite with the Cloudflare plugin) runs the
+app in workerd with local D1/R2 bindings; persisted state is under
+`.cloudflare/state`, which `d1:migrate:local`, `seed:admin --local` and the
+`d1:*` scripts without `--persist-to` also use. An explicit `--persist-to /absolute/dir`
 isolates a rehearsal from the development database.
 
 `seed:admin` requires exactly one of `--local` / `--remote`, supports
@@ -87,15 +99,21 @@ npm run deploy
 ```
 
 Production deploys run automatically: Workers Builds (connected GitHub repo) builds
-every push to `main` with `npx opennextjs-cloudflare build` and deploys with
-`npx wrangler deploy` to https://kpit.mrfansi.dev. npm comes from `packageManager`
-in `package.json`; plain `npm run build` (only `next build`) cannot deploy. Apply
-any new migration with `d1:migrate:remote` **before** merging code that needs it.
+every push to `main` and deploys to https://kpit.mrfansi.dev. Configure its build
+command as `npm run build` and its deploy command as
+`npx cf deploy --prebuilt --mode production` (Workers Builds supplies the API
+token). Apply any new migration with `d1:migrate:remote` **before** merging code
+that needs it.
 
-`deploy` builds OpenNext and deploys the Worker; it does not apply migrations.
-`preview` builds and previews the Worker locally; `cf-typegen` regenerates binding
-types. D1 migrations use the committed `drizzle/*.sql` files and Wrangler's
-`d1_migrations` ledger. Do not use `drizzle-kit push`: Workers only see schema
+`npm run build` runs `vite build` and writes the deployable Build Output to
+`.cloudflare/output/v0`. `npm run deploy` builds and deploys from your machine
+(`vinext-cloudflare deploy`, which calls `cf deploy`; sign in with `npx cf auth login` or
+set `CLOUDFLARE_API_TOKEN`). It does not apply migrations. `preview` builds and serves
+the Worker locally; `cf-typegen` regenerates the binding types in `.cloudflare/types`.
+`d1:migrate:*` use `cf d1 migrations apply` with the committed `drizzle/*.sql` files
+and the `d1_migrations` ledger. The `d1:export/import/verify` scripts and
+`seed:admin` still shell out to the Wrangler CLI (cf has no `d1 execute --file` or
+`r2 object` commands), with a config generated from `cloudflare.config.ts`. Do not use `drizzle-kit push`: Workers only see schema
 applied through `d1:migrate:*`. The old `db:migrate`, `db:studio` and `start`
 npm commands are gone (they targeted `kpit.db` / a Node server);
 `src/scripts/migrate-db.ts` remains the export tool's snapshot-upgrade library.
@@ -142,7 +160,7 @@ tests. All remote commands below are operator actions, not automatic setup.
 4. **Rehearse in isolated local D1/R2**:
 
    ```bash
-   npx wrangler d1 migrations apply DB --local --persist-to /absolute/path/kpit-rehearsal
+   npx cf d1 migrations apply 52360490-904e-4c4d-9fe0-a2536628f154 --dir drizzle --local --persist-to /absolute/path/kpit-rehearsal
    npm run d1:import -- --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
    npm run d1:verify -- --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
    ```
@@ -195,7 +213,41 @@ maps the shadcn variable names onto them, so components keep using `bg-backgroun
 
 ## Dependency Notes
 
-**next-auth**: Currently pinned to `^5.0.0-beta.30` (beta). Stable `4.24.13` uses a different API (v4 vs v5). Do **not** upgrade to stable without a migration — the session/auth API differs significantly. Monitor https://authjs.dev for v5 stable release.
+**better-auth** (`^1.7`) replaced next-auth v5. See [Authentication](#authentication).
+
+## Authentication
+
+Sign-in uses [better-auth](https://better-auth.com) with email + password
+(`src/auth.ts`, handler at `src/app/api/auth/[...all]/route.ts`, client in
+`src/lib/auth-client.ts`, route guard in `src/proxy.ts`). Sessions are stored in
+D1 (`session` table, 30 days) with a 5-minute signed cookie cache, so a role
+change or deleted user takes effect within 5 minutes. Sign-up is disabled: users
+are created by admins (`/admin/users`) or `npm run seed:admin`. `users.role`
+(`admin` | `viewer`) is never accepted from client input.
+
+Passwords are bcrypt (cost 12, `bcryptjs`), so hashes created by the old
+next-auth setup keep working. Migration `0017_better_auth.sql` adds
+`session`/`account`/`verification` and three columns on `users`, then backfills
+one `credential` account per user (`account.password` = `users.password_hash`)
+and lower-cases stored emails (better-auth looks users up by lower-cased email;
+a row that would collide with another is left unchanged).
+
+**`users.password_hash` stays NOT NULL and must stay in sync with
+`account.password`**: every password write (`createUser`, `updateUserPassword`
+in `src/lib/db/users.ts`, `seed:admin`) writes both, so the previous next-auth
+worker still logs everybody in after a rollback. If a rollback window lets the
+old worker create users or change passwords, re-sync before going forward again:
+
+```sql
+INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
+  SELECT lower(hex(randomblob(16))), id, 'credential', id, password_hash, created_at, unixepoch() FROM users
+  WHERE true ON CONFLICT (provider_id, account_id) DO UPDATE SET password = excluded.password, updated_at = excluded.updated_at;
+```
+
+Rollout order: apply the migration to the database first (it is additive, so
+the running old worker is unaffected), then deploy. Sessions issued by
+next-auth are not valid for better-auth: everyone signs in once after the
+deploy.
 
 ## Monthly Reports
 

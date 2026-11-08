@@ -1,4 +1,4 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { env } from "cloudflare:workers";
 import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "./schema";
 
@@ -9,9 +9,9 @@ export type Database = DrizzleD1Database<typeof schema>;
 const instances = new WeakMap<D1Database, Database>();
 
 function current(): Database {
-  // The binding only exists inside a request (or a context installed by tests),
+  // The binding only exists inside a request (or an env installed by tests),
   // so it is resolved on every access instead of at module load.
-  const binding = getCloudflareContext().env.DB;
+  const binding = env.DB;
   let instance = instances.get(binding);
   if (!instance) instances.set(binding, (instance = drizzle(binding, { schema })));
   return instance;

@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { env } from "cloudflare:workers";
 import { isAllowedImageUpload } from "@/lib/upload-validation";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   // Served back by src/app/uploads/comments/[file]/route.ts under the same public URL as before.
-  await getCloudflareContext().env.UPLOADS.put(`comments/${filename}`, buffer, {
+  await env.UPLOADS.put(`comments/${filename}`, buffer, {
     httpMetadata: { contentType: validation.mimeType },
   });
 

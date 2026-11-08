@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -21,8 +20,8 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               // Next.js injects inline runtime scripts; the presentation export
               // route serves inline <script>. No external script origins allowed.
-              // Dev (Turbopack + React dev mode) requires 'unsafe-eval' for HMR
-              // and callstack reconstruction; production stays strict.
+              // Dev (vite + React dev mode) requires 'unsafe-eval' for callstack
+              // reconstruction; production stays strict.
               isDev
                 ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
                 : "script-src 'self' 'unsafe-inline'",
@@ -31,7 +30,8 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob:",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self'",
+              // Dev only: vite's HMR websocket.
+              isDev ? "connect-src 'self' ws://localhost:* ws://127.0.0.1:*" : "connect-src 'self'",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -45,6 +45,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-// Exposes wrangler.jsonc bindings (D1, R2) to `next dev` via getCloudflareContext().
-initOpenNextCloudflareForDev();

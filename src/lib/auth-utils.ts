@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth, type AuthSession } from "@/auth";
 import { canAccessAdminRoute } from "@/lib/admin-access";
 
 /**
@@ -19,7 +19,10 @@ export async function isAdminUser(): Promise<boolean> {
  * Throws "Unauthorized" if not logged in, "Forbidden" if not admin.
  */
 export async function requireAdmin() {
-  const session = await auth();
+  return assertAdmin(await auth());
+}
+
+export function assertAdmin(session: AuthSession | null) {
   if (!session?.user) throw new Error("Tidak terautentikasi");
   if (session.user.role !== "admin") throw new Error("Akses ditolak");
   return session;

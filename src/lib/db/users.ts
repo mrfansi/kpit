@@ -1,9 +1,16 @@
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { account, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
-export async function getUserByEmail(email: string) {
-  return db.select().from(users).where(eq(users.email, email)).get();
+/**
+ * Passwords live in two places on purpose: `account.password` (read by
+ * better-auth) and `users.password_hash` (read by the previous next-auth worker,
+ * so a rollback keeps every login working). Every write goes through the two
+ * helpers below, which update both in one D1 batch (atomic).
+ */
+function credentialRow(userId: string, password: string) {
+  const now = new Date();
+  return { id: crypto.randomUUID(), accountId: userId, providerId: "credential", userId, password, createdAt: now, updatedAt: now };
 }
 
 export async function getAllUsers() {
@@ -23,11 +30,17 @@ export async function createUser(data: {
   passwordHash: string;
   role?: "admin" | "viewer";
 }) {
-  return db.insert(users).values({
-    ...data,
-    role: data.role ?? "viewer",
-    createdAt: new Date(),
-  }).run();
+  const now = new Date();
+  return db.batch([
+    db.insert(users).values({
+      ...data,
+      email: data.email.toLowerCase(), // better-auth looks users up by lower-cased email
+      role: data.role ?? "viewer",
+      createdAt: now,
+      updatedAt: now,
+    }),
+    db.insert(account).values(credentialRow(data.id, data.passwordHash)),
+  ]);
 }
 
 export async function deleteUser(id: string) {
@@ -35,5 +48,13 @@ export async function deleteUser(id: string) {
 }
 
 export async function updateUserPassword(id: string, passwordHash: string) {
-  return db.update(users).set({ passwordHash }).where(eq(users.id, id)).run();
+  const row = credentialRow(id, passwordHash);
+  return db.batch([
+    db.update(users).set({ passwordHash, updatedAt: row.updatedAt }).where(eq(users.id, id)),
+    // Upsert so a user whose credential row is missing (e.g. created while rolled back) is healed.
+    db.insert(account).values(row).onConflictDoUpdate({
+      target: [account.providerId, account.accountId],
+      set: { password: passwordHash, updatedAt: row.updatedAt },
+    }),
+  ]);
 }

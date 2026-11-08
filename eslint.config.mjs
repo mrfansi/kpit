@@ -14,10 +14,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // OpenNext/Wrangler build output and generated binding types.
-    ".open-next/**",
+    // vinext/cf build output and generated binding types.
+    "dist/**",
+    ".vinext/**",
+    ".cloudflare/**",
     ".wrangler/**",
-    "cloudflare-env.d.ts",
   ]),
 ]);
 
