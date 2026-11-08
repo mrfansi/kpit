@@ -1,8 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { randomUUID } from "crypto";
-import { hashPassword } from "@/lib/password";
+import { and, eq } from "drizzle-orm";
+import { getAuth } from "@/auth";
+import { db } from "@/lib/db";
+import { account } from "@/lib/db/schema";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { createUser, deleteUser, updateUserPassword } from "@/lib/db/users";
 import { z } from "zod";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
@@ -17,6 +22,7 @@ const AddUserSchema = z.object({
 
 const ChangePasswordSchema = z.object({
   userId: z.string(),
+  currentPassword: z.string().min(1),
   password: z.string().min(8),
   confirm: z.string().min(8),
 });
@@ -43,8 +49,9 @@ export async function addUserAction(
     await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "user", detail: parsed.data.email });
     revalidatePath("/admin/users");
     return { success: true };
-  } catch {
-    return { error: "Email sudah digunakan oleh user lain." };
+  } catch (error) {
+    console.error("addUserAction failed", error);
+    return { error: String(error).includes("UNIQUE") ? "Email sudah digunakan oleh user lain." : "Gagal menambah user. Coba lagi." };
   }
 }
 
@@ -64,14 +71,25 @@ export async function changePasswordAction(
 
   const parsed = ChangePasswordSchema.safeParse({
     userId: session.user.id,
+    currentPassword: formData.get("currentPassword"),
     password: formData.get("password"),
     confirm: formData.get("confirm"),
   });
   if (!parsed.success) return { error: "Password minimal 8 karakter." };
   if (parsed.data.password !== parsed.data.confirm) return { error: "Konfirmasi password tidak cocok." };
 
+  const [credential] = await db
+    .select({ password: account.password })
+    .from(account)
+    .where(and(eq(account.userId, parsed.data.userId), eq(account.providerId, "credential")));
+  if (!credential?.password || !(await verifyPassword({ hash: credential.password, password: parsed.data.currentPassword }))) {
+    return { error: "Password saat ini salah." };
+  }
+
   const hash = await hashPassword(parsed.data.password);
   await updateUserPassword(parsed.data.userId, hash);
+  // Other devices (a possible attacker) must log in again with the new password.
+  await getAuth().api.revokeOtherSessions({ headers: await headers() });
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "user", entityId: session.user.id, detail: "password changed" });
   return { success: true };
 }

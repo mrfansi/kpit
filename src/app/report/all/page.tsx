@@ -13,7 +13,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { isAdminUser } from "@/lib/auth-utils";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { kpiTargets, type KPI } from "@/lib/db/schema";
 
@@ -38,13 +38,14 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       })()
     : null;
 
-  const [domains, allKPIsWithEntries, actionPlanRows, isAdmin, targetRows] = await Promise.all([
+  const [domains, allKPIsWithEntries, actionPlanRows, session, targetRows] = await Promise.all([
     getAllDomains(),
     getKPIsWithLatestEntry(undefined, selectedPeriod),
     getReportActionPlansWithKPI(),
-    isAdminUser(),
+    auth(),
     db.select().from(kpiTargets),
   ]);
+  const isAdmin = session?.user.role === "admin";
 
   // Previous-month status must use that month's override, not the current one (one query, resolved in memory).
   const overrides = new Map(targetRows.map((row) => [`${row.kpiId}:${row.periodDate}`, row]));
@@ -305,7 +306,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       </header>
 
       {/* Executive Summary: AI Narrative or static fallback */}
-      {isAdmin ? (
+      {session ? (
         <ReportAINarrative staticSummary={executiveSummary} requestData={aiRequestData} />
       ) : (
         <section aria-labelledby="report-summary-heading" className="space-y-3 break-inside-avoid-page">

@@ -34,6 +34,16 @@ export function ChangePasswordForm() {
           </div>
         )}
         <div className="space-y-1.5">
+          <Label htmlFor="currentPassword">Password saat ini</Label>
+          <Input
+            id="currentPassword"
+            name="currentPassword"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
           <Label htmlFor="password">Password baru</Label>
           <Input
             id="password"

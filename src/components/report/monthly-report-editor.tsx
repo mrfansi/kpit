@@ -54,8 +54,10 @@ function focusField(path: string) {
   if (!el) return;
   for (let d: HTMLDetailsElement | null = el.closest("details"); d; d = d.parentElement?.closest("details") ?? null) d.open = true;
   el.scrollIntoView({ block: "center" });
-  const focusable = "input:not(:disabled),textarea:not(:disabled),select:not(:disabled),button:not(:disabled),summary";
-  const target = el.matches(focusable) ? el : el instanceof HTMLDetailsElement ? el.querySelector<HTMLElement>("summary") : el.querySelector<HTMLElement>(focusable);
+  const fields = "input:not(:disabled),textarea:not(:disabled),select:not(:disabled)";
+  const focusable = `${fields},button:not(:disabled),summary`;
+  // Prefer a form field over the block's own buttons (e.g. "Hapus"), which come first in document order.
+  const target = el.matches(focusable) ? el : el instanceof HTMLDetailsElement ? el.querySelector<HTMLElement>("summary") : el.querySelector<HTMLElement>(fields) ?? el.querySelector<HTMLElement>(focusable);
   if (!target && !el.hasAttribute("tabindex")) el.tabIndex = -1;
   (target ?? el).focus();
 }

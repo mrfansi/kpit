@@ -75,10 +75,14 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, 
     startTransition(async () => {
       try {
         const result = await bulkCreateEntries(rows);
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
         toast.success(`${result.saved} data berhasil disimpan`);
         setSavedAt(new Date().toLocaleTimeString("id-ID"));
-      } catch (err) {
-        toast.error(err instanceof Error && err.message ? err.message : "Gagal menyimpan data");
+      } catch {
+        toast.error("Gagal menyimpan data");
       }
     });
   }

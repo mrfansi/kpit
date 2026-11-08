@@ -84,12 +84,16 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
   function onSubmit(values: FormValues) {
     startTransition(async () => {
       try {
-        await createEntry({
+        const result = await createEntry({
           kpiId: Number(values.kpiId),
           periodDate: values.periodDate,
           value: values.value,
           note: values.note || undefined,
         });
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
         toast.success("Data berhasil disimpan");
         form.reset({ kpiId: "", periodDate: months[0]?.value ?? "", value: undefined, note: "" });
         setSmartPeriodHint(null);
