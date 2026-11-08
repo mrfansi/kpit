@@ -140,7 +140,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
               <BatchCommentDraft domainId={domain.id} periodDate={selectedPeriod ?? ""} />
             )}
             {canEdit && (
-              <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => kpi)} kpiLatestPeriods={kpiLatestPeriods} />
+              <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => ({ id: kpi.id, name: kpi.name }))} kpiLatestPeriods={kpiLatestPeriods} />
             )}
           </div>
         </div>

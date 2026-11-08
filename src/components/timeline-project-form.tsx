@@ -74,17 +74,18 @@ export function TimelineProjectFormDialog({
 
   async function handleSubmit(formData: FormData) {
     try {
-      if (isEdit) {
-        await updateProject(project!.id, formData);
-      } else {
-        await createProject(formData);
+      const result = isEdit
+        ? await updateProject(project!.id, formData)
+        : await createProject(formData);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
       }
       toast.success(isEdit ? "Project berhasil diperbarui" : "Project berhasil ditambahkan");
       formRef.current?.reset();
       onOpenChange(false);
-    } catch (error) {
-      // Pesan dari projectSchema.safeParse (mis. tanggal tidak valid) harus sampai ke admin.
-      toast.error(error instanceof Error ? error.message : "Gagal menyimpan project");
+    } catch {
+      toast.error("Gagal menyimpan project");
     }
   }
 

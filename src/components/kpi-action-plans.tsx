@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/empty-state";
+import { formatDueDate } from "@/lib/date-utils";
 
 interface KPIActionPlansProps {
   kpiId: number;
@@ -69,7 +70,11 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
 
     startTransition(async () => {
       try {
-        await createActionPlan({ kpiId, title, owner, dueDate, description, status: "open" });
+        const result = await createActionPlan({ kpiId, title, owner, dueDate, description, status: "open" });
+        if (result?.error) {
+          toast.error(result.error);
+          return;
+        }
         setActions((prev) => [
           {
             id: Date.now(),
@@ -98,7 +103,11 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
   function handleStatusChange(action: KPIActionPlan, status: ActionPlanStatus) {
     startTransition(async () => {
       try {
-        await updateActionPlan(action.id, action.kpiId, { status });
+        const result = await updateActionPlan(action.id, action.kpiId, { status });
+        if (result?.error) {
+          toast.error(result.error);
+          return;
+        }
         setActions((prev) => prev.map((item) => item.id === action.id ? { ...item, status, updatedAt: new Date() } : item));
         toast.success("Status action plan diperbarui");
       } catch {
@@ -184,7 +193,7 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
                       <span>PIC: {action.owner}</span>
                       <span className="num flex items-center gap-1">
                         <CalendarClock aria-hidden className="size-3.5" />
-                        {new Date(`${action.dueDate}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                        {formatDueDate(action.dueDate)}
                       </span>
                     </div>
                   </div>

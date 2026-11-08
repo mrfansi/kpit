@@ -2,16 +2,18 @@ import { getAllTimelineProjects } from "@/lib/queries/timeline";
 import { getAllStatuses } from "@/lib/queries/timeline-statuses";
 import { GanttChart } from "@/components/gantt/gantt-chart";
 import { isAdminUser } from "@/lib/auth-utils";
+import { auth } from "@/auth";
 
 export const metadata = {
   title: "Timeline - KPI Dashboard",
 };
 
 export default async function TimelinePage() {
-  const [projects, statuses, canEdit] = await Promise.all([
+  const [projects, statuses, canEdit, session] = await Promise.all([
     getAllTimelineProjects(),
     getAllStatuses(),
     isAdminUser(),
+    auth(),
   ]);
 
   return (
@@ -27,7 +29,7 @@ export default async function TimelinePage() {
         posisi pan, dan scroll setiap kali satu bar digeser.
         GanttChart sekarang menyinkronkan sendiri salinan lokalnya dari prop.
       */}
-      <GanttChart projects={projects} statuses={statuses} canEdit={canEdit} />
+      <GanttChart projects={projects} statuses={statuses} canEdit={canEdit} signedIn={!!session?.user} />
     </div>
   );
 }

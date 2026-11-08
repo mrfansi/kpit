@@ -4,8 +4,10 @@ import { eq } from "drizzle-orm";
 
 /**
  * Passwords live in two places on purpose: `account.password` (read by
- * better-auth) and `users.password_hash` (read by the previous next-auth worker,
- * so a rollback keeps every login working). Every write goes through the two
+ * better-auth) and `users.password_hash` (read by the previous next-auth worker).
+ * A rollback only keeps logins working for users who have not signed in since
+ * PBKDF2 rehash-on-login (PR #16): the old worker cannot verify those hashes.
+ * Every write goes through the two
  * helpers below, which update both in one D1 batch (atomic).
  */
 function credentialRow(userId: string, password: string) {

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });
   }
 
-  const limited = enforceAIRateLimit(authResult.session.user.id, "draft-comment");
+  const limited = await enforceAIRateLimit(authResult.session.user.id, "draft-comment");
   if (limited) return limited;
 
   let raw: unknown;

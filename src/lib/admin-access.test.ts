@@ -25,3 +25,19 @@ test("lets viewers reach only /admin/account", async () => {
   assert.equal(canAccessAdminPath(undefined, "/admin/account"), false);
   assert.equal(canAccessAdminPath("admin", "/admin/kpi"), true);
 });
+
+test("decodes percent-escaped admin paths and tolerates malformed ones", async () => {
+  const { decodePathname } = await import("./admin-access");
+  assert.equal(decodePathname("/%61dmin/kpi"), "/admin/kpi");
+  assert.equal(decodePathname("/%E0%A4%A"), "/%E0%A4%A");
+});
+
+test("merges refreshed Set-Cookie values into the request Cookie header", async () => {
+  const { mergeSetCookies } = await import("./admin-access");
+  assert.equal(
+    mergeSetCookies("a=1; session_data=old", ["session_data=new; Max-Age=300; Path=/; HttpOnly", "b=2; Path=/"]),
+    "a=1; session_data=new; b=2",
+  );
+  assert.equal(mergeSetCookies("a=1; b=2", ["a=; Max-Age=0; Path=/"]), "b=2");
+  assert.equal(mergeSetCookies(null, []), "");
+});

@@ -61,6 +61,8 @@ export const kpiEntries = sqliteTable("kpi_entries", {
   value: real("value").notNull(),
   periodDate: text("period_date").notNull(), // ISO date: YYYY-MM-DD (awal bulan/minggu)
   note: text("note"),
+  numerator: real("numerator"), // opsional: value = numerator / denominator (x100 untuk unit %)
+  denominator: real("denominator"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
@@ -126,7 +128,7 @@ export const auditLogs = sqliteTable("audit_logs", {
   userId: text("user_id"),
   userEmail: text("user_email"),
   action: text("action").notNull(), // 'create' | 'update' | 'delete'
-  entity: text("entity").notNull(), // 'kpi' | 'entry' | 'domain' | 'user'
+  entity: text("entity").notNull(), // lihat AUDIT_ENTITIES di lib/db/audit.ts
   entityId: text("entity_id"),
   detail: text("detail"),
   createdAt: integer("created_at", { mode: "timestamp" })
@@ -180,8 +182,8 @@ export type NewKPIActionPlan = typeof kpiActionPlans.$inferInsert;
 
 // `users` is better-auth's user model (modelName "users"). `password_hash` is
 // not read by better-auth: the credential lives in `account.password`. It stays
-// NOT NULL and in sync on every password write so the previous (next-auth)
-// worker can still log everyone in after a rollback. The "" default exists only
+// NOT NULL and in sync on every password write. After a rollback the previous
+// (next-auth, bcrypt-only) worker can only log in users still on a bcrypt hash. The "" default exists only
 // because better-auth refuses a required column it never writes; sign-up is
 // disabled, and "" matches no password in the old worker either.
 export const users = sqliteTable("users", {

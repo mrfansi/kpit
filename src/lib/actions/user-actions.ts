@@ -12,6 +12,7 @@ import { createUser, deleteUser, updateUserPassword } from "@/lib/db/users";
 import { z } from "zod";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
+import { consumeRateLimit } from "@/lib/rate-limit-d1";
 
 const AddUserSchema = z.object({
   email: z.string().email(),
@@ -77,6 +78,10 @@ export async function changePasswordAction(
   });
   if (!parsed.success) return { error: "Password minimal 8 karakter." };
   if (parsed.data.password !== parsed.data.confirm) return { error: "Konfirmasi password tidak cocok." };
+
+  // Before verifyPassword: each guess costs ~80 ms of PBKDF2 CPU and a stolen session must not be able to brute-force the current password.
+  const limit = await consumeRateLimit(`chpw:${parsed.data.userId}`, 15 * 60, 5);
+  if (!limit.allowed) return { error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." };
 
   const [credential] = await db
     .select({ password: account.password })

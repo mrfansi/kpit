@@ -7,6 +7,7 @@ import { computeMonthlyReport, emptyMonthlyReportContent, previousReportMonth, r
 import { monthlyReportContentSchema, monthSchema } from "@/lib/validations/monthly-report";
 import { applyNotes, deriveNotes, entryMismatchQuestions, entrySource, nextMonthFirst, timelineLines, type EntryRef, type NotesImport, type TimelineLine } from "@/lib/monthly-report-import";
 import { getReportActionPlansWithKPI } from "@/lib/queries";
+import { inChunks } from "@/lib/db/chunks";
 
 export class MonthlyReportError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -50,14 +51,6 @@ function snapshotIds({ active, previous }: Found) {
   return ids;
 }
 
-// D1 allows 100 bound parameters per statement: split ids so they fit beside the other parameters.
-async function inChunks<T>(ids: number[], fixedParams: number, run: (chunk: number[]) => Promise<T[]>): Promise<T[]> {
-  const size = 100 - fixedParams;
-  const chunks: number[][] = [];
-  for (let offset = 0; offset < ids.length; offset += size) chunks.push(ids.slice(offset, offset + size));
-  return (await Promise.all(chunks.map(run))).flat();
-}
-
 // Latest entry per `kpiId:periodDate` (newest createdAt, then id).
 async function latestEntries(ids: number[], months: string[]) {
   const rows = await inChunks(ids, months.length, (chunk) => db.select().from(kpiEntries).where(and(inArray(kpiEntries.kpiId, chunk), inArray(kpiEntries.periodDate, months))).orderBy(desc(kpiEntries.createdAt), desc(kpiEntries.id)));
@@ -75,16 +68,16 @@ async function loadNotes(domainId: number, kpiIds: number[], period: string): Pr
   return deriveNotes(comments, plans.filter((p) => owned.has(p.kpi.id)).map((p) => p.action), period);
 }
 
-// Projects whose schedule overlaps the month, with progress taken from that month's logs.
+// Projects whose schedule overlaps the month, with progress taken from the logs up to the end of that WIB month.
 async function loadTimelineLines(period: string): Promise<TimelineLine[]> {
   const next = nextMonthFirst(period);
   const [projects, logs] = await Promise.all([
     db.select({ id: timelineProjects.id, name: timelineProjects.name, progress: timelineProjects.progress, endDate: timelineProjects.endDate, estimatedLaunchDate: timelineProjects.estimatedLaunchDate, status: timelineProjectStatuses.name })
       .from(timelineProjects).leftJoin(timelineProjectStatuses, eq(timelineProjects.statusId, timelineProjectStatuses.id))
       .where(and(lt(timelineProjects.startDate, next), gte(timelineProjects.endDate, period))).orderBy(timelineProjects.sortOrder, timelineProjects.id),
-    db.select().from(timelineProjectLogs).where(and(gte(timelineProjectLogs.createdAt, new Date(`${period}T00:00:00Z`)), lt(timelineProjectLogs.createdAt, new Date(`${next}T00:00:00Z`)))),
+    db.select().from(timelineProjectLogs).where(lt(timelineProjectLogs.createdAt, new Date(`${next}T00:00:00+07:00`))),
   ]);
-  return timelineLines(projects, logs);
+  return timelineLines(projects, logs, period);
 }
 
 async function initialContent(found: Found, period: string): Promise<MonthlyReportContent> {
@@ -92,7 +85,7 @@ async function initialContent(found: Found, period: string): Promise<MonthlyRepo
   const content = emptyMonthlyReportContent();
   const previousById = new Map(previous?.metrics.map((m) => [m.kpiId, m]) ?? []);
   const ids = snapshotIds(found);
-  if (previous) content.division = previous.division;
+  if (previous) { content.division = previous.division; content.previousActions = previous.actions.map((a) => ({ ...a, status: "", note: "" })); }
   const months = [...new Set([previousReportMonth(period), ...reportMonths(period)])].sort();
   const kpiIds = [...ids];
   const [entries, allTargets, notes] = await Promise.all([
@@ -118,7 +111,7 @@ async function initialContent(found: Found, period: string): Promise<MonthlyRepo
         month, actual: entry?.value ?? null, target: override?.target ?? kpi?.target ?? null,
         source: entry ? entrySource(entry) : "",
         targetSource: override ? `KPI target override #${override.id} (${month})` : kpi ? `KPI default target #${kpi.id} (${month})` : "",
-        state: entry ? "provided" : "missing", numerator: null, denominator: null,
+        state: entry ? "provided" : "missing", numerator: entry?.numerator ?? null, denominator: entry?.denominator ?? null,
       };
     });
     return {
@@ -128,12 +121,14 @@ async function initialContent(found: Found, period: string): Promise<MonthlyRepo
       aggregationNote: old?.aggregationNote ?? "", observations,
       sharedMetricKey: old?.sharedMetricKey ?? "", sharingReviewed: old?.sharingReviewed ?? false,
       reconciliationNote: old?.reconciliationNote ?? "", deviationCause: "", deviationEvidence: "",
+      // A start month from another year (e.g. carried over in January) is dropped: YTD restarts in January.
+      ytdStartMonth: old?.ytdStartMonth?.slice(0, 4) === period.slice(0, 4) ? old.ytdStartMonth : null,
     };
   });
-  return applyNotes(content, notes).content;
+  return applyNotes(content, notes, period).content;
 }
 
-async function bundle(found: Found, period: string, content: MonthlyReportContent, revision: number, updatedAt: Date | null, entries: EntryRef[] = []): Promise<MonthlyReportBundle> {
+async function bundle(found: Found, period: string, content: MonthlyReportContent, revision: number, updatedAt: Date | null, entries: EntryRef[] = [], checkedKpiIds: ReadonlySet<number> = new Set()): Promise<MonthlyReportBundle> {
   const { domain, peers, active, previous, record } = found;
   const computed = computeMonthlyReport(content, period, peers);
   const currentSet = new Set(active.map((k) => k.id));
@@ -146,7 +141,7 @@ async function bundle(found: Found, period: string, content: MonthlyReportConten
   if (changed) computed.questions.push({ id: "metrics.registry", path: "metrics", question: "Daftar KPI aktif telah berubah; sinkronkan snapshot KPI tanpa menghapus data lama secara diam-diam." });
   if ((priorChanged || newlyAdded || currentSet.size !== snapshotSet.size) && !content.kpiSetChangeNote.trim()) computed.questions.push({ id: "kpiSetChangeNote", path: "kpiSetChangeNote", question: "Jelaskan dan konfirmasi perubahan set KPI terhadap laporan sebelumnya atau daftar KPI aktif." });
   for (const peer of peers) if (content.division && peer.content.division === content.division) computed.questions.push({ id: `division.duplicate.${peer.domain.id}`, path: "division", question: `Divisi ${content.division} juga dipakai ${peer.domain.name}; selesaikan pemetaan agar satu divisi tidak mempunyai dua deck terpisah.` });
-  computed.questions.push(...entryMismatchQuestions(content, period, entries));
+  computed.questions.push(...entryMismatchQuestions(content, period, entries, checkedKpiIds));
   return { domain, period, content, ...computed, ready: computed.questions.length === 0, revision, updatedAt: updatedAt?.toISOString() ?? null };
 }
 async function reportSnapshot(found: Found, period: string): Promise<MonthlyReportContent> {
@@ -169,11 +164,12 @@ export async function getMonthlyReportBundle(domainSlug: string, period: string)
     reportSnapshot(found, period),
     checkIds.length ? latestEntries(checkIds, [previousReportMonth(period), period]).then((latest): EntryRef[] => [...latest.values()]) : Promise.resolve<EntryRef[]>([]),
   ]);
-  return bundle(found, period, content, found.record?.revision ?? 0, found.record?.updatedAt ?? null, entries);
+  return bundle(found, period, content, found.record?.revision ?? 0, found.record?.updatedAt ?? null, entries, new Set(checkIds));
 }
 
 export type MonthlyReportImportKind = "entries" | "notes" | "timeline";
-export type MonthlyReportImport = { entries: EntryRef[] } | NotesImport | { lines: TimelineLine[] };
+// checkedKpiIds: KPIs whose entries were looked up, so refresh can tell "entry deleted" from "not checked".
+export type MonthlyReportImport = { entries: EntryRef[]; checkedKpiIds: number[] } | NotesImport | { lines: TimelineLine[] };
 
 // Raw material for the editor's "pull" buttons. Nothing is saved: the editor applies it to its own unsaved content.
 export async function getMonthlyReportImport(domainSlug: string, period: string, kind: MonthlyReportImportKind): Promise<MonthlyReportImport | null> {
@@ -182,11 +178,18 @@ export async function getMonthlyReportImport(domainSlug: string, period: string,
   if (!domain) return null;
   if (kind === "timeline") return { lines: await loadTimelineLines(period) };
   const active = await db.select({ id: kpis.id, period: kpis.period }).from(kpis).where(and(eq(kpis.domainId, domain.id), eq(kpis.isActive, true)));
-  if (kind === "notes") return loadNotes(domain.id, active.map((k) => k.id), period);
+  if (kind === "notes") {
+    const [notes, [prior]] = await Promise.all([
+      loadNotes(domain.id, active.map((k) => k.id), period),
+      db.select({ content: monthlyReports.content }).from(monthlyReports).where(and(eq(monthlyReports.domainId, domain.id), lt(monthlyReports.period, period))).orderBy(desc(monthlyReports.period)).limit(1),
+    ]);
+    return { ...notes, previousActions: prior ? monthlyReportContentSchema.parse(prior.content).actions : [] };
+  }
   // Archived KPIs are never queried, so refresh cannot touch their observations.
   const months = [...new Set([previousReportMonth(period), ...reportMonths(period)])];
-  const entries = await latestEntries(active.filter((k) => k.period === "monthly").map((k) => k.id), months);
-  return { entries: [...entries.values()].map(({ kpiId, periodDate, value, note }) => ({ kpiId, periodDate, value, note })) };
+  const checkedKpiIds = active.filter((k) => k.period === "monthly").map((k) => k.id);
+  const entries = await latestEntries(checkedKpiIds, months);
+  return { entries: [...entries.values()].map(({ kpiId, periodDate, value, note, numerator, denominator }) => ({ kpiId, periodDate, value, note, numerator, denominator })), checkedKpiIds };
 }
 
 export async function saveMonthlyReport(domainSlug: string, period: string, input: unknown, expectedRevision: number, user: { id: string; email?: string | null }): Promise<MonthlyReportBundle> {

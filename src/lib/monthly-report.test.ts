@@ -216,3 +216,56 @@ test("weighted target avoids product overflow and nonrepresentable ratio remains
   assert.ok(impossible.questions.some((q) => q.path === "metrics.0.ytd.value"));
   assert.equal(impossible.ready, false);
 });
+
+const october = "2026-10-01";
+const octoberRows = (fill: (month: string) => MonthlyObservation) => reportMonths(october).map(fill);
+
+test("YTD counts only months from the metric's start month and is labelled with the range", () => {
+  const report = content(octoberRows((month) => observed(month, month < "2026-03-01" ? null : 5)));
+  report.metrics[0].ytdStartMonth = "2026-03-01";
+  const result = computeMonthlyReport(report, october);
+  assert.equal(result.metrics[0].ytd.value, 40);
+  assert.equal(result.metrics[0].ytd.target, 80);
+  assert.equal(result.metrics[0].ytd.label, "YTD Mar–Okt");
+  assert.ok(!result.questions.some((q) => q.path.startsWith("metrics.0.ytd") || q.path.startsWith("metrics.0.observations.2026-01-01") || q.path.startsWith("metrics.0.observations.2026-02-01")));
+  report.metrics[0].ytdStartMonth = null;
+  const january = computeMonthlyReport(report, october);
+  assert.equal(january.metrics[0].ytd.label, "YTD Jan–Okt");
+  assert.equal(january.metrics[0].ytd.state, "missing");
+  assert.ok(january.questions.some((q) => q.path === "metrics.0.ytd"));
+});
+
+test("a YTD start in another year or after the report month is a question and falls back to January", () => {
+  const report = content(octoberRows((month) => observed(month, 5)));
+  for (const start of ["2025-12-01", "2026-11-01"]) {
+    report.metrics[0].ytdStartMonth = start;
+    const result = computeMonthlyReport(report, october);
+    assert.ok(result.questions.some((q) => q.path === "metrics.0.ytdStart"), start);
+    assert.equal(result.metrics[0].ytd.label, "YTD Jan–Okt");
+  }
+  report.metrics[0].ytdStartMonth = "2026-10-01";
+  const single = computeMonthlyReport(report, october);
+  assert.ok(!single.questions.some((q) => q.path === "metrics.0.ytdStart"));
+  assert.equal(single.metrics[0].ytd.value, 5);
+});
+
+test("ratio YTD from a mid-year start is total numerator over total denominator", () => {
+  const report = content(octoberRows((month) => month < "2026-03-01" ? observed(month, null) : month === "2026-03-01"
+    ? { ...observed(month, 50), numerator: 1, denominator: 2 } : { ...observed(month, 100), numerator: 9, denominator: 9 }));
+  report.metrics[0].unit = "%";
+  report.metrics[0].aggregation = "ratio";
+  report.metrics[0].ytdStartMonth = "2026-03-01";
+  const result = computeMonthlyReport(report, october);
+  assert.equal(result.metrics[0].ytd.value, 64 / 65 * 100);
+  assert.equal(result.metrics[0].ytd.label, "YTD Mar–Okt");
+});
+
+test("each previous action without a status is one question; marked ones are not", () => {
+  const report = content(octoberRows((month) => observed(month, 5)));
+  report.previousActions = [
+    { action: "Renegosiasi vendor", pic: "Sari", deadline: "2026-10-31", status: "", note: "" },
+    { action: "Audit stok", pic: "Budi", deadline: "2026-10-15", status: "done", note: "" },
+  ];
+  const paths = computeMonthlyReport(report, october).questions.map((q) => q.path).filter((path) => path.startsWith("previousActions"));
+  assert.deepEqual(paths, ["previousActions.0.status"]);
+});

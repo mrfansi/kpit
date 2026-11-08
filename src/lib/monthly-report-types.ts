@@ -37,6 +37,8 @@ export interface MonthlyReportMetric {
   reconciliationNote: string;
   deviationCause: string;
   deviationEvidence: string;
+  /** First month counted in YTD (YYYY-MM-01); null/absent = January of the report year. */
+  ytdStartMonth?: string | null;
 }
 
 export interface MonthlyReportRisk {
@@ -49,6 +51,15 @@ export interface MonthlyReportAction {
   action: string;
   pic: string;
   deadline: string;
+}
+
+/** Last month's action carried into this report with its follow-up status. */
+export interface MonthlyPreviousAction {
+  action: string;
+  pic: string;
+  deadline: string;
+  status: "done" | "in_progress" | "dropped" | "";
+  note: string;
 }
 
 export interface MonthlyReportDecision {
@@ -79,6 +90,7 @@ export interface MonthlyReportContent {
   risksReviewed: boolean;
   risks: MonthlyReportRisk[];
   actions: MonthlyReportAction[];
+  previousActions: MonthlyPreviousAction[];
   decisionsReviewed: boolean;
   decisions: MonthlyReportDecision[];
   finance: {
@@ -105,6 +117,8 @@ export interface ComputedReportValue {
   source: string;
   targetSource: string;
   calculation: string;
+  /** Display label, set on YTD values (e.g. "YTD Mar–Okt"). */
+  label?: string;
 }
 
 export interface ComputedReportMetric {

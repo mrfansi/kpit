@@ -13,7 +13,7 @@ function bundle(division: MonthlyReportBundle["content"]["division"] = "operatio
     content: {
       division, summary: ["Progress 1", "Progress 2"], worstOutcome: "Target missed", narrativeSource: "management report", kpiSetChangeNote: "unchanged",
       metrics: [{ kpiId: 1, name: "Orders", definition: "completed orders", unit: "", direction: "higher_better", definitionConfirmed: true, aggregation: "sum", aggregationNote: "sum months", observations: [observation], sharedMetricKey: "", sharingReviewed: true, reconciliationNote: "", deviationCause: "delays", deviationEvidence: "case log" }],
-      risksReviewed: true, risks: [{ issue: "delay", impact: "lost orders", escalationOwner: "COO" }], actions: [{ action: "repair", pic: "Ops", deadline: "2026-11-10" }], decisionsReviewed: true,
+      risksReviewed: true, risks: [{ issue: "delay", impact: "lost orders", escalationOwner: "COO" }], actions: [{ action: "repair", pic: "Ops", deadline: "2026-11-10" }], previousActions: [], decisionsReviewed: true,
       decisions: decisions ? [{ request: "Approve staffing", options: "hire or defer", impact: "capacity" }] : [],
       finance: { incomeStatement: { unit: "Rp", rows: [{ label: "Revenue", value: 100, source: "bank book", state: "provided" }] }, cashFlow: { unit: "Rp", rows: [{ label: "Cash", value: 70, source: "cash book", state: "provided" }] }, balanceSheet: { unit: "Rp", rows: [{ label: "Assets", value: 200, source: "balance book", state: "provided" }] } },
       channelBreakdowns: [{ channel: "Direct", metric: "Orders", value: 2, unit: "", source: "CRM", state: "provided" }], activities: ["demo"], appendices: [{ title: "Evidence", content: "<img src=x onerror=alert(1)>", source: "archive" }], aiNotes: "AI-assisted draft",
@@ -41,6 +41,7 @@ test("computed sources and escaped author content stay attached to every value",
   assert.match(output, /ledger &lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   assert.match(output, /sum Jan–Oct/);
   assert.match(output, /Sumber: September ledger/);
+  assert.match(output, /sum Jan–Oct/);
   assert.match(output, /bukti: case log/);
 });
 
@@ -87,4 +88,54 @@ test("brand reaches deck and appendix with escaped footer and independent red st
   assert.doesNotMatch(output, /<script>alert\("footer"\)<\/script>/);
   assert.match(output, /background: var\(--card-bg\); border: 1px solid var\(--card-border\); border-radius: var\(--radius\)/);
   assert.match(output, /background: var\(--bg-start\); color: var\(--text\); font-family: var\(--font-body\)/);
+});
+
+function trendSlide(output: string) { return output.match(/<section[^>]*data-slide="trend"[\s\S]*?<\/section>/)![0]; }
+
+test("trend cells carry values and markers; sources move to deduplicated slide footnotes", () => {
+  const slide = trendSlide(renderMonthlyReportPresentation(bundle()));
+  const body = slide.replace(/<div class="text-small" role="note"[\s\S]*$/, "");
+  assert.doesNotMatch(body, /Sumber:|perhitungan:/);
+  assert.match(body, /3 \(target: 5\) \[1\]/);
+  assert.match(body, /4 \(target: 5\) \[2\]/);
+  const numbers = [...slide.matchAll(/<p>\[(\d+)\] /g)].map((m) => m[1]);
+  assert.deepEqual(numbers, numbers.map((_, i) => String(i + 1)));
+  assert.equal(new Set([...slide.matchAll(/<p>\[\d+\] (.*?)<\/p>/g)].map((m) => m[1])).size, numbers.length);
+  assert.match(slide, /\[\d+\] Sumber: September ledger; target: approved target; perhitungan: monthly recorded input/);
+  assert.match(slide, /sum Jan–Oct/);
+  const same = bundle();
+  same.metrics[0].ytd = { ...same.metrics[0].current };
+  assert.match(trendSlide(renderMonthlyReportPresentation(same)), /4 \(target: 5\) \[2\][^]*4 \(target: 5\) \[2\]/);
+});
+
+test("sparkline needs two provided observations and is hidden from assistive tech", () => {
+  const report = bundle();
+  assert.doesNotMatch(trendSlide(renderMonthlyReportPresentation(report)), /<svg/);
+  const base = report.content.metrics[0].observations[0];
+  report.content.metrics[0].observations = [base, { ...base, month: "2026-09-01", actual: 3 }, { ...base, month: "2026-08-01", actual: null, state: "untracked" }];
+  assert.match(trendSlide(renderMonthlyReportPresentation(report)), /<svg[^>]*aria-hidden="true"/);
+});
+
+test("previous actions appear above next month's actions only when present", () => {
+  const report = bundle();
+  assert.doesNotMatch(renderMonthlyReportPresentation(report), /Tindak lanjut bulan lalu/);
+  assert.doesNotMatch(renderMonthlyReportMarkdown(report, "full"), /Tindak lanjut bulan lalu/);
+  report.content.previousActions = [{ action: "fix <b>queue</b>", pic: "Ops", deadline: "2026-10-15", status: "in_progress", note: "" }];
+  const html = renderMonthlyReportPresentation(report);
+  assert.ok(html.indexOf("Tindak lanjut bulan lalu") < html.indexOf("Aksi bulan depan</th>"));
+  assert.match(html, /fix &lt;b&gt;queue&lt;\/b&gt;/);
+  assert.match(html, /Berjalan/);
+  for (const format of ["full", "brief"] as const) {
+    const md = renderMonthlyReportMarkdown(report, format);
+    assert.ok(md.indexOf("Tindak lanjut bulan lalu") < md.indexOf("repair"));
+    assert.match(md, /status: Berjalan/);
+  }
+});
+
+test("YTD label falls back to YTD and honours a custom range label", () => {
+  const report = bundle();
+  assert.match(renderMonthlyReportMarkdown(report, "full"), /; YTD: /);
+  report.metrics[0].ytd = { ...report.metrics[0].ytd, label: "YTD Mar–Okt" };
+  assert.match(renderMonthlyReportMarkdown(report, "full"), /YTD Mar–Okt: /);
+  assert.match(renderMonthlyReportPresentation(report), /YTD Mar–Okt: 40/);
 });

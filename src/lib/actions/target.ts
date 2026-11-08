@@ -2,11 +2,11 @@
 
 import { db } from "@/lib/db";
 import { kpiTargets, kpis } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-utils";
-import { auditInsert, logAudit } from "@/lib/db/audit";
+import { auditInsert, formatChanges, logAudit } from "@/lib/db/audit";
 import { z } from "zod";
 import { checkThresholdCoherence } from "@/lib/kpi-coherence";
 
@@ -16,9 +16,9 @@ import { checkThresholdCoherence } from "@/lib/kpi-coherence";
  * bukan sesuatu yang boleh dikirim (atau dilupakan) oleh klien.
  */
 const TargetSchema = z.object({
-  target: z.number().finite().positive(),
-  thresholdGreen: z.number().finite().positive(),
-  thresholdYellow: z.number().finite().positive(),
+  target: z.number().finite().nonnegative(),
+  thresholdGreen: z.number().finite().nonnegative(),
+  thresholdYellow: z.number().finite().nonnegative(),
 });
 
 export type UpsertTargetResult = { error: string } | undefined;
@@ -60,13 +60,19 @@ export async function upsertTarget(kpiId: number, periodDate: string, data: {
     thresholdYellow: parsed.data.thresholdYellow,
   };
 
+  const [existing] = await db
+    .select({ target: kpiTargets.target, thresholdGreen: kpiTargets.thresholdGreen, thresholdYellow: kpiTargets.thresholdYellow })
+    .from(kpiTargets)
+    .where(and(eq(kpiTargets.kpiId, kpiId), eq(kpiTargets.periodDate, periodDate)))
+    .limit(1);
+
   await db.batch([
     db.insert(kpiTargets).values({ kpiId, periodDate, ...targetData })
       .onConflictDoUpdate({
         target: [kpiTargets.kpiId, kpiTargets.periodDate],
         set: targetData,
       }),
-    auditInsert({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi_target", entityId: String(kpiId), detail: `periode ${periodDate}` }),
+    auditInsert({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: existing ? "update" : "create", entity: "kpi_target", entityId: `${kpiId}:${periodDate}`, detail: formatChanges(existing ?? {}, targetData) }),
   ]);
   revalidatePath("/");
   revalidatePath(`/kpi/${kpiId}`);
@@ -75,8 +81,10 @@ export async function upsertTarget(kpiId: number, periodDate: string, data: {
 
 export async function deleteTarget(id: number, kpiId: number) {
   const session = await requireAdmin();
-  await db.delete(kpiTargets).where(eq(kpiTargets.id, id));
-  await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "delete", entity: "kpi_target", entityId: String(id) });
+  const [deleted] = await db.delete(kpiTargets).where(eq(kpiTargets.id, id)).returning();
+  if (deleted) {
+    await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "delete", entity: "kpi_target", entityId: `${deleted.kpiId}:${deleted.periodDate}`, detail: formatChanges({ target: deleted.target, thresholdGreen: deleted.thresholdGreen, thresholdYellow: deleted.thresholdYellow }, {}) });
+  }
   revalidatePath("/");
   revalidatePath(`/kpi/${kpiId}`);
 }

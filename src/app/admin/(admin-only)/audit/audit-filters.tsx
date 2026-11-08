@@ -5,7 +5,7 @@ import { useCallback, useTransition } from "react";
 
 interface AuditFiltersProps {
   actions: string[];
-  entities: string[];
+  entities: { value: string; label: string }[];
 }
 
 /** Filter by aksi & entitas untuk log audit. Update query param via router, page.tsx (server) yang query ke DB. */
@@ -48,11 +48,11 @@ export function AuditFilters({ actions, entities }: AuditFiltersProps) {
         aria-label="Filter entitas"
         value={currentEntity}
         onChange={(e) => updateParam("entity", e.target.value)}
-        className="h-8 rounded-md border border-input bg-card px-2 text-sm text-foreground capitalize outline-2 outline-offset-[-3px] outline-transparent transition-colors duration-[var(--dur-micro)] hover:bg-accent focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-55"
+        className="h-8 rounded-md border border-input bg-card px-2 text-sm text-foreground outline-2 outline-offset-[-3px] outline-transparent transition-colors duration-[var(--dur-micro)] hover:bg-accent focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-55"
       >
         <option value="">Semua Entitas</option>
         {entities.map((en) => (
-          <option key={en} value={en}>{en}</option>
+          <option key={en.value} value={en.value}>{en.label}</option>
         ))}
       </select>
     </div>

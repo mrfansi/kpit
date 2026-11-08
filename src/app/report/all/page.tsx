@@ -1,6 +1,7 @@
-import { getAllDomains, getKPIsWithLatestEntry, getBatchPeriodComparison, getReportActionPlansWithKPI } from "@/lib/queries";
+import { getAllDomains, getKPIsWithLatestEntry, getBatchPeriodComparison, getReportActionPlansWithKPI, getTargetResolver } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig, trendColor } from "@/lib/kpi-status";
-import { formatPeriodDate, formatValue, listLastNMonths, defaultReportingPeriod } from "@/lib/period";
+import { formatPeriodDate, formatValue, listLastNMonths, defaultReportingPeriod, shiftMonth } from "@/lib/period";
+import { formatDayLong } from "@/lib/date-utils";
 import { PrintButton } from "@/components/print-button";
 import { ReportPeriodSelector } from "@/components/report-period-selector";
 import { ReportSparkline } from "@/components/report/report-sparkline";
@@ -14,8 +15,6 @@ import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
-import { kpiTargets, type KPI } from "@/lib/db/schema";
 
 export const metadata: Metadata = { title: "Executive Report: Semua Domain" };
 
@@ -31,35 +30,25 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
 
   // Previous month label for display
   const prevMonthLabel = selectedPeriod
-    ? (() => {
-        const [y, m] = selectedPeriod.split("-").map(Number);
-        const d = new Date(y, m - 2, 1);
-        return formatPeriodDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`, "MMM yy");
-      })()
+    ? formatPeriodDate(shiftMonth(selectedPeriod, -1), "MMM yy")
     : null;
 
-  const [domains, allKPIsWithEntries, actionPlanRows, session, targetRows] = await Promise.all([
+  const [domains, allKPIsWithEntries, actionPlanRows, session, prevTargetOf] = await Promise.all([
     getAllDomains(),
     getKPIsWithLatestEntry(undefined, selectedPeriod),
     getReportActionPlansWithKPI(),
     auth(),
-    db.select().from(kpiTargets),
+    getTargetResolver(),
   ]);
   const isAdmin = session?.user.role === "admin";
 
   // Previous-month status must use that month's override, not the current one (one query, resolved in memory).
-  const overrides = new Map(targetRows.map((row) => [`${row.kpiId}:${row.periodDate}`, row]));
-  const prevTargetOf = (kpi: KPI, periodDate: string) => {
-    const { target, thresholdGreen, thresholdYellow } = overrides.get(`${kpi.id}:${periodDate}`) ?? kpi;
-    return { target, thresholdGreen, thresholdYellow };
-  };
-
   const kpiIds = allKPIsWithEntries.map(({ kpi }) => kpi.id);
   const comparisonMap = selectedPeriod
     ? await getBatchPeriodComparison(kpiIds, selectedPeriod)
     : new Map();
 
-  const printDate = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
+  const printDate = formatDayLong();
 
   // Global summary
   let totalGreen = 0, totalYellow = 0, totalRed = 0, totalNoData = 0;

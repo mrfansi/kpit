@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware } from "better-auth/api";
 import { headers } from "next/headers";
+import { cache } from "react";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { updateUserPassword } from "@/lib/db/users";
@@ -49,7 +50,8 @@ function createAuth() {
     },
     session: {
       expiresIn: 60 * 60 * 24 * 30, // next-auth's default JWT lifetime
-      // Avoids a D1 read per request; a role change or deleted user takes effect within 5 minutes.
+      // Saves the D1 read while the cookie is fresh. After 5 minutes renders cannot re-issue it (only the proxy,
+      // on /admin and /login, forwards the refreshed cookie), so later reads hit D1 until then. Writes always skip it.
       cookieCache: { enabled: true, maxAge: 5 * 60 },
     },
   });
@@ -64,14 +66,30 @@ export function getAuth() {
 
 export type AuthSession = { user: { id: string; name: string; email: string; role: "admin" | "viewer" } };
 
-export async function getSessionFromHeaders(requestHeaders: Headers): Promise<AuthSession | null> {
-  const session = await getAuth().api.getSession({ headers: requestHeaders });
-  if (!session) return null;
+function toAuthSession(session: { user: { id: string; name: string; email: string; role?: unknown } }): AuthSession {
   const { id, name, email, role } = session.user;
   return { user: { id, name, email, role: role === "admin" ? "admin" : "viewer" } };
 }
 
-/** Current session for server components, actions and route handlers. */
-export async function auth(): Promise<AuthSession | null> {
-  return getSessionFromHeaders(await headers());
+/** `fresh` reads D1 instead of the cookie cache: use it to authorise writes (role changes apply at once). */
+export async function getSessionFromHeaders(requestHeaders: Headers, opts?: { fresh?: boolean }): Promise<AuthSession | null> {
+  const session = await getAuth().api.getSession({
+    headers: requestHeaders,
+    query: opts?.fresh ? { disableCookieCache: true } : undefined,
+  });
+  return session ? toAuthSession(session) : null;
+}
+
+/** Proxy variant: also returns the `Set-Cookie` values better-auth wants to issue (refreshed cookie cache). */
+export async function getSessionWithCookies(requestHeaders: Headers): Promise<{ session: AuthSession | null; setCookies: string[] }> {
+  const { headers: out, response } = await getAuth().api.getSession({ headers: requestHeaders, returnHeaders: true });
+  return { session: response ? toAuthSession(response) : null, setCookies: out.getSetCookie() };
+}
+
+/** Current session for server components; one lookup per render however many callers. */
+export const auth = cache(async (): Promise<AuthSession | null> => getSessionFromHeaders(await headers()));
+
+/** Current session read from D1, for server actions and route handlers that write. */
+export async function authFresh(): Promise<AuthSession | null> {
+  return getSessionFromHeaders(await headers(), { fresh: true });
 }

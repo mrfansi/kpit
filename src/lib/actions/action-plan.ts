@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { domains, kpiActionPlans, kpis } from "@/lib/db/schema";
 import { actionPlanSchema, actionPlanUpdateSchema } from "@/lib/validations/action-plan";
 import { requireAdmin } from "@/lib/auth-utils";
-import { logAudit } from "@/lib/db/audit";
+import { formatChanges, logAudit } from "@/lib/db/audit";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -31,12 +31,14 @@ function revalidateActionPlanViews(kpiId: number, domainSlug?: string) {
 
 export async function createActionPlan(input: unknown) {
   const session = await requireAdmin();
-  const parsed = actionPlanSchema.parse(input);
-  const context = await getActionContext(parsed.kpiId);
+  const parsed = actionPlanSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const data = parsed.data;
+  const context = await getActionContext(data.kpiId);
 
   await db.insert(kpiActionPlans).values({
-    ...parsed,
-    description: parsed.description || null,
+    ...data,
+    description: data.description || null,
     updatedAt: new Date(),
   });
 
@@ -45,25 +47,34 @@ export async function createActionPlan(input: unknown) {
     userEmail: session.user.email ?? undefined,
     action: "create",
     entity: "kpi_action_plan",
-    detail: `${context?.kpiName ?? "KPI"}: ${parsed.title}`,
+    detail: `${context?.kpiName ?? "KPI"}: ${data.title}`,
   });
 
-  revalidateActionPlanViews(parsed.kpiId, context?.domainSlug);
+  revalidateActionPlanViews(data.kpiId, context?.domainSlug);
 }
 
 export async function updateActionPlan(id: number, kpiId: number, input: unknown) {
   const session = await requireAdmin();
-  const parsed = actionPlanUpdateSchema.parse(input);
+  const parsed = actionPlanUpdateSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const data = parsed.data;
   const context = await getActionContext(kpiId);
+
+  const existing = await db.query.kpiActionPlans.findFirst({ where: eq(kpiActionPlans.id, id) });
+  if (!existing) return { error: "Action plan tidak ditemukan" };
+  const { title, description, owner, dueDate, status } = existing;
+  const before = { title, description, owner, dueDate, status };
 
   await db
     .update(kpiActionPlans)
     .set({
-      ...parsed,
-      description: parsed.description === "" ? null : parsed.description,
+      ...data,
+      description: data.description === "" ? null : data.description,
       updatedAt: new Date(),
     })
     .where(eq(kpiActionPlans.id, id));
+
+  const after = { ...before, ...data, description: data.description === "" ? null : (data.description ?? before.description) };
 
   await logAudit({
     userId: session.user.id,
@@ -71,7 +82,7 @@ export async function updateActionPlan(id: number, kpiId: number, input: unknown
     action: "update",
     entity: "kpi_action_plan",
     entityId: String(id),
-    detail: parsed.title ?? parsed.status ?? "updated",
+    detail: formatChanges(before, after) || "updated",
   });
 
   revalidateActionPlanViews(kpiId, context?.domainSlug);

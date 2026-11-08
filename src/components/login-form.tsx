@@ -29,7 +29,7 @@ function LoginFormInner() {
     setLoading(false);
 
     if (signInError) {
-      setError("Email atau password salah.");
+      setError(signInError.status === 429 ? "Terlalu banyak percobaan login. Coba lagi dalam 1 menit." : "Email atau password salah.");
     } else {
       router.push(callbackUrl);
       router.refresh();

@@ -35,12 +35,15 @@ interface GanttChartProps {
   projects: TimelineProject[];
   statuses: TimelineProjectStatus[];
   canEdit: boolean;
+  /** Analisis risiko terbuka untuk semua pengguna login, bukan hanya admin. */
+  signedIn: boolean;
 }
 
 export function GanttChart({
   projects: initialProjects,
   statuses,
   canEdit,
+  signedIn,
 }: GanttChartProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [panOffset, setPanOffset] = useState(0);
@@ -162,7 +165,8 @@ export function GanttChart({
 
           startTransition(async () => {
             try {
-              await updateProjectDates(drag.projectId, newStart, newEnd);
+              const result = await updateProjectDates(drag.projectId, newStart, newEnd);
+              if (result?.error) throw new Error(result.error);
             } catch (error) {
               // Server menolak (mis. tanggal tidak valid) — kembalikan bar ke posisi
               // semula, jangan biarkan UI menampilkan jadwal yang tidak tersimpan.
@@ -489,6 +493,7 @@ export function GanttChart({
           <GanttLogPanel
             key={logPanelProject.id}
             project={logPanelProject}
+            signedIn={signedIn}
             onClose={() => setLogPanelProject(null)}
           />
         </>

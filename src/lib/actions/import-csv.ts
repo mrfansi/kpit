@@ -1,17 +1,18 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { inChunks } from "@/lib/db/chunks";
 import { kpis, kpiEntries } from "@/lib/db/schema";
 import { and, eq, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
-import { parsePlainNumber, kpiNameLookup, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
-import { isValidCalendarDate } from "@/lib/date-utils";
-import { checkValueBounds } from "@/lib/kpi-bounds";
-import { requireAdmin, requireAuth } from "@/lib/auth-utils";
+import { parsePlainNumber, kpiNameLookup, checkEntry, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
+import { requireAdmin } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
 
 export interface ImportRow {
+  /** Nomor baris CSV asal (header = baris 1), supaya pesan error import menunjuk baris yang sama dengan preview. */
+  rowIndex?: number;
   kpiName: string;
   kpiId?: number;
   periodDate: string;
@@ -36,27 +37,13 @@ const kpiColumns = {
   period: kpis.period,
   isActive: kpis.isActive,
 };
-type KPIRef = { name: string; unit: string; minValue: number | null; maxValue: number | null; period: string };
-
-/**
- * Aturan yang sama dengan form input: tanggal sah, KPI bulanan wajib tanggal 01
- * (dashboard hanya membaca tanggal 01), dan nilai dalam batas KPI. Dipakai di
- * resolve (preview) dan di import, karena baris import datang dari browser.
- */
-function checkEntry(kpi: KPIRef, periodDate: string, value: number): string | null {
-  if (!isValidCalendarDate(periodDate)) return `period_date tidak valid: "${periodDate}" (format: YYYY-MM-DD)`;
-  if (kpi.period === "monthly" && !periodDate.endsWith("-01")) {
-    return `period_date harus tanggal 01 untuk KPI bulanan: "${periodDate}"`;
-  }
-  return checkValueBounds(value, kpi);
-}
 
 /** Validate and resolve CSV rows against DB KPIs */
 export async function resolveCSVRows(text: string): Promise<{
   resolved: (ImportRow & { rowIndex: number })[];
   errors: { row: number; message: string }[];
 }> {
-  await requireAuth();
+  await requireAdmin();
   const { headers, rows } = parseCSV(text);
   if (rows.length > MAX_IMPORT_ROWS) {
     return { resolved: [], errors: [{ row: 0, message: `Terlalu banyak baris (maks ${MAX_IMPORT_ROWS}).` }] };
@@ -125,16 +112,13 @@ export async function resolveCSVRows(text: string): Promise<{
   // Cek entri lama yang bertabrakan dengan baris yang akan diimport, supaya
   // preview bisa memperingatkan admin sebelum data lama ditimpa.
   if (resolved.length > 0) {
-    const existingMap = new Map<string, number>();
-    for (let i = 0; i < resolved.length; i += 50) {
-      const existing = await db
-        .select({ kpiId: kpiEntries.kpiId, periodDate: kpiEntries.periodDate, value: kpiEntries.value })
-        .from(kpiEntries)
-        .where(or(...resolved.slice(i, i + 50).map((row) =>
-          and(eq(kpiEntries.kpiId, row.kpiId!), eq(kpiEntries.periodDate, row.periodDate))
-        )));
-      for (const entry of existing) existingMap.set(`${entry.kpiId}:${entry.periodDate}`, entry.value);
-    }
+    const existing = await inChunks(resolved, 0, (chunk) => db
+      .select({ kpiId: kpiEntries.kpiId, periodDate: kpiEntries.periodDate, value: kpiEntries.value })
+      .from(kpiEntries)
+      .where(or(...chunk.map((row) =>
+        and(eq(kpiEntries.kpiId, row.kpiId!), eq(kpiEntries.periodDate, row.periodDate))
+      ))), 2);
+    const existingMap = new Map(existing.map((entry) => [`${entry.kpiId}:${entry.periodDate}`, entry.value]));
     for (const row of resolved) {
       row.existingValue = existingMap.get(`${row.kpiId}:${row.periodDate}`);
     }
@@ -161,7 +145,7 @@ export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
   const validRows: (ImportRow & { rowIndex: number; kpiId: number })[] = [];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const rowNum = i + 2;
+    const rowNum = row.rowIndex ?? i + 2;
     const kpi = row.kpiId ? kpiById.get(row.kpiId) : undefined;
     const rowError = !kpi
       ? "kpiId tidak ditemukan"

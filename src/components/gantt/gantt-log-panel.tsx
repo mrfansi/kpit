@@ -6,18 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimelineProgressLog } from "@/components/timeline-progress-log";
 import { TimelineRiskAssessment } from "@/components/timeline/timeline-risk-assessment";
-import { authClient } from "@/lib/auth-client";
 import { fetchProjectLogs } from "@/lib/actions/timeline";
 import type { TimelineProject, TimelineProjectLog } from "@/lib/db/schema";
 
 interface GanttLogPanelProps {
   project: TimelineProject;
+  signedIn: boolean;
   onClose: () => void;
 }
 
-export function GanttLogPanel({ project, onClose }: GanttLogPanelProps) {
-  // Endpoint analisis risiko butuh login; tanpa sesi, tombolnya selalu gagal.
-  const { data: session } = authClient.useSession();
+export function GanttLogPanel({ project, signedIn, onClose }: GanttLogPanelProps) {
   // null = masih fetch. Dibedakan dari [] supaya panel tidak sempat menampilkan
   // "belum ada log" untuk proyek yang sebenarnya punya log.
   const [logs, setLogs] = useState<TimelineProjectLog[] | null>(null);
@@ -50,7 +48,7 @@ export function GanttLogPanel({ project, onClose }: GanttLogPanelProps) {
           </div>
         ) : (
           <div className="space-y-8">
-            {session && (
+            {signedIn && (
             <TimelineRiskAssessment
               projectName={project.name}
               description={project.description || ""}

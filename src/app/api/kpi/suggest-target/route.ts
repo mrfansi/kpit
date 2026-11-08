@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const limited = enforceAIRateLimit(authResult.session.user.id, "suggest-target");
+  const limited = await enforceAIRateLimit(authResult.session.user.id, "suggest-target");
   if (limited) return limited;
 
   let raw: unknown;

@@ -30,7 +30,11 @@ export function DeleteDomainButton({ id, name }: DeleteDomainButtonProps) {
   function handleDelete() {
     startTransition(async () => {
       try {
-        await deleteDomain(id);
+        const result = await deleteDomain(id);
+        if (result.error) {
+          toast.error(result.error);
+          return;
+        }
         toast.success(`Domain "${name}" berhasil dihapus`);
         router.refresh();
       } catch {

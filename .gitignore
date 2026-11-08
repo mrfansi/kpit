@@ -60,3 +60,7 @@ next-env.d.ts
 /dist/
 .vinext/
 .cloudflare/
+
+# Local agent files
+AGENTS.md
+.claude-terminal

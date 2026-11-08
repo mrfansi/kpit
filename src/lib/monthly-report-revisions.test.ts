@@ -33,10 +33,15 @@ test("summaries match the editor's question count and old revisions keep their o
     assert.equal(finance.status.label, `Draf, ${editor!.questions.length} pertanyaan`);
     assert.equal(summaries.get(2)!.status.label, "Belum dibuat");
 
+    const oldRev = await getRevisionBundle("finance", period, 1);
+    assert.equal(oldRev.content.worstOutcome, "revisi satu");
+    assert.ok(oldRev.archivedAt);
+    const currentRev = await getRevisionBundle("finance", period, 2);
+    const { archivedAt, ...rest } = currentRev;
+    assert.equal(archivedAt, null);
+    assert.deepEqual(rest, editor);
     const listed = await listRevisions("finance", period);
     assert.deepEqual(listed?.revisions.map((r) => [r.revision, r.author]), [[2, "Ani"], [1, "Ani"]]);
-    assert.equal((await getRevisionBundle("finance", period, 1)).content.worstOutcome, "revisi satu");
-    assert.equal((await getRevisionBundle("finance", period, 2)).content.worstOutcome, "revisi dua");
     await assert.rejects(() => getRevisionBundle("finance", period, 3), (e: unknown) => e instanceof MonthlyReportError && e.status === 404);
     await assert.rejects(() => getRevisionBundle("missing", period, 1), (e: unknown) => e instanceof MonthlyReportError && e.status === 404);
     assert.equal(await listRevisions("missing", period), null);

@@ -141,6 +141,13 @@
       "when": 1794134880500,
       "tag": "0019_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1794139713620,
+      "tag": "0020_entry_ratio_parts",
+      "breakpoints": true
     }
   ]
 }

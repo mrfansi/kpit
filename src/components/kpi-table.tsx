@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { differenceInMonths, parseISO } from "date-fns";
+import { toJakartaDateOnly } from "@/lib/date-utils";
 import { Clock, ListChecks, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { getAchievementPct, getKPIStatus, statusConfig, trendColor } from "@/lib/kpi-status";
 import { formatPeriodDate, formatValue } from "@/lib/period";
@@ -76,7 +77,7 @@ export function KPITable({
             const activeActions = actionCounts.get(kpi.id) ?? 0;
 
             const isStale = latestEntry
-              ? differenceInMonths(new Date(), parseISO(latestEntry.periodDate)) >=
+              ? differenceInMonths(parseISO(toJakartaDateOnly()), parseISO(latestEntry.periodDate)) >=
                 STALE_THRESHOLD_MONTHS
               : false;
 

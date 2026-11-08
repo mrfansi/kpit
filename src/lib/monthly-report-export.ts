@@ -3,18 +3,23 @@ import { REPORT_DIVISIONS } from "./monthly-report-types";
 import { getPresentationStyles } from "./presentation/styles";
 import { getPresentationEngine } from "./presentation/engine";
 import { DEFAULT_BRAND_STYLE, type BrandStyle } from "./presentation/brand";
+import { formatNumber2 } from "./date-utils";
 
 export type MonthlyReportFormat = "full" | "brief" | "presentation";
 
 const label = (state: ObservationState, value: number | null, unit = "") =>
   state === "untracked" ? "belum dilacak" : state === "missing" || value === null
-    ? "belum diberikan" : `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(value)}${unit === "%" ? "%" : unit ? ` ${unit}` : ""}`;
+    ? "belum diberikan" : `${formatNumber2(value)}${unit === "%" ? "%" : unit ? ` ${unit}` : ""}`;
 const text = (value: string) => value.trim() || "belum diberikan";
 const html = (value: string | number) => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const cell = (value: string | number) => html(value).replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 const md = (value: string) => html(value).replace(/\\/g, "\\\\").replace(/([*_`[\]])/g, "\\$1");
 const source = (value: string) => `Sumber: ${text(value)}`;
-const computed = (value: ComputedReportValue, unit: string) => `${label(value.state, value.value, unit)} (target: ${label(value.target === null ? value.state : "provided", value.target, unit)}; ${source(value.source)}; target: ${source(value.targetSource)}; perhitungan: ${text(value.calculation)})`;
+const targetLabel = (value: ComputedReportValue, unit: string) => label(value.target === null ? value.state : "provided", value.target, unit);
+const provenance = (value: ComputedReportValue) => `${source(value.source)}; target: ${text(value.targetSource)}; perhitungan: ${text(value.calculation)}`;
+const computed = (value: ComputedReportValue, unit: string) => `${label(value.state, value.value, unit)} (target: ${targetLabel(value, unit)}; ${provenance(value)})`;
+const ytdLabel = (value: ComputedReportValue) => value.label ?? "YTD";
+const STATUS_LABELS = { done: "Selesai", in_progress: "Berjalan", dropped: "Dibatalkan", "": "belum diisi" } as const;
 
 function metricRows(bundle: MonthlyReportBundle) {
   return bundle.content.metrics.map((metric) => ({ metric, result: bundle.metrics.find((row) => row.kpiId === metric.kpiId) }));
@@ -56,10 +61,10 @@ export function renderMonthlyReportMarkdown(bundle: MonthlyReportBundle, format:
     if (result) lines.push(`- Aktual vs target: ${md(computed(result.current, metric.unit))}${result.missedTarget ? " — target meleset" : ""}`);
     else lines.push("- Aktual vs target: belum dihitung");
   }
-  lines.push("", "## 3. Tren MoM dan YTD", `Bulan lalu: ${previousMonth(bundle)}; YTD: Januari–${currentMonth(bundle)}.`, "");
+  lines.push("", "## 3. Tren MoM dan YTD", `Bulan lalu: ${previousMonth(bundle)}; periode YTD tertera pada label tiap KPI.`, "");
   for (const { metric, result } of metricRows(bundle)) {
     if (!result) continue;
-    lines.push(`- **${md(metric.name)}** — sebelumnya: ${md(computed(result.previous, metric.unit))}; sekarang: ${md(computed(result.current, metric.unit))}; MoM: ${result.momPercent === null ? "tidak dapat dihitung" : `${result.momPercent.toFixed(2)}% (dari aktual ${previousMonth(bundle)} dan ${currentMonth(bundle)}; ${md(source(result.previous.source))}; ${md(source(result.current.source))})`}; YTD: ${md(computed(result.ytd, metric.unit))}`);
+    lines.push(`- **${md(metric.name)}** — sebelumnya: ${md(computed(result.previous, metric.unit))}; sekarang: ${md(computed(result.current, metric.unit))}; MoM: ${result.momPercent === null ? "tidak dapat dihitung" : `${result.momPercent.toFixed(2)}% (dari aktual ${previousMonth(bundle)} dan ${currentMonth(bundle)}; ${md(source(result.previous.source))}; ${md(source(result.current.source))})`}; ${md(ytdLabel(result.ytd))}: ${md(computed(result.ytd, metric.unit))}`);
   }
   if (c.division === "finance") {
     for (const [title, statement] of statementRows(bundle)) {
@@ -70,7 +75,9 @@ export function renderMonthlyReportMarkdown(bundle: MonthlyReportBundle, format:
   const misses = metricRows(bundle).filter(({ result }) => result?.missedTarget);
   lines.push(...(misses.length ? misses.map(({ metric }) => `- ${md(metric.name)}: ${md(text(metric.deviationCause))}; bukti: ${md(text(metric.deviationEvidence))}; ${md(source(c.narrativeSource))}`) : [allCurrentTargetsMeasured(bundle) ? "- Semua KPI terukur memenuhi target." : "- Tidak dapat dinilai; metrik belum dilacak atau belum lengkap."]));
   lines.push("", "## 5. Isu, risiko, dan eskalasi", ...(c.risks.length ? c.risks.map((risk) => `- ${md(risk.issue)}; dampak: ${md(risk.impact)}; perlu turun tangan: ${md(risk.escalationOwner)}`) : [`- ${c.risksReviewed ? "Tidak ada risiko yang dilaporkan." : "Risiko belum ditinjau."}`]), `- ${md(source(c.narrativeSource))}`);
-  lines.push("", "## 6. Rencana bulan depan", ...c.actions.map((action) => `- ${md(action.action)}; PIC: ${md(action.pic)}; tenggat: ${md(action.deadline)}`), `- ${md(source(c.narrativeSource))}`);
+  lines.push("", "## 6. Rencana bulan depan");
+  if (c.previousActions.length) lines.push("### Tindak lanjut bulan lalu", ...c.previousActions.map((a) => `- ${md(a.action)}; PIC: ${md(a.pic)}; tenggat: ${md(a.deadline)}; status: ${STATUS_LABELS[a.status]}; catatan: ${md(a.note.trim() || "tidak ada")}`), "", "### Aksi bulan depan");
+  lines.push(...c.actions.map((action) => `- ${md(action.action)}; PIC: ${md(action.pic)}; tenggat: ${md(action.deadline)}`), `- ${md(source(c.narrativeSource))}`);
   if (c.decisions.length || !c.decisionsReviewed) lines.push("", "## 7. Keputusan C-level", ...(c.decisions.length ? c.decisions.map((decision) => `- ${md(decision.request)}; pilihan: ${md(decision.options)}; dampak: ${md(decision.impact)}`) : ["- Belum dikonfirmasi apakah keputusan diperlukan."]), `- ${md(source(c.narrativeSource))}`);
   lines.push("", "## Rekonsiliasi lintas divisi", ...(bundle.reconciliations.length ? reconciliationLines(bundle).map((entry) => `- ${md(entry)}`) : ["- Tidak ada metrik bersama yang dideklarasikan."]));
   if (c.aiNotes.trim()) lines.push("", "## Catatan presenter (draft bantuan AI; bukan sumber fakta)", md(c.aiNotes), md(source(c.narrativeSource)), ...metricRows(bundle).map(({ metric, result }) => `- ${md(metric.name)}: ${md(source(result?.current.source ?? ""))}; target: ${md(source(result?.current.targetSource ?? ""))}`));
@@ -87,8 +94,24 @@ export function renderMonthlyReportMarkdown(bundle: MonthlyReportBundle, format:
 }
 
 function items(values: string[]) { return `<ul class="memo-list">${values.map((value) => `<li>${html(value)}</li>`).join("")}</ul>`; }
-function table(headers: string[], rows: string[][]) {
-  return `<div class="memo-table-scroll"><table class="data-table"><thead><tr>${headers.map((value) => `<th scope="col">${html(value)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((value) => `<td>${html(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+type Cell = string | { raw: string };
+function table(headers: string[], rows: Cell[][]) {
+  return `<div class="memo-table-scroll"><table class="data-table"><thead><tr>${headers.map((value) => `<th scope="col">${html(value)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((value) => `<td>${typeof value === "string" ? html(value) : value.raw}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+// Numbered footnotes per slide; identical texts share one number.
+function footnotes() {
+  const list: string[] = [];
+  return {
+    ref(note: string) { let index = list.indexOf(note); if (index < 0) index = list.push(note) - 1; return `[${index + 1}]`; },
+    render: () => list.length ? `<div class="text-small" role="note" aria-label="Catatan kaki">${list.map((note, index) => `<p>[${index + 1}] ${html(note)}</p>`).join("")}</div>` : "",
+  };
+}
+function sparkline(observations: MonthlyReportBundle["content"]["metrics"][number]["observations"]): Cell {
+  const points = [...observations].sort((a, b) => a.month.localeCompare(b.month)).filter((row) => row.state === "provided" && row.actual !== null).map((row) => row.actual as number);
+  if (points.length < 2) return "";
+  const min = Math.min(...points), span = Math.max(...points) - min || 1;
+  const coords = points.map((value, index) => `${(index / (points.length - 1) * 76 + 2).toFixed(1)},${(22 - (value - min) / span * 20).toFixed(1)}`).join(" ");
+  return { raw: `<svg viewBox="0 0 80 24" width="80" height="24" aria-hidden="true" focusable="false"><polyline points="${coords}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>` };
 }
 function slide(key: string, title: string, body: string) {
   return `<section class="slide memo-slide" data-slide="${key}" role="region" aria-label="${html(title)}"><div class="memo-inner"><p class="text-small">Laporan bulanan divisi · 10–15 menit untuk seluruh slide inti</p><h1 class="title-large">${html(title)}</h1>${body}</div></section>`;
@@ -101,17 +124,20 @@ export function renderMonthlyReportPresentation(bundle: MonthlyReportBundle, sty
   const c = bundle.content;
   const rows = metricRows(bundle);
   const kpiTable = table(["KPI / definisi", "Aktual", "Target", "Sumber dan perhitungan"], rows.map(({ metric, result }) => [metric.name + ` — ${metric.definition}`, result ? label(result.current.state, result.current.value, metric.unit) : "belum diberikan", result ? label(result.current.target === null ? result.current.state : "provided", result.current.target, metric.unit) : "belum diberikan", result ? `${source(result.current.source)}; target: ${source(result.current.targetSource)}; ${result.current.calculation}` : "belum dihitung"]));
-  const trendTable = table(["KPI", `Bulan lalu (${previousMonth(bundle)})`, `Bulan ini (${currentMonth(bundle)})`, "MoM", "YTD Januari–bulan ini"], rows.map(({ metric, result }) => [metric.name, result ? computed(result.previous, metric.unit) : "belum dihitung", result ? computed(result.current, metric.unit) : "belum dihitung", result?.momPercent === null || !result ? "tidak dapat dihitung" : `${result.momPercent.toFixed(2)}% (${source(result.previous.source)}; ${source(result.current.source)}; perubahan relatif)`, result ? computed(result.ytd, metric.unit) : "belum dihitung"]));
+  const trendNotes = footnotes();
+  const trendValue = (value: ComputedReportValue, unit: string, prefix = "") => `${prefix}${label(value.state, value.value, unit)} (target: ${targetLabel(value, unit)}) ${trendNotes.ref(provenance(value))}`;
+  const trendTable = table(["KPI", "Pola", `Bulan lalu (${previousMonth(bundle)})`, `Bulan ini (${currentMonth(bundle)})`, "MoM", "YTD"], rows.map(({ metric, result }) => [metric.name, sparkline(metric.observations), result ? trendValue(result.previous, metric.unit) : "belum dihitung", result ? trendValue(result.current, metric.unit) : "belum dihitung", result?.momPercent === null || !result ? "tidak dapat dihitung" : `${result.momPercent.toFixed(2)}% ${trendNotes.ref(`${source(result.previous.source)}; ${source(result.current.source)}; perubahan relatif`)}`, result ? trendValue(result.ytd, metric.unit, result.ytd.label ? `${result.ytd.label}: ` : "") : "belum dihitung"]));
   const misses = rows.filter(({ result }) => result?.missedTarget);
   const status = misses.length ? `<p class="badge badge-red">${misses.length} KPI: Target meleset</p>` : "";
   const deviation = status + items(misses.length ? misses.map(({ metric }) => `${metric.name}: ${text(metric.deviationCause)}; bukti: ${text(metric.deviationEvidence)}; ${source(c.narrativeSource)}`) : [allCurrentTargetsMeasured(bundle) ? "Semua KPI terukur memenuhi target." : "Tidak dapat dinilai; metrik belum dilacak atau belum lengkap."]);
   const issues = items(c.risks.length ? c.risks.map((risk) => `${risk.issue}; dampak: ${risk.impact}; eskalasi: ${risk.escalationOwner}; ${source(c.narrativeSource)}`) : [c.risksReviewed ? "Tidak ada risiko yang dilaporkan." : "Risiko belum ditinjau."]);
-  const actions = table(["Aksi bulan depan", "PIC", "Tenggat / sumber"], c.actions.map((action) => [action.action, action.pic, `${action.deadline}; ${source(c.narrativeSource)}`]));
+  const previous = c.previousActions.length ? `<h2 class="title-medium">Tindak lanjut bulan lalu</h2>${table(["Aksi", "PIC", "Tenggat", "Status", "Catatan"], c.previousActions.map((a) => [a.action, a.pic, a.deadline, STATUS_LABELS[a.status], a.note.trim() || "tidak ada"]))}<h2 class="title-medium">Aksi bulan depan</h2>` : "";
+  const actions = previous + table(["Aksi bulan depan", "PIC", "Tenggat / sumber"], c.actions.map((action) => [action.action, action.pic, `${action.deadline}; ${source(c.narrativeSource)}`]));
   const decision = c.decisions.length ? table(["Keputusan diminta", "Pilihan", "Dampak / sumber"], c.decisions.map((item) => [item.request, item.options, `${item.impact}; ${source(c.narrativeSource)}`])) : "";
   const reconciliation = `<h2 class="title-medium">Rekonsiliasi lintas divisi</h2>${items(reconciliationLines(bundle).length ? reconciliationLines(bundle) : ["Tidak ada metrik bersama yang dideklarasikan."])}`;
   const core: string[] = [slide("summary", `${c.division ? REPORT_DIVISIONS[c.division] : bundle.domain.name} — Ringkasan ${currentMonth(bundle)}`, `${items([...c.summary, `Hasil paling tidak berjalan baik: ${c.worstOutcome}`])}<p class="text-small">${html(source(c.narrativeSource))}</p>`), slide("kpi", "KPI vs target", `<p class="text-small">Daftar KPI bulanan tetap. Perubahan daftar: ${html(text(c.kpiSetChangeNote))}</p>${kpiTable}`)];
   if (c.division === "finance") core.push(statementSlide("Laba rugi", c.finance.incomeStatement), statementSlide("Arus kas", c.finance.cashFlow), statementSlide("Neraca", c.finance.balanceSheet));
-  core.push(slide("trend", "Tren MoM dan YTD", trendTable));
+  core.push(slide("trend", "Tren MoM dan YTD", trendTable + trendNotes.render()));
   if (c.division === "hr_partnership") {
     core.push(slide("deviation-issues", "Deviasi, bukti, isu dan eskalasi", `<h2 class="title-medium">Penyebab deviasi</h2>${deviation}<h2 class="title-medium">Isu dan risiko</h2>${issues}`));
     core.push(slide("plan-decisions", "Rencana bulan depan dan keputusan", `${actions}${decision ? `<h2 class="title-medium">Keputusan C-level</h2>${decision}` : ""}${reconciliation}`));

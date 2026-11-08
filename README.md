@@ -7,8 +7,7 @@ R2 for comment images. All Worker settings and bindings live in `cloudflare.conf
 ## Cloudflare Workers + D1
 
 Use Node.js and `npm ci` (npm version pinned by `packageManager`). Runtime code uses the `DB` D1 binding,
-not `kpit.db` or `DATABASE_URL`. `better-sqlite3` is only a development dependency
-for offline migration/export tooling and tests.
+not `kpit.db` or `DATABASE_URL`.
 
 ### Provisioning and configuration
 
@@ -62,10 +61,11 @@ HTTPS, looks for the `__Secure-` session cookie and bounces every login back to
 
 `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are shell environment variables for
 the seed script only, not Worker secrets. Password hashing uses native WebCrypto
-PBKDF2-SHA256 (100000 iterations, the workerd maximum) so a login fits the
-[free plan's 10ms CPU allowance](https://developers.cloudflare.com/workers/platform/limits/#cpu-time);
-measure your deployment. Sign-in is also rate limited (5 attempts per 60 s per
-`cf-connecting-ip`, stored in D1 table `rate_limit`).
+PBKDF2-SHA256 (100000 iterations, the workerd maximum), measured at about 80 ms of
+CPU locally. That does not fit the
+[free plan's 10ms CPU allowance](https://developers.cloudflare.com/workers/platform/limits/#cpu-time),
+so every password check is rate limited instead: sign-in allows 5 attempts per 60 s per
+`cf-connecting-ip` and password change 5 per 15 min per user, both stored in D1 table `rate_limit`.
 
 ### Local development
 
@@ -78,8 +78,8 @@ npm run dev
 
 Open http://localhost:3000. `npm run dev` (Vite with the Cloudflare plugin) runs the
 app in workerd with local D1/R2 bindings; persisted state is under
-`.cloudflare/state`, which `d1:migrate:local`, `seed:admin --local` and the
-`d1:*` scripts without `--persist-to` also use. An explicit `--persist-to /absolute/dir`
+`.cloudflare/state`, which `d1:migrate:local` and
+`seed:admin` without `--persist-to` also use. An explicit `--persist-to /absolute/dir`
 isolates a rehearsal from the development database.
 
 `seed:admin` requires exactly one of `--local` / `--remote`, supports
@@ -110,96 +110,9 @@ that needs it.
 set `CLOUDFLARE_API_TOKEN`). It does not apply migrations. `preview` builds and serves
 the Worker locally; `cf-typegen` regenerates the binding types in `.cloudflare/types`.
 `d1:migrate:*` use `cf d1 migrations apply` with the committed `drizzle/*.sql` files
-and the `d1_migrations` ledger. The `d1:export/import/verify` scripts and
-`seed:admin` still shell out to the Wrangler CLI (cf has no `d1 execute --file` or
-`r2 object` commands), with a config generated from `cloudflare.config.ts`. Do not use `drizzle-kit push`: Workers only see schema
+and the `d1_migrations` ledger. `seed:admin` still shells out to the Wrangler CLI (cf has no `d1 execute --file` command), with a config generated from `cloudflare.config.ts`. Do not use `drizzle-kit push`: Workers only see schema
 applied through `d1:migrate:*`. The old `db:migrate`, `db:studio` and `start`
-npm commands are gone (they targeted `kpit.db` / a Node server);
-`src/scripts/migrate-db.ts` remains the export tool's snapshot-upgrade library.
-
-### Production SQLite and upload migration runbook
-
-Keep the Mac deployment and its original data intact throughout cutover.
-Do not send users to Workers until the imported data and login have passed smoke
-tests. All remote commands below are operator actions, not automatic setup.
-
-1. **Freeze writes**: stop the Mac application for the maintenance window.
-   SQLite backup is WAL-safe even while writing, but writes after the export
-   snapshot are **not carried over**. Do not run both deployments accepting
-   writes.
-2. **Keep a raw backup**: after stopping the app cleanly, copy `kpit.db` and retain
-   any `kpit.db-wal` / `kpit.db-shm` sidecars together if still present. Back up
-   `public/uploads/comments` separately. Never copy just the main DB from a
-   running WAL database and assume it includes recent writes.
-3. **Export** from the intact database (or a complete stopped-app backup):
-
-   ```bash
-   npm run d1:export -- --source /absolute/path/kpit.db --uploads-dir /absolute/path/public/uploads/comments --out /absolute/path/kpit-export
-   ```
-
-   The output directory must not already exist or overlap the source/uploads.
-   Export opens the source read-only and uses SQLite's consistent backup API.
-   Only its private `snapshot.sqlite` is upgraded, including reconciliation of
-   historical push-built migration ledgers. A fresh reference schema rejects
-   extra/missing tables or columns, dropped rows, invalid constraints and orphan
-   foreign keys. Resolve drift/orphans deliberately in a separate copy and
-   re-export; do not disable constraints or discard rows to force an import.
-   `data.sql` has one explicit-column INSERT per row, no BEGIN/COMMIT, and a
-   100KB per-statement ceiling. It excludes internal migration/system tables.
-   `manifest.json` records row counts, ordered typed-value SHA-256 hashes, the
-   SQL checksum, migration filenames and upload sizes/hashes.
-
-   Review **every warning**: missing referenced images and unsupported filenames
-   are listed. All text columns are scanned for `/uploads/comments/<name>`.
-   The app serves filenames matching `^[\w-]+\.(jpe?g|png|gif|webp)$` only.
-   Exported uploads retain their URLs, backed by R2 keys `comments/<name>`.
-   Without `--uploads-dir`, database export works but images are not transferred.
-   Treat the whole bundle as a sensitive backup: it contains emails, password
-   hashes and application data; keep it private and out of Git.
-4. **Rehearse in isolated local D1/R2**:
-
-   ```bash
-   npx cf d1 migrations apply 52360490-904e-4c4d-9fe0-a2536628f154 --dir drizzle --local --persist-to /absolute/path/kpit-rehearsal
-   npm run d1:import -- --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
-   npm run d1:verify -- --out /absolute/path/kpit-export --local --persist-to /absolute/path/kpit-rehearsal
-   ```
-
-   Import refuses missing migrations and nonempty application tables. The only
-   exception is the exact fresh-migration default status set from migration
-   0010 (all fields checked, with its shared `unixepoch()` creation time
-   normalized). Those seed rows are replaced inside the import SQL, not with a
-   separate operator DELETE. A second import is refused.
-5. **Prepare remote resources and secrets**, check the `database_id` and account,
-   then apply migrations to a **fresh** D1 target:
-
-   ```bash
-   npm run d1:migrate:remote
-   npm run d1:import -- --out /absolute/path/kpit-export --remote
-   npm run d1:verify -- --out /absolute/path/kpit-export --remote
-   ```
-
-   Verification paginates every table, casts int64 to text before Wrangler JSON
-   serialization, preserves SQLite value types (including BLOBs), and compares
-   counts plus SHA-256. It downloads each R2 object and checks size plus SHA-256.
-   Keep the target closed to writes throughout import/verify.
-6. **Deploy**, smoke-test login, KPI/report/timeline reads and writes, and existing
-   comment images. Only then point users at Workers.
-
-Wrangler's remote `d1 execute --file` import promises to restore the original
-database if SQL execution does not complete (Wrangler 4.157.0 import implementation).
-The status cleanup and inserts share that one file. This guarantee does **not**
-cover R2 uploads or the earlier prechecks, and local behavior is not proof of
-remote success. D1 and R2 are not a distributed transaction. If SQL succeeds
-but an image upload fails, the target is already nonempty: do not repeat the
-whole import or delete data blindly. Re-upload the listed objects with
-`wrangler r2 object put kpit-uploads/comments/<name> --file <bundle>/uploads/<name>
---content-type <image/jpeg|image/png|image/gif|image/webp> --remote`, then run
-`d1:verify` again. See [D1 import documentation](https://developers.cloudflare.com/d1/best-practices/import-export-data/).
-
-**Rollback before opening Workers to writes**: restart the old Mac app and route
-users back; export never modifies its source. After Workers accepts new writes,
-the old DB is no longer current: freeze writes and reconcile/export those new
-records first. Redeploying Worker code does not roll back D1/R2 data.
+npm commands are gone (they targeted `kpit.db` / a Node server).
 
 ## Design System
 
@@ -226,8 +139,8 @@ are created by admins (`/admin/users`) or `npm run seed:admin`. `users.role`
 
 Passwords are `pbkdf2-sha256$100000$<salt>$<key>` (`src/lib/password.ts`).
 Legacy bcrypt hashes from the old next-auth setup still verify and are rehashed
-on the user's next successful login (so a rollback to the old worker only keeps
-working for users who have not logged in since). Migration `0017_better_auth.sql` adds
+on the user's next successful login. A rollback to the old worker therefore breaks
+logins for every user who has signed in since PR #16 (it cannot verify PBKDF2 hashes); they need a password reset. Migration `0017_better_auth.sql` adds
 `session`/`account`/`verification` and three columns on `users`, then backfills
 one `credential` account per user (`account.password` = `users.password_hash`)
 and lower-cases stored emails (better-auth looks users up by lower-cased email;
@@ -236,7 +149,7 @@ a row that would collide with another is left unchanged).
 **`users.password_hash` stays NOT NULL and must stay in sync with
 `account.password`**: every password write (`createUser`, `updateUserPassword`
 in `src/lib/db/users.ts`, `seed:admin`) writes both, so the previous next-auth
-worker still logs everybody in after a rollback. If a rollback window lets the
+worker can still log in users who have not signed in since PR #16 after a rollback. If a rollback window lets the
 old worker create users or change passwords, re-sync before going forward again:
 
 ```sql
@@ -292,5 +205,4 @@ in an external conversational AI tool.
 ### Database upgrades
 
 Apply D1 migrations before deploying code that depends on the new schema, as
-described in **Cloudflare Workers + D1** above. Existing self-hosted SQLite data
-must go through the production export/import runbook rather than a sample seed.
+described in **Cloudflare Workers + D1** above. 

@@ -1,83 +1,56 @@
 import { NextResponse } from "next/server";
+import { consumeRateLimits } from "@/lib/rate-limit-d1";
 
 /**
- * In-memory per-user rate limiter for AI endpoints.
+ * Per-user rate limiter for AI endpoints, backed by D1 so the limits hold across Worker isolates.
  *
  * Guards against cost-explosion DoS: every AI call hits the paid DeepSeek API.
- * shortcut: the Map lives per Worker isolate, so limits are per isolate rather than
- * global; move counters to a Durable Object / KV if AI spend ever needs a hard cap.
- * Two layers: a short sliding window (burst control) + a daily cap (cost ceiling).
+ * Two layers: a short per-route window (burst control) + a daily cap (cost ceiling).
+ * shortcut: a call rejected by the burst window still counts against the daily cap (both counters are
+ * charged in one batch); fine at 300/day, revisit if legitimate users trip it.
  */
 
-const WINDOW_MS = 60_000;
+const WINDOW_SECONDS = 60;
 const MAX_PER_WINDOW = 15;
+const DAY_SECONDS = 86_400;
 const MAX_PER_DAY = 300;
-
-interface WindowState {
-  count: number;
-  resetAt: number;
-}
-
-interface DayState {
-  count: number;
-  day: string;
-}
-
-const windows = new Map<string, WindowState>();
-const days = new Map<string, DayState>();
-
-function dayKey(now: number): string {
-  return new Date(now).toISOString().slice(0, 10);
-}
 
 export interface RateLimitResult {
   allowed: boolean;
+  /** How many of the requested `cost` units may proceed (0..cost). */
+  granted: number;
   retryAfterSec: number;
   reason?: string;
 }
 
-export function checkAIRateLimit(
+export async function checkAIRateLimit(
   userId: string,
   route: string,
-  now = Date.now()
-): RateLimitResult {
-  const windowKey = `${userId}:${route}`;
-  const window = windows.get(windowKey);
-  if (!window || window.resetAt <= now) {
-    windows.set(windowKey, { count: 1, resetAt: now + WINDOW_MS });
-  } else if (window.count >= MAX_PER_WINDOW) {
-    return {
-      allowed: false,
-      retryAfterSec: Math.ceil((window.resetAt - now) / 1000),
-      reason: "Terlalu banyak permintaan AI. Coba lagi sebentar.",
-    };
-  } else {
-    window.count += 1;
-  }
-
-  const today = dayKey(now);
-  const day = days.get(userId);
-  if (!day || day.day !== today) {
-    days.set(userId, { count: 1, day: today });
-  } else if (day.count >= MAX_PER_DAY) {
-    return {
-      allowed: false,
-      retryAfterSec: 3600,
-      reason: "Kuota AI harian sudah tercapai. Coba lagi besok.",
-    };
-  } else {
-    day.count += 1;
-  }
-
-  return { allowed: true, retryAfterSec: 0 };
+  cost = 1,
+  now = Date.now(),
+): Promise<RateLimitResult> {
+  const [burst, day] = await consumeRateLimits(
+    [
+      { key: `ai:${userId}:${route}`, windowSeconds: WINDOW_SECONDS, max: MAX_PER_WINDOW, cost },
+      { key: `ai:${userId}:day`, windowSeconds: DAY_SECONDS, max: MAX_PER_DAY, cost },
+    ],
+    now,
+  );
+  const remainingBurst = Math.max(0, MAX_PER_WINDOW - (burst.count - cost));
+  const remainingDay = Math.max(0, MAX_PER_DAY - (day.count - cost));
+  const granted = Math.min(cost, remainingBurst, remainingDay);
+  if (granted > 0) return { allowed: true, granted, retryAfterSec: 0 };
+  return remainingBurst === 0
+    ? { allowed: false, granted, retryAfterSec: burst.retryAfterSec, reason: "Terlalu banyak permintaan AI. Coba lagi sebentar." }
+    : { allowed: false, granted, retryAfterSec: day.retryAfterSec, reason: "Kuota AI harian sudah tercapai. Coba lagi besok." };
 }
 
 /**
  * Enforce the AI rate limit for a user/route. Returns a 429 NextResponse when
  * the limit is exceeded, or null when the request may proceed.
  */
-export function enforceAIRateLimit(userId: string, route: string): NextResponse | null {
-  const result = checkAIRateLimit(userId, route);
+export async function enforceAIRateLimit(userId: string, route: string): Promise<NextResponse | null> {
+  const result = await checkAIRateLimit(userId, route);
   if (result.allowed) return null;
   return NextResponse.json(
     { error: result.reason ?? "Rate limit exceeded." },

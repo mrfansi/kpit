@@ -49,6 +49,35 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, 
     for (const e of existingEntries) if (e.note) map[e.kpiId] = e.note;
     return map;
   });
+  // Pembilang/penyebut per KPI (hanya unit %); nilai aktual dihitung dari keduanya selama terisi.
+  const [parts, setParts] = useState<Record<number, { n: string; d: string }>>(() => {
+    const map: Record<number, { n: string; d: string }> = {};
+    for (const e of existingEntries) {
+      if (e.numerator != null && e.denominator != null) map[e.kpiId] = { n: String(e.numerator), d: String(e.denominator) };
+    }
+    return map;
+  });
+
+  function setPart(kpi: KPI, key: "n" | "d", text: string) {
+    const next = { ...(parts[kpi.id] ?? { n: "", d: "" }), [key]: text };
+    setParts((prev) => ({ ...prev, [kpi.id]: next }));
+    const n = parseFloat(next.n);
+    const d = parseFloat(next.d);
+    if (!isNaN(n) && !isNaN(d) && d > 0) {
+      setValues((prev) => ({ ...prev, [kpi.id]: String((n * 100) / d) }));
+    }
+  }
+
+  // Mengetik nilai langsung berarti nilai bukan lagi turunan pembilang/penyebut.
+  function setValue(kpiId: number, text: string) {
+    setValues((prev) => ({ ...prev, [kpiId]: text }));
+    setParts((prev) => {
+      if (!(kpiId in prev)) return prev;
+      const rest = { ...prev };
+      delete rest[kpiId];
+      return rest;
+    });
+  }
 
   const domainMap = Object.fromEntries(domains.map((d) => [d.id, d]));
 
@@ -59,12 +88,18 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, 
   function handleSave() {
     const rows = kpis
       .filter((kpi) => values[kpi.id] !== undefined && values[kpi.id] !== "")
-      .map((kpi) => ({
-        kpiId: kpi.id,
-        periodDate: initialPeriod,
-        value: parseFloat(values[kpi.id]),
-        note: notes[kpi.id] || undefined,
-      }))
+      .map((kpi) => {
+        const n = parseFloat(parts[kpi.id]?.n ?? "");
+        const d = parseFloat(parts[kpi.id]?.d ?? "");
+        return {
+          kpiId: kpi.id,
+          periodDate: initialPeriod,
+          value: parseFloat(values[kpi.id]),
+          note: notes[kpi.id] || undefined,
+          numerator: isNaN(n) ? undefined : n,
+          denominator: isNaN(d) ? undefined : d,
+        };
+      })
       .filter((r) => !isNaN(r.value));
 
     if (rows.length === 0) {
@@ -175,8 +210,35 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, 
                        kolom Target di sebelahnya. */
                     className="num w-full min-w-20 text-right"
                     value={values[kpi.id] ?? ""}
-                    onChange={(e) => setValues((prev) => ({ ...prev, [kpi.id]: e.target.value }))}
+                    onChange={(e) => setValue(kpi.id, e.target.value)}
                   />
+                  {kpi.unit === "%" && (
+                    <details className="mt-1 text-xs text-muted-foreground" open={kpi.id in parts}>
+                      <summary className="cursor-pointer text-right">Pembilang / Penyebut</summary>
+                      <div className="mt-1 flex items-center gap-1">
+                        <Input
+                          type="number"
+                          step="any"
+                          placeholder="Pembilang"
+                          aria-label={`Pembilang ${kpi.name}`}
+                          className="num w-full min-w-0 text-right"
+                          value={parts[kpi.id]?.n ?? ""}
+                          onChange={(e) => setPart(kpi, "n", e.target.value)}
+                        />
+                        <span aria-hidden>/</span>
+                        <Input
+                          type="number"
+                          step="any"
+                          min="0"
+                          placeholder="Penyebut"
+                          aria-label={`Penyebut ${kpi.name}`}
+                          className="num w-full min-w-0 text-right"
+                          value={parts[kpi.id]?.d ?? ""}
+                          onChange={(e) => setPart(kpi, "d", e.target.value)}
+                        />
+                      </div>
+                    </details>
+                  )}
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">
                   {status !== "no-data" && (

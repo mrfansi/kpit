@@ -1,12 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { inChunks } from "@/lib/db/chunks";
 import { kpis, kpiTargets } from "@/lib/db/schema";
 import { checkThresholdCoherence } from "@/lib/kpi-coherence";
 import { and, eq, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
-import { requireAdmin, requireAuth } from "@/lib/auth-utils";
+import { requireAdmin } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
 import { parsePlainNumber, kpiNameLookup, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
 import { isValidCalendarDate } from "@/lib/date-utils";
@@ -30,14 +31,14 @@ const TargetRowSchema = z.object({
   kpiId: z.number().int().positive(),
   periodDate: z.string().refine(isValidCalendarDate, "period_date tidak valid")
     .refine((d) => d.endsWith("-01"), "period_date harus tanggal 01 (target berlaku per bulan)"),
-  target: z.number().finite().positive(),
-  thresholdGreen: z.number().finite().positive(),
-  thresholdYellow: z.number().finite().positive(),
+  target: z.number().finite().nonnegative(),
+  thresholdGreen: z.number().finite().nonnegative(),
+  thresholdYellow: z.number().finite().nonnegative(),
 });
 
-function parsePositiveFloat(raw: string | undefined): number {
+function parseNonNegativeFloat(raw: string | undefined): number {
   const n = parsePlainNumber(raw);
-  return n > 0 ? n : NaN;
+  return n >= 0 ? n : NaN;
 }
 
 export async function resolveTargetCSVRows(text: string): Promise<{
@@ -45,7 +46,7 @@ export async function resolveTargetCSVRows(text: string): Promise<{
   errors: { row: number; message: string }[];
 }> {
   // Authenticate BEFORE parsing attacker-controlled CSV.
-  await requireAuth();
+  await requireAdmin();
 
   const { headers, rows } = parseCSV(text);
   if (rows.length > MAX_IMPORT_ROWS) {
@@ -89,26 +90,26 @@ export async function resolveTargetCSVRows(text: string): Promise<{
     if (!isValidCalendarDate(periodDate)) { errors.push({ row: rowNum, message: `period_date tidak valid: "${periodDate}"` }); continue; }
     if (!periodDate.endsWith("-01")) { errors.push({ row: rowNum, message: `period_date harus tanggal 01 (target berlaku per bulan): "${periodDate}"` }); continue; }
 
-    const target = parsePositiveFloat(row[idx("target")]);
-    if (isNaN(target)) { errors.push({ row: rowNum, message: `target tidak valid (harus angka positif): "${row[idx("target")]}"` }); continue; }
+    const target = parseNonNegativeFloat(row[idx("target")]);
+    if (isNaN(target)) { errors.push({ row: rowNum, message: `target tidak valid (harus angka nol atau positif): "${row[idx("target")]}"` }); continue; }
 
     const tgIdx = idx("threshold_green");
     const tyIdx = idx("threshold_yellow");
 
     // Default ambang mengikuti arah KPI: untuk lower_better, hijau/kuning ada di
     // ATAS target (kalau tidak, nilai tepat di target malah merah).
-    // When a threshold column is present but the cell is non-numeric/non-positive,
+    // When a threshold column is present but the cell is non-numeric/negative,
     // reject the row instead of silently coercing to a default.
     const lowerBetter = direction === "lower_better";
     let thresholdGreen = target * (lowerBetter ? 1.1 : 0.9);
     if (tgIdx >= 0 && (row[tgIdx] ?? "").trim() !== "") {
-      thresholdGreen = parsePositiveFloat(row[tgIdx]);
+      thresholdGreen = parseNonNegativeFloat(row[tgIdx]);
       if (isNaN(thresholdGreen)) { errors.push({ row: rowNum, message: `threshold_green tidak valid: "${row[tgIdx]}"` }); continue; }
     }
 
     let thresholdYellow = target * (lowerBetter ? 1.3 : 0.7);
     if (tyIdx >= 0 && (row[tyIdx] ?? "").trim() !== "") {
-      thresholdYellow = parsePositiveFloat(row[tyIdx]);
+      thresholdYellow = parseNonNegativeFloat(row[tyIdx]);
       if (isNaN(thresholdYellow)) { errors.push({ row: rowNum, message: `threshold_yellow tidak valid: "${row[tyIdx]}"` }); continue; }
     }
 
@@ -127,16 +128,13 @@ export async function resolveTargetCSVRows(text: string): Promise<{
   // Cek target lama yang bertabrakan, supaya preview bisa memperingatkan
   // admin sebelum target lama ditimpa.
   if (resolved.length > 0) {
-    const existingMap = new Map<string, number>();
-    for (let i = 0; i < resolved.length; i += 50) {
-      const existing = await db
-        .select({ kpiId: kpiTargets.kpiId, periodDate: kpiTargets.periodDate, target: kpiTargets.target })
-        .from(kpiTargets)
-        .where(or(...resolved.slice(i, i + 50).map((row) =>
-          and(eq(kpiTargets.kpiId, row.kpiId), eq(kpiTargets.periodDate, row.periodDate))
-        )));
-      for (const entry of existing) existingMap.set(`${entry.kpiId}:${entry.periodDate}`, entry.target);
-    }
+    const existing = await inChunks(resolved, 0, (chunk) => db
+      .select({ kpiId: kpiTargets.kpiId, periodDate: kpiTargets.periodDate, target: kpiTargets.target })
+      .from(kpiTargets)
+      .where(or(...chunk.map((row) =>
+        and(eq(kpiTargets.kpiId, row.kpiId), eq(kpiTargets.periodDate, row.periodDate))
+      ))), 2);
+    const existingMap = new Map(existing.map((entry) => [`${entry.kpiId}:${entry.periodDate}`, entry.target]));
     for (const row of resolved) {
       row.existingTarget = existingMap.get(`${row.kpiId}:${row.periodDate}`);
     }
@@ -163,8 +161,8 @@ export async function importTargetRows(rows: TargetImportRow[]): Promise<{ impor
 
   try {
     const statements = [];
-    for (const raw of rows) {
-        const rowNum = raw?.rowIndex ?? 0;
+    for (const [i, raw] of rows.entries()) {
+        const rowNum = raw?.rowIndex ?? i + 2;
         const parsed = TargetRowSchema.safeParse(raw);
         if (!parsed.success) {
           errors.push({ row: rowNum, message: parsed.error.issues[0]?.message ?? "Baris tidak valid" });

@@ -1,15 +1,32 @@
 import { NextResponse } from "next/server";
-import { auth, type AuthSession } from "@/auth";
+import { headers } from "next/headers";
+import { authFresh, type AuthSession } from "@/auth";
 import { AIServiceError } from "./types";
+
+/** Browsers send `Origin` on non-GET and cross-site requests; one that differs from our host is a CSRF attempt. */
+function isCrossOrigin(requestHeaders: Headers): boolean {
+  const origin = requestHeaders.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).host !== requestHeaders.get("host");
+  } catch {
+    return true; // "null" (sandboxed frames) or garbage
+  }
+}
 
 /**
  * Check auth and return session. Returns NextResponse error if unauthorized.
+ * Rejects a cross-origin `Origin` (403) and reads the session from D1, since these routes write or spend AI budget.
  */
 export async function requireAuth(): Promise<
   | { session: AuthSession; error: null }
   | { session: null; error: NextResponse }
 > {
-  const session = await auth();
+  const requestHeaders = await headers();
+  if (isCrossOrigin(requestHeaders)) {
+    return { session: null, error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  const session = await authFresh();
   if (!session) {
     return {
       session: null,

@@ -1,4 +1,4 @@
-import { auth, type AuthSession } from "@/auth";
+import { auth, authFresh, type AuthSession } from "@/auth";
 import { canAccessAdminRoute } from "@/lib/admin-access";
 
 /**
@@ -15,11 +15,11 @@ export async function isAdminUser(): Promise<boolean> {
 }
 
 /**
- * Require authenticated user with admin role.
+ * Require authenticated user with admin role. Reads the session from D1 (not the cookie cache): used by writes.
  * Throws "Unauthorized" if not logged in, "Forbidden" if not admin.
  */
 export async function requireAdmin() {
-  return assertAdmin(await auth());
+  return assertAdmin(await authFresh());
 }
 
 export function assertAdmin(session: AuthSession | null) {
@@ -33,7 +33,7 @@ export function assertAdmin(session: AuthSession | null) {
  * Throws "Unauthorized" if not logged in.
  */
 export async function requireAuth() {
-  const session = await auth();
+  const session = await authFresh();
   if (!session?.user) throw new Error("Tidak terautentikasi");
   return session;
 }

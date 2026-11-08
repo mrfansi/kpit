@@ -53,7 +53,11 @@ export function TimelineProgressLog({
     if (!text.trim()) return;
     startTransition(async () => {
       try {
-        await createProgressLog(projectId, text.trim(), currentProgress, currentProgress);
+        const result = await createProgressLog(projectId, text.trim(), currentProgress, currentProgress);
+        if (result?.error) {
+          toast.error(result.error);
+          return;
+        }
         setLogs((prev) => [
           {
             id: Date.now(),

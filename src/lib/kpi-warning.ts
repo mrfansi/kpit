@@ -1,4 +1,5 @@
 import { differenceInMonths, parseISO } from "date-fns";
+import { toJakartaDateOnly } from "@/lib/date-utils";
 import { getKPIStatus, type KPIDirection } from "@/lib/kpi-status";
 
 export type KPIWarningSeverity = "low" | "medium" | "high";
@@ -51,7 +52,7 @@ export function getKPIEarlyWarning({
   if (worsening) reasons.push("Tren memburuk dari periode sebelumnya");
 
   const stale = latestEntry
-    ? differenceInMonths(today, parseISO(latestEntry.periodDate)) >= 2
+    ? differenceInMonths(parseISO(toJakartaDateOnly(today)), parseISO(latestEntry.periodDate)) >= 2
     : false;
   if (stale) reasons.push("Data KPI sudah lama belum diperbarui");
 

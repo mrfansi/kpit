@@ -1,16 +1,35 @@
+import { isValidCalendarDate } from "@/lib/date-utils";
+import { checkValueBounds } from "@/lib/kpi-bounds";
+
 /** Hard cap on rows accepted from a single CSV import (DoS guard). */
 export const MAX_IMPORT_ROWS = 5000;
 
-const PLAIN_NUMBER = /^-?\d+(\.\d+)?$/;
+const PLAIN_NUMBER = /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/;
 
 /**
- * Angka polos saja ("75", "-3", "75.5"); selain itu NaN. parseFloat memotong
+ * Angka polos ("75", "-3", "75.5", "1e3"); selain itu NaN. parseFloat memotong
  * diam-diam "75,5" jadi 75 dan "1.500.000" jadi 1.5 — CSV Excel Indonesia
  * memakai koma desimal dan titik ribuan, jadi tolak daripada menyimpan salah.
  */
 export function parsePlainNumber(raw: string | undefined): number {
   const text = (raw ?? "").trim();
-  return PLAIN_NUMBER.test(text) ? Number(text) : NaN;
+  const n = PLAIN_NUMBER.test(text) ? Number(text) : NaN;
+  return Number.isFinite(n) ? n : NaN; // "1e999" meluap jadi Infinity
+}
+
+export type EntryKPIRef = { name: string; unit: string; minValue: number | null; maxValue: number | null; period: string };
+
+/**
+ * Aturan input entri yang sama untuk form, bulk, dan CSV: tanggal kalender sah,
+ * KPI bulanan wajib tanggal 01 (dashboard hanya membaca tanggal 01), dan nilai
+ * dalam batas KPI.
+ */
+export function checkEntry(kpi: EntryKPIRef, periodDate: string, value: number): string | null {
+  if (!isValidCalendarDate(periodDate)) return `period_date tidak valid: "${periodDate}" (format: YYYY-MM-DD)`;
+  if (kpi.period === "monthly" && !periodDate.endsWith("-01")) {
+    return `period_date harus tanggal 01 untuk KPI bulanan: "${periodDate}"`;
+  }
+  return checkValueBounds(value, kpi);
 }
 
 /**
