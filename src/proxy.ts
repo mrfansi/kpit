@@ -1,12 +1,13 @@
-import { auth } from "@/auth";
+import { getSessionFromHeaders } from "@/auth";
 import { canAccessAdminRoute, getAdminDeniedRedirectPath } from "@/lib/admin-access";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-export default auth((req) => {
+export default async function proxy(req: NextRequest) {
+  const session = await getSessionFromHeaders(req.headers);
   const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
   const isLoginPage = req.nextUrl.pathname === "/login";
-  const isAuthenticated = !!req.auth;
-  const role = req.auth?.user?.role;
+  const isAuthenticated = !!session;
+  const role = session?.user.role;
 
   if (isAdminRoute && !canAccessAdminRoute(role)) {
     const redirectUrl = new URL(getAdminDeniedRedirectPath(isAuthenticated), req.nextUrl.origin);
@@ -21,7 +22,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/admin/:path*", "/login"],

@@ -6,6 +6,7 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } 
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { migrateDatabase } from "./migrate-db";
+import { wranglerConfigPath } from "./wrangler-config";
 
 type Cell = [string, string | number | null];
 type Row = Record<string, string | number | null>;
@@ -15,6 +16,7 @@ interface Upload { name: string; size: number; sha256: string }
 interface Manifest { version: 1; migrations: string[]; sqlSha256: string; tables: Table[]; uploads: Upload[]; warnings: string[] }
 export interface Target { local: boolean; persistTo?: string }
 const migrationsDir = resolve("drizzle");
+const localState = ".cloudflare/state";
 const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
 const sha256 = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const appTable = (name: string) => !name.startsWith("sqlite_") && !name.startsWith("_cf_") && !["__drizzle_migrations", "d1_migrations"].includes(name);
@@ -162,11 +164,12 @@ export async function exportDatabase(sourcePath: string, outPath: string, upload
 }
 
 export function wrangler(args: string[]): string {
-  return execFileSync(process.execPath, [resolve("node_modules/wrangler/bin/wrangler.js"), ...args], { encoding: "utf8", env: { ...process.env, CI: "1", WRANGLER_SEND_METRICS: "false" }, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+  return execFileSync(process.execPath, [resolve("node_modules/wrangler/bin/wrangler.js"), ...args, "--config", wranglerConfigPath()], { encoding: "utf8", env: { ...process.env, CI: "1", WRANGLER_SEND_METRICS: "false" }, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
 }
 export function targetArgs(target: Target): string[] {
   if (!target.local && target.persistTo) throw new Error("--persist-to is only valid with --local");
-  return [target.local ? "--local" : "--remote", ...(target.persistTo ? ["--persist-to", resolve(target.persistTo)] : [])];
+  // Without --persist-to, local commands use the state directory the vinext dev server reads.
+  return target.local ? ["--local", "--persist-to", resolve(target.persistTo ?? localState)] : ["--remote"];
 }
 export function queryD1(command: string, target: Target): Row[] {
   const results = JSON.parse(wrangler(["d1", "execute", "DB", ...targetArgs(target), "--yes", "--json", "--command", command])) as { success: boolean; results: Row[] }[];

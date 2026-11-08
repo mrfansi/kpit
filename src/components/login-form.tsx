@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { signIn } from "@/lib/auth-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,15 +23,11 @@ function LoginFormInner() {
     setLoading(true);
     setError("");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    const { error: signInError } = await signIn.email({ email, password });
 
     setLoading(false);
 
-    if (result?.error) {
+    if (signInError) {
       setError("Email atau password salah.");
     } else {
       router.push(callbackUrl);

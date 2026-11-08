@@ -27,10 +27,10 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  /* Satu keluarga, Archivo variabel (wght + wdth). Display memakai potongan yang sama;
-     angka memakai lebar semi-condensed (lihat utilitas `num` di globals.css). */
-  --font-display: var(--font-archivo), "Archivo", ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-archivo), "Archivo", ui-sans-serif, system-ui, sans-serif;
+  /* Satu keluarga, IBM Plex Sans variabel. Display memakai potongan yang sama;
+     angka memakai angka tabular (lihat utilitas `num` di globals.css). */
+  --font-display: var(--font-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   /* Outlier dengan satu peran: kode (blok kode di komentar dan pratinjau Markdown). */
   --font-outlier: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace;
   --radius-card: 6px;

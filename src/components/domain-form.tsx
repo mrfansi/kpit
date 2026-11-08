@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { unstable_rethrow } from "next/navigation";
 import { domainSchema, type DomainFormValues } from "@/lib/validations/domain";
 import { createDomain, updateDomain } from "@/lib/actions/domain";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export function DomainForm({ domain }: DomainFormProps) {
         await createDomain(values);
       }
     } catch (err) {
-      if (isRedirectError(err)) throw err;
+      unstable_rethrow(err);
       toast.error("Gagal menyimpan domain, coba lagi");
     }
   }

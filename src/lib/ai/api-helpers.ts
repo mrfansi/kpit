@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import type { Session } from "next-auth";
-import { auth } from "@/auth";
+import { auth, type AuthSession } from "@/auth";
 import { AIServiceError } from "./types";
 
 /**
  * Check auth and return session. Returns NextResponse error if unauthorized.
  */
 export async function requireAuth(): Promise<
-  | { session: Session; error: null }
+  | { session: AuthSession; error: null }
   | { session: null; error: NextResponse }
 > {
   const session = await auth();

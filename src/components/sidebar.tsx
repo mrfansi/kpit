@@ -38,9 +38,9 @@ export function Sidebar({ domains, user }: SidebarProps) {
     // fixed, bukan sticky: kepala Gantt memakai sticky top-0 di dalam scroller-nya sendiri,
     // dan dua sticky top-0 di satu layar saling menimpa (gate 56). Ruangnya dipesan wrapper di layout.
     <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r bg-sidebar print:hidden">
-      {/* Wordmark: keluarga yang sama, potongan terlebar dan terberat. */}
+      {/* Wordmark: keluarga yang sama, semibold. */}
       <div className="px-5 pt-5 pb-4">
-        <span className="font-display text-lg leading-none font-extrabold tracking-tight [font-stretch:125%]">
+        <span className="font-display text-lg leading-none font-semibold tracking-tight">
           KPI Dashboard
         </span>
       </div>

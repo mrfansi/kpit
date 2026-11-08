@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { unstable_rethrow } from "next/navigation";
 import { kpiSchema, type KPIFormValues } from "@/lib/validations/kpi";
 import { ThresholdCoherenceNotice } from "@/components/threshold-coherence-notice";
 import { createKPI, updateKPI } from "@/lib/actions/kpi";
@@ -115,7 +115,7 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
       }
       // redirect di server action akan membawa ?success= ke halaman tujuan
     } catch (err: unknown) {
-      if (isRedirectError(err)) throw err;
+      unstable_rethrow(err);
       toast.error("Terjadi kesalahan, coba lagi");
     }
   }

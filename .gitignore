@@ -13,9 +13,6 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
 
 # production
 /build
@@ -40,7 +37,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # Database
 *.db
@@ -55,8 +51,12 @@ next-env.d.ts
 # Worktrees
 .worktrees/
 
-# Cloudflare / OpenNext
-.open-next/
+# Cloudflare / vinext (dev also writes next-env.d.ts / .next)
+/.next/
+next-env.d.ts
 .wrangler/
 .dev.vars*
 !.dev.vars.example
+/dist/
+.vinext/
+.cloudflare/

@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { unstable_rethrow } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { upsertTarget } from "@/lib/actions/target";
 import { checkThresholdCoherence } from "@/lib/kpi-coherence";
@@ -90,7 +90,7 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
         toast.error(result.error);
       }
     } catch (err) {
-      if (isRedirectError(err)) throw err;
+      unstable_rethrow(err);
       toast.error("Gagal menyimpan target, coba lagi");
     }
   }

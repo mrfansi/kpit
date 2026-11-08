@@ -1,5 +1,5 @@
 /* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full · scope: app
- * paper: oklch(99% 0 0) · accent: oklch(20% 0 0) · display: Archivo · body: Archivo · outlier: JetBrains Mono (code only)
+ * paper: oklch(99% 0 0) · accent: oklch(20% 0 0) · display: IBM Plex Sans · body: IBM Plex Sans · outlier: JetBrains Mono (code only)
  * nav: kept (sidebar of sixteen destinations, fixed; a sheet under lg) · signature: the KPI readout ledger · states: loading, empty, error, full
  * axes: light/grotesk-sans/neutral · posture: restrained · surface: absolute (cards on white, mm) · contrast: pass · modes: light+dark · v2.0.0 */
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V3 · weakest: V, an app shell is familiar by design; the variety lives in the readout figure and the gauge, not in a new shell */
@@ -135,11 +135,9 @@
 }
 
 /*
- * Angka metrik ("readout"): Archivo semi-condensed + angka tabular, supaya digit
- * sejajar antar baris dan angka besar tetap rapat seperti tampilan instrumen.
+ * Angka metrik ("readout"): angka tabular dan lining, supaya digit sejajar antar baris.
  */
 @utility num {
-  font-stretch: 87.5%;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum", "lnum";
 }
