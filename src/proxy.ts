@@ -1,4 +1,4 @@
-import { getSessionWithCookies } from "@/auth";
+import { getSessionWithCookies, type AuthSession } from "@/auth";
 import { canAccessAdminPath, decodePathname, getAdminDeniedRedirectPath, isPublicPath, mergeSetCookies } from "@/lib/admin-access";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -9,7 +9,14 @@ export default async function proxy(req: NextRequest) {
   // Public paths other than /login need no session read (keeps the Free-plan CPU budget).
   if (isPublicPath(pathname) && !isLoginPage) return NextResponse.next();
 
-  const { session, setCookies } = await getSessionWithCookies(req.headers);
+  // A throwing read (deleted session mid-refresh, D1 error) must not 500 every page: treat it as anonymous.
+  let session: AuthSession | null = null;
+  let setCookies: string[] = [];
+  try {
+    ({ session, setCookies } = await getSessionWithCookies(req.headers));
+  } catch (err) {
+    console.error("proxy session read failed", err);
+  }
   const isAdminRoute = pathname.startsWith("/admin");
   const isAuthenticated = !!session;
   const role = session?.user.role;
