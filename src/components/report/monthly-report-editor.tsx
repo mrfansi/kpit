@@ -136,7 +136,7 @@ export function MonthlyReportEditor({ initial }: { initial: MonthlyReportBundle 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `Pengambilan data gagal (${response.status}).`);
       const current = contentRef.current;
-      const result = kind === "entries" ? refreshFromEntries(current, data.entries) : kind === "notes" ? applyNotes(current, data, bundle.period) : kind === "previous" ? applyPreviousActions(current, data.previousActions ?? []) : appendTimelineActivities(current, data.lines);
+      const result = kind === "entries" ? refreshFromEntries(current, data.entries, new Set<number>(data.checkedKpiIds)) : kind === "notes" ? applyNotes(current, data, bundle.period) : kind === "previous" ? applyPreviousActions(current, data.previousActions ?? []) : appendTimelineActivities(current, data.lines);
       if (!result.changes.length) { setNotice(pullTitles[kind].none); return; }
       replace(result.content);
       setImported({ title: pullTitles[kind].done, lines: result.changes });

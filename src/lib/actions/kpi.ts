@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { inChunks } from "@/lib/db/chunks";
 import { kpis, kpiTargets, domains, type NewKPI } from "@/lib/db/schema";
 import { count, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -163,12 +164,9 @@ export async function bulkReorderKPIs(items: { id: number; sortOrder: number }[]
   await requireAdmin();
 
   const currentOrders = new Map<number, { sortOrder: number; domainId: number; isActive: boolean }>();
-  // Each SELECT stays within D1's 100 bound-parameter limit.
-  for (let offset = 0; offset < items.length; offset += 100) {
-    const rows = await db.select({ id: kpis.id, sortOrder: kpis.sortOrder, domainId: kpis.domainId, isActive: kpis.isActive })
-      .from(kpis).where(inArray(kpis.id, items.slice(offset, offset + 100).map((item) => item.id)));
-    for (const row of rows) currentOrders.set(row.id, row);
-  }
+  const rows = await inChunks(items, 0, (chunk) => db.select({ id: kpis.id, sortOrder: kpis.sortOrder, domainId: kpis.domainId, isActive: kpis.isActive })
+    .from(kpis).where(inArray(kpis.id, chunk.map((item) => item.id))));
+  for (const row of rows) currentOrders.set(row.id, row);
   await updateSortOrders(items.filter((item) => currentOrders.has(item.id)).map((item) => {
     const current = currentOrders.get(item.id)!;
     return {

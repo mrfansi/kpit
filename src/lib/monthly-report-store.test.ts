@@ -204,8 +204,19 @@ test("new reports prefill from comments and action plans; saved reports flag sta
     const timeline = await getMonthlyReportImport("finance", "2026-10-01", "timeline");
     assert.deepEqual(timeline, { lines: [{ id: 3, text: "Rilis app: progress 40%→70%, tanpa status, selesai 2026-11-30 (sumber: Timeline project #3)" }] });
 
+    await env.DB.prepare("DELETE FROM kpi_entries WHERE kpi_id = 10").run();
+    const orphaned = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.deepEqual(orphaned?.questions.filter((q) => q.path.endsWith(".entry")).map((q) => q.path), ["metrics.0.observations.2026-10-01.entry"]);
+    const emptied = await getMonthlyReportImport("finance", "2026-10-01", "entries");
+    assert.ok(emptied && "entries" in emptied);
+    const cleared = refreshFromEntries(resaved.content, emptied.entries, new Set(emptied.checkedKpiIds));
+    assert.equal(cleared.changes.length, 1);
+    const final = await saveMonthlyReport("finance", "2026-10-01", cleared.content, resaved.revision, { id: "admin" });
+    assert.equal(final.content.metrics[0].observations.find((o) => o.month === "2026-10-01")?.state, "missing");
+    assert.ok(!final.questions.some((q) => q.path.endsWith(".entry")));
+
     await env.DB.prepare("UPDATE kpis SET is_active = 0 WHERE id = 10").run();
-    assert.deepEqual(await getMonthlyReportImport("finance", "2026-10-01", "entries"), { entries: [] });
+    assert.deepEqual(await getMonthlyReportImport("finance", "2026-10-01", "entries"), { entries: [], checkedKpiIds: [] });
   } finally {
     await dispose();
   }

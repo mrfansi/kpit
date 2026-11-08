@@ -139,8 +139,8 @@ are created by admins (`/admin/users`) or `npm run seed:admin`. `users.role`
 
 Passwords are `pbkdf2-sha256$100000$<salt>$<key>` (`src/lib/password.ts`).
 Legacy bcrypt hashes from the old next-auth setup still verify and are rehashed
-on the user's next successful login (so a rollback to the old worker only keeps
-working for users who have not logged in since). Migration `0017_better_auth.sql` adds
+on the user's next successful login. A rollback to the old worker therefore breaks
+logins for every user who has signed in since PR #16 (it cannot verify PBKDF2 hashes); they need a password reset. Migration `0017_better_auth.sql` adds
 `session`/`account`/`verification` and three columns on `users`, then backfills
 one `credential` account per user (`account.password` = `users.password_hash`)
 and lower-cases stored emails (better-auth looks users up by lower-cased email;
@@ -149,7 +149,7 @@ a row that would collide with another is left unchanged).
 **`users.password_hash` stays NOT NULL and must stay in sync with
 `account.password`**: every password write (`createUser`, `updateUserPassword`
 in `src/lib/db/users.ts`, `seed:admin`) writes both, so the previous next-auth
-worker still logs everybody in after a rollback. If a rollback window lets the
+worker can still log in users who have not signed in since PR #16 after a rollback. If a rollback window lets the
 old worker create users or change passwords, re-sync before going forward again:
 
 ```sql

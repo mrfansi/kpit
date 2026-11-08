@@ -6,6 +6,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { inChunks } from "@/lib/db/chunks";
 import { requireAdmin } from "@/lib/auth-utils";
 import { formatChanges, logAudit } from "@/lib/db/audit";
 import { checkEntry } from "@/lib/csv-import-utils";
@@ -181,21 +182,18 @@ export async function bulkCreateEntries(rows: BulkEntryRow[]): Promise<{ saved: 
 
   try {
     // Verify every referenced KPI exists before writing (no orphan entries).
-    const kpiById = new Map<number, Pick<typeof kpis.$inferSelect, "id" | "name" | "unit" | "minValue" | "maxValue" | "period">>();
-    for (let i = 0; i < kpiIds.length; i += 100) {
-      const kpiRows = await db
-        .select({
-          id: kpis.id,
-          name: kpis.name,
-          unit: kpis.unit,
-          minValue: kpis.minValue,
-          maxValue: kpis.maxValue,
-          period: kpis.period,
-        })
-        .from(kpis)
-        .where(inArray(kpis.id, kpiIds.slice(i, i + 100)));
-      for (const kpi of kpiRows) kpiById.set(kpi.id, kpi);
-    }
+    const kpiRows = await inChunks(kpiIds, 0, (chunk) => db
+      .select({
+        id: kpis.id,
+        name: kpis.name,
+        unit: kpis.unit,
+        minValue: kpis.minValue,
+        maxValue: kpis.maxValue,
+        period: kpis.period,
+      })
+      .from(kpis)
+      .where(inArray(kpis.id, chunk)));
+    const kpiById = new Map(kpiRows.map((kpi) => [kpi.id, kpi]));
     if (kpiIds.some((id) => !kpiById.has(id))) {
       return { error: "Sebagian KPI tidak ditemukan" };
     }

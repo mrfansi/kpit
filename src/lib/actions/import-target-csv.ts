@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { inChunks } from "@/lib/db/chunks";
 import { kpis, kpiTargets } from "@/lib/db/schema";
 import { checkThresholdCoherence } from "@/lib/kpi-coherence";
 import { and, eq, or } from "drizzle-orm";
@@ -127,16 +128,13 @@ export async function resolveTargetCSVRows(text: string): Promise<{
   // Cek target lama yang bertabrakan, supaya preview bisa memperingatkan
   // admin sebelum target lama ditimpa.
   if (resolved.length > 0) {
-    const existingMap = new Map<string, number>();
-    for (let i = 0; i < resolved.length; i += 50) {
-      const existing = await db
-        .select({ kpiId: kpiTargets.kpiId, periodDate: kpiTargets.periodDate, target: kpiTargets.target })
-        .from(kpiTargets)
-        .where(or(...resolved.slice(i, i + 50).map((row) =>
-          and(eq(kpiTargets.kpiId, row.kpiId), eq(kpiTargets.periodDate, row.periodDate))
-        )));
-      for (const entry of existing) existingMap.set(`${entry.kpiId}:${entry.periodDate}`, entry.target);
-    }
+    const existing = await inChunks(resolved, 0, (chunk) => db
+      .select({ kpiId: kpiTargets.kpiId, periodDate: kpiTargets.periodDate, target: kpiTargets.target })
+      .from(kpiTargets)
+      .where(or(...chunk.map((row) =>
+        and(eq(kpiTargets.kpiId, row.kpiId), eq(kpiTargets.periodDate, row.periodDate))
+      ))), 2);
+    const existingMap = new Map(existing.map((entry) => [`${entry.kpiId}:${entry.periodDate}`, entry.target]));
     for (const row of resolved) {
       row.existingTarget = existingMap.get(`${row.kpiId}:${row.periodDate}`);
     }

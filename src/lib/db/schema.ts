@@ -182,8 +182,8 @@ export type NewKPIActionPlan = typeof kpiActionPlans.$inferInsert;
 
 // `users` is better-auth's user model (modelName "users"). `password_hash` is
 // not read by better-auth: the credential lives in `account.password`. It stays
-// NOT NULL and in sync on every password write so the previous (next-auth)
-// worker can still log everyone in after a rollback. The "" default exists only
+// NOT NULL and in sync on every password write. After a rollback the previous
+// (next-auth, bcrypt-only) worker can only log in users still on a bcrypt hash. The "" default exists only
 // because better-auth refuses a required column it never writes; sign-up is
 // disabled, and "" matches no password in the old worker either.
 export const users = sqliteTable("users", {

@@ -58,6 +58,25 @@ test("mismatch question names current/previous month only and ignores hand-edite
   assert.equal(entryMismatchQuestions(content, "2026-10-01", [entry("2026-10-01", 3)]).length, 0);
 });
 
+test("a deleted entry raises one question and refresh turns the row into missing", () => {
+  const content = report([
+    obs("2026-09-01", { actual: 1, state: "provided", source: "Entri KPI Sep 2026" }),
+    obs("2026-10-01", { actual: 2, state: "provided", source: "Entri KPI Okt 2026", numerator: 2, denominator: 1 }),
+  ]);
+  const checked = new Set([7]);
+  const questions = entryMismatchQuestions(content, "2026-10-01", [entry("2026-09-01", 1)], checked);
+  assert.deepEqual(questions.map((q) => q.path), ["metrics.0.observations.2026-10-01.entry"]);
+  assert.match(questions[0].question, /Entri KPI Cash Okt 2026 sudah dihapus/);
+  assert.equal(entryMismatchQuestions(content, "2026-10-01", [], undefined).length, 0, "unchecked KPIs are never flagged");
+  assert.equal(entryMismatchQuestions(content, "2026-10-01", [], new Set([99])).length, 0);
+  const { content: next, changes } = refreshFromEntries(content, [entry("2026-09-01", 1)], checked);
+  assert.deepEqual(next.metrics[0].observations[1], obs("2026-10-01"));
+  assert.equal(next.metrics[0].observations[0], content.metrics[0].observations[0]);
+  assert.equal(changes.length, 1);
+  assert.match(changes[0], /dihapus/);
+  assert.equal(entryMismatchQuestions(next, "2026-10-01", [entry("2026-09-01", 1)], checked).length, 0);
+});
+
 test("htmlToText strips tags, keeps paragraph breaks and decodes entities", () => {
   assert.equal(htmlToText("<p>Biaya &amp; vendor naik</p><ul><li>Satu</li><li>Dua&nbsp;lagi</li></ul>"), "Biaya & vendor naik\nSatu\nDua lagi");
 });

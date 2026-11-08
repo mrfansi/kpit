@@ -37,17 +37,27 @@ export function markManualActual(o: MonthlyObservation): MonthlyObservation {
 }
 const stale = (o: MonthlyObservation, entry: EntryRef | undefined): entry is EntryRef =>
   !!entry && refreshable(o, entry) && (o.actual !== entry.value || o.numerator !== (entry.numerator ?? null) || o.denominator !== (entry.denominator ?? null));
+// Entry-sourced value whose entry was deleted since. Only for KPIs whose entries were actually looked up (monthly and active):
+// for the others "no entry" means "not checked", not "deleted".
+const orphaned = (o: MonthlyObservation, entry: EntryRef | undefined, kpiId: number, checked?: ReadonlySet<number>) =>
+  !entry && !!checked?.has(kpiId) && entrySourced(o) && o.actual !== null;
 const entryKey = (kpiId: number, month: string) => `${kpiId}:${month}`;
 const entryMap = (entries: EntryRef[]) => new Map(entries.map((e) => [entryKey(e.kpiId, e.periodDate), e]));
 const show = (value: number | null) => value === null ? "kosong" : String(value);
 
-export function refreshFromEntries(content: MonthlyReportContent, entries: EntryRef[]): ImportResult {
+// checkedKpiIds: KPIs whose entries were loaded; without it a missing entry is never treated as deleted.
+export function refreshFromEntries(content: MonthlyReportContent, entries: EntryRef[], checkedKpiIds?: ReadonlySet<number>): ImportResult {
   const byKey = entryMap(entries);
   const changes: string[] = [];
   const metrics = content.metrics.map((metric) => {
     let touched = false;
     const observations = metric.observations.map((o) => {
       const entry = byKey.get(entryKey(metric.kpiId, o.month));
+      if (orphaned(o, entry, metric.kpiId, checkedKpiIds)) {
+        touched = true;
+        changes.push(`${metric.name}, ${monthLabel(o.month)}: ${show(o.actual)} → kosong (entri dihapus)`);
+        return { ...o, actual: null, state: "missing" as const, source: "", numerator: null, denominator: null };
+      }
       if (!stale(o, entry)) return o;
       touched = true;
       changes.push(`${metric.name}, ${monthLabel(o.month)}: ${o.actual !== entry.value ? `${show(o.actual)} → ${entry.value}` : "pembilang dan penyebut diperbarui"}`);
@@ -59,15 +69,20 @@ export function refreshFromEntries(content: MonthlyReportContent, entries: Entry
 }
 
 // Saved observation (current and previous month) behind the latest KPI entry. Same rule as refresh, so one click clears it.
-export function entryMismatchQuestions(content: MonthlyReportContent, period: string, entries: EntryRef[]): ReportQuestion[] {
+export function entryMismatchQuestions(content: MonthlyReportContent, period: string, entries: EntryRef[], checkedKpiIds?: ReadonlySet<number>): ReportQuestion[] {
   const byKey = entryMap(entries);
   const questions: ReportQuestion[] = [];
   content.metrics.forEach((metric, index) => {
     for (const month of [previousReportMonth(period), period]) {
       const o = metric.observations.find((row) => row.month === month);
       const entry = byKey.get(entryKey(metric.kpiId, month));
-      if (!o || !stale(o, entry)) continue;
+      if (!o) continue;
       const path = `metrics.${index}.observations.${month}.entry`;
+      if (orphaned(o, entry, metric.kpiId, checkedKpiIds)) {
+        questions.push({ id: path, path, question: `Entri KPI ${metric.name} ${monthLabel(month)} sudah dihapus; tarik ulang atau ubah sumber bila sengaja.` });
+        continue;
+      }
+      if (!stale(o, entry)) continue;
       const what = o.actual !== entry.value ? `Nilai ${metric.name} ${monthLabel(month)} (${show(o.actual)}) berbeda dari entri KPI terbaru (${entry.value})` : `Pembilang/penyebut ${metric.name} ${monthLabel(month)} berbeda dari entri KPI terbaru`;
       questions.push({ id: path, path, question: `${what}. Tarik ulang dari entri KPI, atau ubah sumber realisasi bila sengaja berbeda.` });
     }

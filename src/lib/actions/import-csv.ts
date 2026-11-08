@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { inChunks } from "@/lib/db/chunks";
 import { kpis, kpiEntries } from "@/lib/db/schema";
 import { and, eq, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -111,16 +112,13 @@ export async function resolveCSVRows(text: string): Promise<{
   // Cek entri lama yang bertabrakan dengan baris yang akan diimport, supaya
   // preview bisa memperingatkan admin sebelum data lama ditimpa.
   if (resolved.length > 0) {
-    const existingMap = new Map<string, number>();
-    for (let i = 0; i < resolved.length; i += 50) {
-      const existing = await db
-        .select({ kpiId: kpiEntries.kpiId, periodDate: kpiEntries.periodDate, value: kpiEntries.value })
-        .from(kpiEntries)
-        .where(or(...resolved.slice(i, i + 50).map((row) =>
-          and(eq(kpiEntries.kpiId, row.kpiId!), eq(kpiEntries.periodDate, row.periodDate))
-        )));
-      for (const entry of existing) existingMap.set(`${entry.kpiId}:${entry.periodDate}`, entry.value);
-    }
+    const existing = await inChunks(resolved, 0, (chunk) => db
+      .select({ kpiId: kpiEntries.kpiId, periodDate: kpiEntries.periodDate, value: kpiEntries.value })
+      .from(kpiEntries)
+      .where(or(...chunk.map((row) =>
+        and(eq(kpiEntries.kpiId, row.kpiId!), eq(kpiEntries.periodDate, row.periodDate))
+      ))), 2);
+    const existingMap = new Map(existing.map((entry) => [`${entry.kpiId}:${entry.periodDate}`, entry.value]));
     for (const row of resolved) {
       row.existingValue = existingMap.get(`${row.kpiId}:${row.periodDate}`);
     }
