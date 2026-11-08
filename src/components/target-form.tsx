@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import "@/lib/zod-client";
 import { z } from "zod";
 import { toast } from "sonner";
 import { unstable_rethrow } from "next/navigation";

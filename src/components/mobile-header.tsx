@@ -108,6 +108,7 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
                 <AIChat />
                 <Link
                   href="/admin/account"
+                  prefetch={false}
                   onClick={() => setOpen(false)}
                   className="flex h-10 items-center rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-[var(--dur-micro)] hover:bg-accent hover:text-foreground"
                 >
@@ -150,6 +151,7 @@ function MobileNavItem({
   return (
     <Link
       href={href}
+      prefetch={false}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
