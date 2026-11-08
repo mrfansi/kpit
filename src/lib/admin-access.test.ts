@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canAccessAdminRoute, getAdminDeniedRedirectPath } from "./admin-access";
+import { canAccessAdminRoute, decodePathname, getAdminDeniedRedirectPath, isPublicPath } from "./admin-access";
 
 test("allows admin users to access admin routes", () => {
   assert.equal(canAccessAdminRoute("admin"), true);
@@ -40,4 +40,26 @@ test("merges refreshed Set-Cookie values into the request Cookie header", async 
   );
   assert.equal(mergeSetCookies("a=1; b=2", ["a=; Max-Age=0; Path=/"]), "b=2");
   assert.equal(mergeSetCookies(null, []), "");
+});
+
+test("treats only login, better-auth and static build assets as public", () => {
+  for (const p of ["/login", "/api/auth/sign-in/email", "/_next/x.js", "/assets/a.css", "/favicon.ico"]) {
+    assert.equal(isPublicPath(p), true, p);
+  }
+  for (const p of [
+    "/",
+    "/kpi/1",
+    "/report/all",
+    "/timeline",
+    "/api/export/csv",
+    "/api/report/markdown",
+    "/uploads/comments/a.png",
+    "/login/x",
+    "/api/authx",
+    "/api/auth/../export/csv",
+  ]) {
+    assert.equal(isPublicPath(p), false, p);
+  }
+  assert.equal(isPublicPath(decodePathname("/%61pi/export/csv")), false);
+  assert.equal(isPublicPath(decodePathname("/api/auth%2F..%2Fexport/csv")), false);
 });

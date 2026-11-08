@@ -2,17 +2,16 @@
 
 import { useState, Suspense } from "react";
 import { signIn } from "@/lib/auth-client";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 
 function LoginFormInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const requested = searchParams.get("callbackUrl");
-  const callbackUrl = requested && /^\/(?![/\\])/.test(requested) ? requested : "/admin/kpi";
+  const callbackUrl = requested && /^\/(?![/\\])/.test(requested) ? requested : "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,13 +25,12 @@ function LoginFormInner() {
 
     const { error: signInError } = await signIn.email({ email, password });
 
-    setLoading(false);
-
     if (signInError) {
+      setLoading(false);
       setError(signInError.status === 429 ? "Terlalu banyak percobaan login. Coba lagi dalam 1 menit." : "Email atau password salah.");
     } else {
-      router.push(callbackUrl);
-      router.refresh();
+      // Full navigation so the root layout re-renders with the signed-in shell.
+      window.location.assign(callbackUrl);
     }
   }
 
@@ -43,7 +41,7 @@ function LoginFormInner() {
     <section aria-labelledby="login-heading" className="space-y-6">
       <div>
         <h2 id="login-heading" className="text-lg font-semibold">Masuk</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Login untuk mengakses halaman admin</p>
+        <p className="mt-1 text-sm text-muted-foreground">Masuk untuk mengakses dashboard KPI</p>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">

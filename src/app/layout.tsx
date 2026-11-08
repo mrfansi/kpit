@@ -24,7 +24,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [domains, session] = await Promise.all([getAllDomains(), auth()]);
+  const session = await auth();
+  // Anonymous visitors (login, not-found) get a bare shell: no domain query, no data-bearing navigation.
+  const domains = session?.user ? await getAllDomains() : [];
 
   return (
     // Variabel font di <html>, bukan <body>: token --font-body dideklarasikan di :root dan
@@ -38,18 +40,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           Lewati ke konten
         </a>
-        {/* Mobile header (hamburger + Sheet) — hanya tampil di < lg */}
-        <MobileHeader domains={domains} isAuthenticated={!!session} userName={session?.user?.name ?? session?.user?.email} role={session?.user?.role} />
+        {session?.user ? (
+          <>
+            {/* Mobile header (hamburger + Sheet) — hanya tampil di < lg */}
+            <MobileHeader domains={domains} isAuthenticated userName={session.user.name ?? session.user.email} role={session.user.role} />
 
-        <div className="flex min-h-screen">
-          {/* Desktop sidebar — hidden di mobile */}
-          <div className="hidden w-60 shrink-0 lg:block print:hidden">
-            <Sidebar domains={domains} user={session?.user} />
-          </div>
-          <main id="main" className="flex-1 overflow-auto min-w-0">
-            <div className="mx-auto max-w-7xl px-4 py-6 lg:px-10 lg:py-8">{children}</div>
+            <div className="flex min-h-screen">
+              {/* Desktop sidebar — hidden di mobile */}
+              <div className="hidden w-60 shrink-0 lg:block print:hidden">
+                <Sidebar domains={domains} user={session.user} />
+              </div>
+              <main id="main" className="flex-1 overflow-auto min-w-0">
+                <div className="mx-auto max-w-7xl px-4 py-6 lg:px-10 lg:py-8">{children}</div>
+              </main>
+            </div>
+          </>
+        ) : (
+          <main id="main" className="min-h-screen">
+            {children}
           </main>
-        </div>
+        )}
 
         <Toaster richColors position="top-right" />
         <Suspense><ToastHandler /></Suspense>
