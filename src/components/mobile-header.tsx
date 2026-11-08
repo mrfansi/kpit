@@ -71,7 +71,7 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
         </SheetTrigger>
         <SheetContent side="left" className="flex w-72 flex-col gap-0 bg-sidebar p-0 sm:max-w-xs" showCloseButton={false}>
           <SheetHeader className="shrink-0 px-5 pt-5 pb-4">
-            <SheetTitle className="font-display text-lg leading-none font-extrabold tracking-tight [font-stretch:125%]">
+            <SheetTitle className="font-display text-lg leading-none font-semibold tracking-tight">
               KPI Dashboard
             </SheetTitle>
           </SheetHeader>
@@ -151,7 +151,7 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
         </SheetContent>
       </Sheet>
 
-      <span className="min-w-0 flex-1 truncate font-display text-base leading-none font-extrabold tracking-tight [font-stretch:125%]">
+      <span className="min-w-0 flex-1 truncate font-display text-base leading-none font-semibold tracking-tight">
         KPI Dashboard
       </span>
       <ThemeToggle />
