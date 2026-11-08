@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAuth } from "@/lib/ai/api-helpers";
+import { requireApiSession } from "@/lib/ai/api-helpers";
 import { checkMonthlyMutationRequest } from "@/lib/monthly-report-request";
 import { renderMonthlyReportPresentation } from "@/lib/monthly-report-export";
 import { brandStyleSchema, contrastProblems } from "@/lib/presentation/brand";
 import { presentationBrandSample } from "@/lib/presentation/brand-preview";
 
 export async function POST(request: NextRequest) {
-  const result = await requireAuth();
+  const result = await requireApiSession();
   if (result.error) return result.error;
   if (result.session.user.role !== "admin") return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });
   const rejection = checkMonthlyMutationRequest(request);

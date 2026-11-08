@@ -18,7 +18,7 @@ function isCrossOrigin(requestHeaders: Headers): boolean {
  * Check auth and return session. Returns NextResponse error if unauthorized.
  * Rejects a cross-origin `Origin` (403) and reads the session from D1, since these routes write or spend AI budget.
  */
-export async function requireAuth(): Promise<
+export async function requireApiSession(): Promise<
   | { session: AuthSession; error: null }
   | { session: null; error: NextResponse }
 > {

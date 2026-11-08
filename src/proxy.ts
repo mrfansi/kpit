@@ -47,13 +47,44 @@ export default async function proxy(req: NextRequest) {
   // The render must see the refreshed session cookie too, or it falls back to a D1 read per check.
   const requestHeaders = new Headers(req.headers);
   if (setCookies.length) requestHeaders.set("cookie", mergeSetCookies(req.headers.get("cookie"), setCookies));
-  const res = withCookies(NextResponse.next({ request: { headers: requestHeaders } }));
-  if (isAdminRoute) {
-    // Report-only: measures what a nonce-based policy would block before the enforced 'unsafe-inline' one is dropped.
+
+  // Pages get a per-request script nonce. Data endpoints and uploads keep the static config CSP, and
+  // the deck routes set their own: a middleware header would override both (vinext lets middleware win).
+  const isPage = !(pathname === "/api" || pathname.startsWith("/api/") || pathname.startsWith("/uploads/"));
+  // The brand editor previews the deck in a srcdoc iframe, which inherits this page's CSP; the deck's inline
+  // script has no nonce, so this one page keeps 'unsafe-inline' until the preview loads from its own URL.
+  const needsInlineScript = pathname.startsWith("/admin/presentation/brand");
+  let csp: string | null = null;
+  if (isPage) {
     const nonce = btoa(crypto.randomUUID());
-    res.headers.set("Content-Security-Policy-Report-Only", `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`);
+    csp = buildPageCsp(needsInlineScript ? "'self' 'unsafe-inline'" : `'self' 'nonce-${nonce}' 'strict-dynamic'`);
+    // vinext reads the nonce from the request CSP first; set it so a client-forged header cannot win.
+    requestHeaders.set("content-security-policy", csp);
+    if (needsInlineScript) requestHeaders.delete("x-nonce");
+    else requestHeaders.set("x-nonce", nonce);
   }
+  const res = withCookies(NextResponse.next({ request: { headers: requestHeaders } }));
+  if (csp) res.headers.set("Content-Security-Policy", csp);
   return res;
+}
+
+const isDev = process.env.NODE_ENV !== "production";
+
+// Keep the non-script directives in sync with next.config.ts, which serves the policy for non-page paths.
+function buildPageCsp(scriptSources: string): string {
+  return [
+    "default-src 'self'",
+    // strict-dynamic: scripts loaded by the nonced bootstrap are trusted. Dev (vite) needs 'unsafe-eval'.
+    `script-src ${scriptSources}${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    isDev ? "connect-src 'self' ws://localhost:* ws://127.0.0.1:*" : "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; ");
 }
 
 // Everything except static build assets and better-auth; `isPublicPath` re-checks the decoded path.

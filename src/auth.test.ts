@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { getAuth, getSessionFromHeaders } from "@/auth";
 import { db } from "@/lib/db";
@@ -47,8 +46,8 @@ test("better-auth logs in users created before the migration and guards roles", 
   t.after(() => environment.dispose());
 
   // Pre-migration state: rows written by the old code (no account rows), then the 0017 backfill.
-  const adminHash = bcrypt.hashSync("Admin-password-1", 12);
-  const viewerHash = bcrypt.hashSync("Viewer-password-1", 12);
+  const adminHash = await hashPassword("Admin-password-1");
+  const viewerHash = await hashPassword("Viewer-password-1");
   const now = Math.floor(Date.now() / 1000);
   await environment.env.DB.batch([
     environment.env.DB.prepare("INSERT INTO users (id,email,name,password_hash,role,created_at) VALUES (?,?,?,?,?,?)").bind("legacy-admin", "Legacy.Admin@example.com", "Legacy Admin", adminHash, "admin", now),
@@ -63,12 +62,10 @@ test("better-auth logs in users created before the migration and guards roles", 
     assert.equal(assertAdmin(session), session);
   });
 
-  await t.test("a legacy bcrypt credential is rehashed to PBKDF2 in both columns after login", async () => {
-    const { hash, password } = await pair("legacy-admin");
-    assert.match(String(hash), /^pbkdf2-sha256\$100000\$/);
-    assert.equal(password, hash);
-    assert.ok(await verifyPassword({ hash: String(hash), password: "Admin-password-1" }));
-    assert.equal((await getSessionFromHeaders(await signIn("legacy.admin@example.com", "Admin-password-1")))?.user.id, "legacy-admin");
+  await t.test("the 0017 backfill copied the stored hash into account.password", async () => {
+    const { password } = await pair("legacy-admin");
+    assert.equal(password, adminHash);
+    assert.ok(await verifyPassword({ hash: String(password), password: "Admin-password-1" }));
   });
 
   await t.test("wrong password and unknown email fail without a session", async () => {
@@ -89,18 +86,18 @@ test("better-auth logs in users created before the migration and guards roles", 
     assert.equal((await db.select().from(users).where(eq(users.email, "new@example.com"))).length, 0);
   });
 
-  await t.test("createUser writes account.password and users.password_hash together", async () => {
+  await t.test("createUser writes account.password and leaves users.password_hash empty", async () => {
     const hash = await hashPassword("Fresh-password-1");
     await createUser({ id: "fresh", email: "Fresh@Example.com", name: "Fresh", passwordHash: hash, role: "viewer" });
     assert.match(hash, /^pbkdf2-sha256\$100000\$/);
-    assert.deepEqual(await pair("fresh"), { hash, password: hash });
+    assert.deepEqual(await pair("fresh"), { hash: "", password: hash });
     assert.equal((await getSessionFromHeaders(await signIn("fresh@example.com", "Fresh-password-1")))?.user.id, "fresh");
   });
 
-  await t.test("updateUserPassword keeps both columns in sync and replaces the old password", async () => {
+  await t.test("updateUserPassword writes only account.password and replaces the old password", async () => {
     const hash = await hashPassword("Changed-password-1");
     await updateUserPassword("legacy-viewer", hash);
-    assert.deepEqual(await pair("legacy-viewer"), { hash, password: hash });
+    assert.deepEqual(await pair("legacy-viewer"), { hash: viewerHash, password: hash }); // users.password_hash untouched
     await assert.rejects(signIn("legacy.viewer@example.com", "Viewer-password-1"));
     assert.equal((await getSessionFromHeaders(await signIn("legacy.viewer@example.com", "Changed-password-1")))?.user.id, "legacy-viewer");
   });
@@ -109,7 +106,7 @@ test("better-auth logs in users created before the migration and guards roles", 
     await db.delete(account).where(eq(account.userId, "fresh"));
     const hash = await hashPassword("Healed-password-1");
     await updateUserPassword("fresh", hash);
-    assert.deepEqual(await pair("fresh"), { hash, password: hash });
+    assert.deepEqual(await pair("fresh"), { hash: "", password: hash });
   });
 
   await t.test("deleting a user invalidates its session and removes the account", async () => {

@@ -54,11 +54,14 @@ export function computeGanttLayout(
     const launches = projects.map((p) =>
       parseISO(getEffectiveLaunchDate(p))
     );
-    minDate = new Date(Math.min(...starts.map((d) => d.getTime())));
+    // Hari ini selalu masuk rentang, supaya "Hari ini" bisa dipusatkan walau semua project sudah lewat/belum mulai.
+    const today = parseISO(format(new Date(), "yyyy-MM-dd"));
+    minDate = new Date(Math.min(...starts.map((d) => d.getTime()), today.getTime()));
     maxDate = new Date(
       Math.max(
         ...ends.map((d) => d.getTime()),
-        ...launches.map((d) => d.getTime())
+        ...launches.map((d) => d.getTime()),
+        today.getTime()
       )
     );
   } else {

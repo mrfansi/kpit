@@ -8,10 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 
+/** Same-origin paths only (no `//host`, `/\host` or absolute URLs); evaluated on submit because it needs `location`. */
+function safeCallbackUrl(raw: string | null) {
+  if (!raw?.startsWith("/")) return "/";
+  try {
+    return new URL(raw, window.location.origin).origin === window.location.origin ? raw : "/";
+  } catch {
+    return "/";
+  }
+}
+
 function LoginFormInner() {
   const searchParams = useSearchParams();
   const requested = searchParams.get("callbackUrl");
-  const callbackUrl = requested && /^\/(?![/\\])/.test(requested) ? requested : "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +39,7 @@ function LoginFormInner() {
       setError(signInError.status === 429 ? "Terlalu banyak percobaan login. Coba lagi dalam 1 menit." : "Email atau password salah.");
     } else {
       // Full navigation so the root layout re-renders with the signed-in shell.
-      window.location.assign(callbackUrl);
+      window.location.assign(safeCallbackUrl(requested));
     }
   }
 

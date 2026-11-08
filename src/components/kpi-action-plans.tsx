@@ -41,10 +41,11 @@ interface KPIActionPlansProps {
   canEdit?: boolean;
 }
 
+// Netral: status rencana bukan status KPI, jadi tanpa hue baik/buruk.
 const statusClass: Record<ActionPlanStatus, string> = {
-  open: "bg-info-soft text-info",
-  in_progress: "bg-warning-soft text-warning",
-  done: "bg-success-soft text-success",
+  open: "bg-secondary text-foreground",
+  in_progress: "bg-secondary text-foreground",
+  done: "bg-muted text-muted-foreground",
   cancelled: "bg-muted text-muted-foreground",
 };
 
@@ -140,16 +141,16 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
       <form action={handleCreate} className="grid gap-4 rounded-card bg-paper-2 p-4 print:hidden">
         {suggestion && (
           <div className="flex flex-col gap-2 border-b pb-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <span>Early warning tersedia sebagai draft action plan.</span>
+            <span>Peringatan dini tersedia sebagai draft action plan.</span>
             <Button type="button" variant="outline" size="sm" onClick={useSuggestion}>
-              Use as action plan
+              Pakai sebagai action plan
             </Button>
           </div>
         )}
         <div className="grid gap-3 md:grid-cols-[1fr_160px_150px]">
           <div className="space-y-1.5">
             <Label htmlFor="action-title">Judul</Label>
-            <Input id="action-title" name="title" value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder="Contoh: Follow up gap realisasi penjualan" disabled={isPending} required />
+            <Input id="action-title" name="title" value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder="Contoh: Tindak lanjuti selisih realisasi penjualan" disabled={isPending} required />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="action-owner">PIC</Label>
@@ -186,7 +187,7 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-semibold">{action.title}</h3>
                       <Badge className={statusClass[action.status]}>{actionPlanStatusLabels[action.status]}</Badge>
-                      {overdue && <Badge variant="destructive">Overdue</Badge>}
+                      {overdue && <Badge variant="destructive">Terlambat</Badge>}
                     </div>
                     {action.description && <p className="text-sm text-muted-foreground">{action.description}</p>}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">

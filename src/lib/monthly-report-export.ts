@@ -4,6 +4,7 @@ import { getPresentationStyles } from "./presentation/styles";
 import { getPresentationEngine } from "./presentation/engine";
 import { DEFAULT_BRAND_STYLE, type BrandStyle } from "./presentation/brand";
 import { formatNumber2 } from "./date-utils";
+import { ytdWindow } from "./monthly-report";
 
 export type MonthlyReportFormat = "full" | "brief" | "presentation";
 
@@ -49,8 +50,8 @@ function statementRows(bundle: MonthlyReportBundle) {
 export function renderMonthlyReportMarkdown(bundle: MonthlyReportBundle, format: MonthlyReportFormat): string {
   const c = bundle.content;
   const lines: string[] = [
-    `# Laporan bulanan ${md(c.division ? REPORT_DIVISIONS[c.division] : bundle.domain.name)} — ${bundle.period}`,
-    `Domain: ${md(bundle.domain.name)} | Revisi: ${bundle.revision} | ${bundle.ready ? "Siap dipresentasikan" : "Draft — belum siap dipresentasikan"}`,
+    `# Laporan bulanan ${md(c.division ? REPORT_DIVISIONS[c.division] : bundle.domain.name)}: ${bundle.period}`,
+    `Domain: ${md(bundle.domain.name)} | Revisi: ${bundle.revision} | ${bundle.ready ? "Siap dipresentasikan" : "Draft, belum siap dipresentasikan"}`,
     `Alokasi inti: 10–15 menit. Lampiran tidak termasuk slide inti.`, "",
   ];
   if (bundle.questions.length) lines.push("## Klarifikasi yang dibutuhkan", ...bundle.questions.map((q) => `- ${md(q.question)}`), "");
@@ -58,17 +59,17 @@ export function renderMonthlyReportMarkdown(bundle: MonthlyReportBundle, format:
   lines.push("## 2. KPI vs target", `Periode aktual: ${currentMonth(bundle)}. KPI konsisten lintas bulan; perubahan daftar: ${md(text(c.kpiSetChangeNote))}.`, "");
   for (const { metric, result } of metricRows(bundle)) {
     lines.push(`### ${md(metric.name)} (${md(metric.unit)})`, `Definisi: ${md(text(metric.definition))}; agregasi: ${md(metric.aggregation ?? "belum ditetapkan")}; ${md(text(metric.aggregationNote))}`);
-    if (result) lines.push(`- Aktual vs target: ${md(computed(result.current, metric.unit))}${result.missedTarget ? " — target meleset" : ""}`);
+    if (result) lines.push(`- Aktual vs target: ${md(computed(result.current, metric.unit))}${result.missedTarget ? "; target meleset" : ""}`);
     else lines.push("- Aktual vs target: belum dihitung");
   }
   lines.push("", "## 3. Tren MoM dan YTD", `Bulan lalu: ${previousMonth(bundle)}; periode YTD tertera pada label tiap KPI.`, "");
   for (const { metric, result } of metricRows(bundle)) {
     if (!result) continue;
-    lines.push(`- **${md(metric.name)}** — sebelumnya: ${md(computed(result.previous, metric.unit))}; sekarang: ${md(computed(result.current, metric.unit))}; MoM: ${result.momPercent === null ? "tidak dapat dihitung" : `${result.momPercent.toFixed(2)}% (dari aktual ${previousMonth(bundle)} dan ${currentMonth(bundle)}; ${md(source(result.previous.source))}; ${md(source(result.current.source))})`}; ${md(ytdLabel(result.ytd))}: ${md(computed(result.ytd, metric.unit))}`);
+    lines.push(`- **${md(metric.name)}**: sebelumnya: ${md(computed(result.previous, metric.unit))}; sekarang: ${md(computed(result.current, metric.unit))}; MoM: ${result.momPercent === null ? "tidak dapat dihitung" : `${result.momPercent.toFixed(2)}% (dari aktual ${previousMonth(bundle)} dan ${currentMonth(bundle)}; ${md(source(result.previous.source))}; ${md(source(result.current.source))})`}; ${md(ytdLabel(result.ytd))}: ${md(computed(result.ytd, metric.unit))}`);
   }
   if (c.division === "finance") {
     for (const [title, statement] of statementRows(bundle)) {
-      lines.push("", `### ${title} — ${currentMonth(bundle)}`, ...statement.rows.map((row) => `- ${md(row.label)}: ${md(label(row.state, row.value, statement.unit))}; ${md(source(row.source))}`));
+      lines.push("", `### ${title}: ${currentMonth(bundle)}`, ...statement.rows.map((row) => `- ${md(row.label)}: ${md(label(row.state, row.value, statement.unit))}; ${md(source(row.source))}`));
     }
   }
   lines.push("", "## 4. Penyebab deviasi dan bukti");
@@ -82,12 +83,12 @@ export function renderMonthlyReportMarkdown(bundle: MonthlyReportBundle, format:
   lines.push("", "## Rekonsiliasi lintas divisi", ...(bundle.reconciliations.length ? reconciliationLines(bundle).map((entry) => `- ${md(entry)}`) : ["- Tidak ada metrik bersama yang dideklarasikan."]));
   if (c.aiNotes.trim()) lines.push("", "## Catatan presenter (draft bantuan AI; bukan sumber fakta)", md(c.aiNotes), md(source(c.narrativeSource)), ...metricRows(bundle).map(({ metric, result }) => `- ${md(metric.name)}: ${md(source(result?.current.source ?? ""))}; target: ${md(source(result?.current.targetSource ?? ""))}`));
   if (format !== "brief") {
-    lines.push("", "## Lampiran — tidak termasuk slide inti", "### Riwayat bulanan dan data mentah");
+    lines.push("", "## Lampiran: tidak termasuk slide inti", "### Riwayat bulanan dan data mentah");
     for (const metric of c.metrics) {
       lines.push(`#### ${md(metric.name)}`, "| Bulan | Aktual | Target | Sumber aktual | Sumber target | Pembilang | Penyebut |", "| --- | --- | --- | --- | --- | --- | --- |");
-      for (const row of metric.observations) lines.push(`| ${cell(row.month)} | ${cell(label(row.state, row.actual, metric.unit))} | ${cell(label(row.target === null ? row.state : "provided", row.target, metric.unit))} | ${cell(text(row.source))} | ${cell(text(row.targetSource))} | ${cell(row.numerator ?? "—")} | ${cell(row.denominator ?? "—")} |`);
+      for (const row of metric.observations) lines.push(`| ${cell(row.month)} | ${cell(label(row.state, row.actual, metric.unit))} | ${cell(label(row.target === null ? row.state : "provided", row.target, metric.unit))} | ${cell(text(row.source))} | ${cell(text(row.targetSource))} | ${cell(row.numerator ?? "-")} | ${cell(row.denominator ?? "-")} |`);
     }
-    lines.push("", "### Breakdown channel", ...c.channelBreakdowns.map((row) => `- ${md(row.channel)} — ${md(row.metric)}: ${md(label(row.state, row.value, row.unit))}; ${md(source(row.source))}`), "", "### Aktivitas", ...c.activities.map((activity) => `- ${md(activity)}`), md(source(c.narrativeSource)));
+    lines.push("", "### Breakdown channel", ...c.channelBreakdowns.map((row) => `- ${md(row.channel)} - ${md(row.metric)}: ${md(label(row.state, row.value, row.unit))}; ${md(source(row.source))}`), "", "### Aktivitas", ...c.activities.map((activity) => `- ${md(activity)}`), md(source(c.narrativeSource)));
     for (const appendix of c.appendices) lines.push("", `### ${md(appendix.title)}`, md(appendix.content), md(source(appendix.source)));
   } else lines.push("", "Lampiran data mentah, channel, dan aktivitas tersedia pada ekspor lengkap.");
   return lines.join("\n").trimEnd() + "\n";
@@ -106,12 +107,37 @@ function footnotes() {
     render: () => list.length ? `<div class="text-small" role="note" aria-label="Catatan kaki">${list.map((note, index) => `<p>[${index + 1}] ${html(note)}</p>`).join("")}</div>` : "",
   };
 }
-function sparkline(observations: MonthlyReportBundle["content"]["metrics"][number]["observations"]): Cell {
-  const points = [...observations].sort((a, b) => a.month.localeCompare(b.month)).filter((row) => row.state === "provided" && row.actual !== null).map((row) => row.actual as number);
-  if (points.length < 2) return "";
-  const min = Math.min(...points), span = Math.max(...points) - min || 1;
-  const coords = points.map((value, index) => `${(index / (points.length - 1) * 76 + 2).toFixed(1)},${(22 - (value - min) / span * 20).toFixed(1)}`).join(" ");
-  return { raw: `<svg viewBox="0 0 80 24" width="80" height="24" aria-hidden="true" focusable="false"><polyline points="${coords}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>` };
+// Positions follow the KPI's YTD window, so a missing month leaves a gap instead of the neighbours being joined.
+function sparkline(metric: MonthlyReportBundle["content"]["metrics"][number], period: string): Cell {
+  const months = ytdWindow(metric, period);
+  const byMonth = new Map(metric.observations.map((row) => [row.month, row]));
+  const values = months.map((month) => { const row = byMonth.get(month); return row?.state === "provided" && row.actual !== null ? row.actual : null; });
+  const provided = values.filter((value): value is number => value !== null);
+  if (provided.length < 2) return "";
+  const min = Math.min(...provided), span = Math.max(...provided) - min || 1;
+  const segments: string[][] = [];
+  const dots: string[] = [];
+  values.forEach((value, index) => {
+    if (value === null) return;
+    const x = (index / (months.length - 1) * 76 + 2).toFixed(1), y = (22 - (value - min) / span * 20).toFixed(1);
+    dots.push(`<circle cx="${x}" cy="${y}" r="1.5" fill="currentColor"/>`);
+    if (index === 0 || values[index - 1] === null) segments.push([`${x},${y}`]); else segments[segments.length - 1].push(`${x},${y}`);
+  });
+  const lines = segments.filter((segment) => segment.length > 1).map((segment) => `<polyline points="${segment.join(" ")}" fill="none" stroke="currentColor" stroke-width="1.5"/>`).join("");
+  return { raw: `<svg viewBox="0 0 80 24" width="80" height="24" aria-hidden="true" focusable="false">${lines}${dots.join("")}</svg>` };
+}
+const MONTHS_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const generatedFmt = new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" });
+const slideLabel = (bundle: MonthlyReportBundle) => `${MONTHS_ID[Number(bundle.period.slice(5, 7)) - 1]} ${bundle.period.slice(0, 4)}`;
+function coverSlide(key: string, headline: string, bundle: MonthlyReportBundle, extra: string) {
+  const name = bundle.content.division ? REPORT_DIVISIONS[bundle.content.division] : bundle.domain.name;
+  return `<section class="slide memo-cover" data-slide="${key}" role="region" aria-label="${html(headline)}"><div class="memo-inner"><h1 class="title-large">${html(headline)}</h1><h2 class="title-medium">${html(name)}</h2><p>${html(slideLabel(bundle))}</p><p class="text-small">${html(extra)}</p></div></section>`;
+}
+function kpiStatus(result: MonthlyReportBundle["metrics"][number] | undefined, unit: string) {
+  if (!result) return "belum dihitung";
+  const { value, target, state } = result.current;
+  if (value === null || target === null || state !== "provided") return "belum terukur";
+  return result.missedTarget ? `Meleset (selisih ${label("provided", Math.abs(target - value), unit)})` : "Tercapai";
 }
 function slide(key: string, title: string, body: string) {
   return `<section class="slide memo-slide" data-slide="${key}" role="region" aria-label="${html(title)}"><div class="memo-inner"><p class="text-small">Laporan bulanan divisi · 10–15 menit untuk seluruh slide inti</p><h1 class="title-large">${html(title)}</h1>${body}</div></section>`;
@@ -120,13 +146,13 @@ function statementSlide(title: string, statement: MonthlyReportBundle["content"]
   return slide("finance", title, table(["Pos", "Aktual", "Sumber"], statement.rows.map((row) => [row.label, label(row.state, row.value, statement.unit), text(row.source)])));
 }
 
-export function renderMonthlyReportPresentation(bundle: MonthlyReportBundle, style: BrandStyle = DEFAULT_BRAND_STYLE): string {
+export function renderMonthlyReportPresentation(bundle: MonthlyReportBundle, style: BrandStyle = DEFAULT_BRAND_STYLE, generatedAt: Date = new Date()): string {
   const c = bundle.content;
   const rows = metricRows(bundle);
-  const kpiTable = table(["KPI / definisi", "Aktual", "Target", "Sumber dan perhitungan"], rows.map(({ metric, result }) => [metric.name + ` — ${metric.definition}`, result ? label(result.current.state, result.current.value, metric.unit) : "belum diberikan", result ? label(result.current.target === null ? result.current.state : "provided", result.current.target, metric.unit) : "belum diberikan", result ? `${source(result.current.source)}; target: ${source(result.current.targetSource)}; ${result.current.calculation}` : "belum dihitung"]));
+  const kpiTable = table(["KPI / definisi", "Aktual", "Target", "Status", "Sumber dan perhitungan"], rows.map(({ metric, result }) => [`${metric.name}: ${metric.definition}`, result ? label(result.current.state, result.current.value, metric.unit) : "belum diberikan", result ? label(result.current.target === null ? result.current.state : "provided", result.current.target, metric.unit) : "belum diberikan", kpiStatus(result, metric.unit), result ? `${source(result.current.source)}; target: ${source(result.current.targetSource)}; ${result.current.calculation}` : "belum dihitung"]));
   const trendNotes = footnotes();
   const trendValue = (value: ComputedReportValue, unit: string, prefix = "") => `${prefix}${label(value.state, value.value, unit)} (target: ${targetLabel(value, unit)}) ${trendNotes.ref(provenance(value))}`;
-  const trendTable = table(["KPI", "Pola", `Bulan lalu (${previousMonth(bundle)})`, `Bulan ini (${currentMonth(bundle)})`, "MoM", "YTD"], rows.map(({ metric, result }) => [metric.name, sparkline(metric.observations), result ? trendValue(result.previous, metric.unit) : "belum dihitung", result ? trendValue(result.current, metric.unit) : "belum dihitung", result?.momPercent === null || !result ? "tidak dapat dihitung" : `${result.momPercent.toFixed(2)}% ${trendNotes.ref(`${source(result.previous.source)}; ${source(result.current.source)}; perubahan relatif`)}`, result ? trendValue(result.ytd, metric.unit, result.ytd.label ? `${result.ytd.label}: ` : "") : "belum dihitung"]));
+  const trendTable = table(["KPI", "Pola", `Bulan lalu (${previousMonth(bundle)})`, `Bulan ini (${currentMonth(bundle)})`, "MoM", "YTD"], rows.map(({ metric, result }) => [metric.name, sparkline(metric, bundle.period), result ? trendValue(result.previous, metric.unit) : "belum dihitung", result ? trendValue(result.current, metric.unit) : "belum dihitung", result?.momPercent === null || !result ? "tidak dapat dihitung" : `${result.momPercent.toFixed(2)}% ${trendNotes.ref(`${source(result.previous.source)}; ${source(result.current.source)}; perubahan relatif`)}`, result ? trendValue(result.ytd, metric.unit, result.ytd.label ? `${result.ytd.label}: ` : "") : "belum dihitung"]));
   const misses = rows.filter(({ result }) => result?.missedTarget);
   const status = misses.length ? `<p class="badge badge-red">${misses.length} KPI: Target meleset</p>` : "";
   const deviation = status + items(misses.length ? misses.map(({ metric }) => `${metric.name}: ${text(metric.deviationCause)}; bukti: ${text(metric.deviationEvidence)}; ${source(c.narrativeSource)}`) : [allCurrentTargetsMeasured(bundle) ? "Semua KPI terukur memenuhi target." : "Tidak dapat dinilai; metrik belum dilacak atau belum lengkap."]);
@@ -135,7 +161,7 @@ export function renderMonthlyReportPresentation(bundle: MonthlyReportBundle, sty
   const actions = previous + table(["Aksi bulan depan", "PIC", "Tenggat / sumber"], c.actions.map((action) => [action.action, action.pic, `${action.deadline}; ${source(c.narrativeSource)}`]));
   const decision = c.decisions.length ? table(["Keputusan diminta", "Pilihan", "Dampak / sumber"], c.decisions.map((item) => [item.request, item.options, `${item.impact}; ${source(c.narrativeSource)}`])) : "";
   const reconciliation = `<h2 class="title-medium">Rekonsiliasi lintas divisi</h2>${items(reconciliationLines(bundle).length ? reconciliationLines(bundle) : ["Tidak ada metrik bersama yang dideklarasikan."])}`;
-  const core: string[] = [slide("summary", `${c.division ? REPORT_DIVISIONS[c.division] : bundle.domain.name} — Ringkasan ${currentMonth(bundle)}`, `${items([...c.summary, `Hasil paling tidak berjalan baik: ${c.worstOutcome}`])}<p class="text-small">${html(source(c.narrativeSource))}</p>`), slide("kpi", "KPI vs target", `<p class="text-small">Daftar KPI bulanan tetap. Perubahan daftar: ${html(text(c.kpiSetChangeNote))}</p>${kpiTable}`)];
+  const core: string[] = [slide("summary", `${c.division ? REPORT_DIVISIONS[c.division] : bundle.domain.name}: Ringkasan ${currentMonth(bundle)}`, `${items([...c.summary, `Hasil paling tidak berjalan baik: ${c.worstOutcome}`])}<p class="text-small">${html(source(c.narrativeSource))}</p>`), slide("kpi", "KPI vs target", `<p class="text-small">Daftar KPI bulanan tetap. Perubahan daftar: ${html(text(c.kpiSetChangeNote))}</p>${kpiTable}`)];
   if (c.division === "finance") core.push(statementSlide("Laba rugi", c.finance.incomeStatement), statementSlide("Arus kas", c.finance.cashFlow), statementSlide("Neraca", c.finance.balanceSheet));
   core.push(slide("trend", "Tren MoM dan YTD", trendTable + trendNotes.render()));
   if (c.division === "hr_partnership") {
@@ -146,17 +172,19 @@ export function renderMonthlyReportPresentation(bundle: MonthlyReportBundle, sty
     if (decision) core.push(slide("decisions", "Keputusan C-level", decision));
   }
   const appendix = [
-    ...c.metrics.map((metric) => `<section class="memo-appendix-page"><h2>${html(metric.name)} — riwayat bulanan</h2>${table(["Bulan", "Aktual", "Target", "Sumber aktual", "Sumber target", "Pembilang", "Penyebut"], metric.observations.map((row) => [row.month, label(row.state, row.actual, metric.unit), label(row.target === null ? row.state : "provided", row.target, metric.unit), text(row.source), text(row.targetSource), String(row.numerator ?? "—"), String(row.denominator ?? "—")]))}</section>`),
+    ...c.metrics.map((metric) => `<section class="memo-appendix-page"><h2>${html(metric.name)}: riwayat bulanan</h2>${table(["Bulan", "Aktual", "Target", "Sumber aktual", "Sumber target", "Pembilang", "Penyebut"], metric.observations.map((row) => [row.month, label(row.state, row.actual, metric.unit), label(row.target === null ? row.state : "provided", row.target, metric.unit), text(row.source), text(row.targetSource), String(row.numerator ?? "-"), String(row.denominator ?? "-")]))}</section>`),
     `<section class="memo-appendix-page"><h2>Breakdown channel</h2>${table(["Channel", "Metrik", "Nilai", "Sumber"], c.channelBreakdowns.map((row) => [row.channel, row.metric, label(row.state, row.value, row.unit), text(row.source)]))}<h2>Aktivitas</h2>${items(c.activities)}<p class="text-small">${html(source(c.narrativeSource))}</p></section>`,
     ...c.appendices.map((item) => `<section class="memo-appendix-page"><h2>${html(item.title)}</h2><p class="memo-pre">${html(item.content)}</p><p>${html(source(item.source))}</p></section>`),
   ].join("");
-  const notes = c.aiNotes.trim() ? `<aside class="memo-notes"><h2>Catatan presenter — draft bantuan AI, bukan sumber fakta</h2><p class="memo-pre">${html(c.aiNotes)}</p><p>${html(source(c.narrativeSource))}</p>${items(rows.map(({ metric, result }) => `${metric.name}: ${source(result?.current.source ?? "")}; target: ${source(result?.current.targetSource ?? "")}`))}</aside>` : "";
-  return `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${html(bundle.domain.name)} — ${html(bundle.period)}</title><style>${getPresentationStyles(style)}
+  const notes = c.aiNotes.trim() ? `<aside class="memo-notes"><h2>Catatan presenter: draft bantuan AI, bukan sumber fakta</h2><p class="memo-pre">${html(c.aiNotes)}</p><p>${html(source(c.narrativeSource))}</p>${items(rows.map(({ metric, result }) => `${metric.name}: ${source(result?.current.source ?? "")}; target: ${source(result?.current.targetSource ?? "")}`))}</aside>` : "";
+  const cover = coverSlide("cover", "Laporan bulanan", bundle, `Dibuat ${generatedFmt.format(generatedAt)}`);
+  const closing = coverSlide("closing", "Terima kasih", bundle, `Laporan bulanan ${slideLabel(bundle)}`);
+  return `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${html(bundle.domain.name)}: ${html(bundle.period)}</title><style>${getPresentationStyles(style)}
     .memo-inner { width: min(100%, 1100px); max-height: 80vh; overflow: auto; } .memo-inner h1 { margin: .5rem 0 1.5rem; } .memo-inner h2 { margin: 1rem 0 .5rem; } .memo-list { padding-left: 1.5rem; line-height: 1.6; } .memo-list li { margin: .5rem 0; } .memo-table-scroll { overflow: auto; max-height: 65vh; } .data-table { min-width: 700px; } .data-table td { vertical-align: top; overflow-wrap: anywhere; } .memo-pre { white-space: pre-wrap; overflow-wrap: anywhere; }
     .memo-toolbar { position: fixed; z-index: 100; top: 1rem; right: 1rem; display: flex; gap: .5rem; } .memo-toolbar button { cursor: pointer; border: 1px solid var(--primary); border-radius: var(--radius); background: var(--bg-start); color: var(--text); font-family: var(--font-body); padding: .4rem .7rem; }
     .memo-appendices { display: none; position: fixed; z-index: 90; inset: 0; overflow: auto; background: var(--bg-start); padding: 5rem 2rem 4rem; } body.appendix-mode .memo-appendices { display: block; } body.appendix-mode .slides-wrapper, body.appendix-mode .progress-bar, body.appendix-mode .slide-counter, body.appendix-mode .nav-hint { visibility: hidden; }
     .memo-appendix-page { max-width: 1100px; margin: 0 auto 2rem; padding: 2rem; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius); } .memo-appendix-page h2 { margin-bottom: 1rem; } .memo-appendix-page .memo-table-scroll { max-height: none; } .memo-notes { max-width: 1100px; margin: 2rem auto; padding: 1rem; border: 1px solid var(--card-border); }
     @media print { .memo-toolbar { display: none; } .brand-footer { position: static; } .memo-inner { max-height: none; overflow: visible; } .memo-table-scroll { max-height: none; overflow: visible; } .memo-appendices { display: none !important; } body.appendix-mode .slides-wrapper { display: none !important; } body.appendix-mode .memo-appendices { display: block !important; position: static; padding: 0; background: white; color: black; } .memo-appendix-page { background: white; color: black; page-break-after: always; } .memo-appendix-page .data-table th, .memo-appendix-page .data-table td { color: black; } }
-  </style></head><body><div class="slides-wrapper">${core.join("")}</div>${style.footerText ? `<footer class="brand-footer">${html(style.footerText)}</footer>` : ""}<div class="progress-bar" id="progress-bar"></div><span class="slide-counter" id="slide-counter"></span><span class="nav-hint">${core.length} slide inti · 10–15 menit · ←/→ navigasi</span><nav class="memo-toolbar" aria-label="Opsi presentasi"><button id="appendix-toggle" type="button" aria-controls="appendices" aria-expanded="false">Buka lampiran</button><button type="button" onclick="window.print()">Cetak mode ini</button></nav><div class="memo-appendices" id="appendices" aria-label="Lampiran tidak termasuk slide inti">${appendix}${notes}</div><script>${getPresentationEngine(core.length)}
+  </style></head><body><div class="slides-wrapper">${cover}${core.join("")}${closing}</div>${style.footerText ? `<footer class="brand-footer">${html(style.footerText)}</footer>` : ""}<div class="progress-bar" id="progress-bar"></div><span class="slide-counter" id="slide-counter"></span><span class="nav-hint">${core.length} slide inti · 10–15 menit · ←/→ navigasi</span><nav class="memo-toolbar" aria-label="Opsi presentasi"><button id="appendix-toggle" type="button" aria-controls="appendices" aria-expanded="false">Buka lampiran</button><button type="button" onclick="window.print()">Cetak mode ini</button></nav><div class="memo-appendices" id="appendices" aria-label="Lampiran tidak termasuk slide inti">${appendix}${notes}</div><script>${getPresentationEngine(core.length + 2)}
   (function(){var button=document.getElementById('appendix-toggle');button.addEventListener('click',function(){var open=document.body.classList.toggle('appendix-mode');button.textContent=open?'Kembali ke slide inti':'Buka lampiran';button.setAttribute('aria-expanded',String(open));});document.addEventListener('keydown',function(event){if(event.key==='Escape'&&document.body.classList.contains('appendix-mode')){document.body.classList.remove('appendix-mode');button.textContent='Buka lampiran';button.setAttribute('aria-expanded','false');button.focus();}})})();</script></body></html>`;
 }

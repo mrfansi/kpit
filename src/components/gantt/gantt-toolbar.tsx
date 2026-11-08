@@ -83,13 +83,13 @@ export function GanttToolbar({
         <Button variant="outline" size="sm" asChild>
           <Link href="/timeline/report" target="_blank">
             <FileText aria-hidden />
-            Report
+            Laporan
           </Link>
         </Button>
         {canEdit && (
           <Button type="button" size="sm" onClick={onAddProject}>
             <Plus aria-hidden />
-            Project
+            Tambah project
           </Button>
         )}
       </div>

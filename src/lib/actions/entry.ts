@@ -77,6 +77,19 @@ export async function createEntry(data: Omit<NewKPIEntry, "createdAt">): Promise
     const entryError = checkEntry(kpi, entry.periodDate, entry.value);
     if (entryError) return { error: `${kpi.name}: ${entryError}` };
 
+    // Input tanpa bagian yang menimpa entri bernilai sama (mis. suntingan catatan) mempertahankan bagian lama.
+    if (entry.numerator == null && entry.denominator == null) {
+      const existing = await db
+        .select({ value: kpiEntries.value, numerator: kpiEntries.numerator, denominator: kpiEntries.denominator })
+        .from(kpiEntries)
+        .where(and(eq(kpiEntries.kpiId, entry.kpiId), eq(kpiEntries.periodDate, entry.periodDate)))
+        .get();
+      if (existing?.value === entry.value) {
+        entry.numerator = existing.numerator;
+        entry.denominator = existing.denominator;
+      }
+    }
+
     const [removed] = await db.batch([
       db.delete(kpiEntries)
         .where(and(eq(kpiEntries.kpiId, entry.kpiId), eq(kpiEntries.periodDate, entry.periodDate)))
@@ -122,8 +135,12 @@ export async function updateEntry(id: number, value: number, note?: string): Pro
     if (boundsError) return { error: `${row.name}: ${boundsError}` };
 
     const newNote = note?.trim() ? note : null;
-    // Nilai yang diedit tidak lagi cocok dengan pembilang/penyebut lama, jadi keduanya dikosongkan.
-    await db.update(kpiEntries).set({ value, note: newNote, numerator: null, denominator: null }).where(eq(kpiEntries.id, id));
+    // Nilai yang berubah tidak lagi cocok dengan pembilang/penyebut lama, jadi keduanya dikosongkan;
+    // suntingan catatan saja (nilai sama) mempertahankannya.
+    const parts = value === row.value
+      ? { numerator: row.numerator, denominator: row.denominator }
+      : { numerator: null, denominator: null };
+    await db.update(kpiEntries).set({ value, note: newNote, ...parts }).where(eq(kpiEntries.id, id));
     await logAudit({
       userId: session.user.id,
       userEmail: session.user.email ?? undefined,
@@ -132,7 +149,7 @@ export async function updateEntry(id: number, value: number, note?: string): Pro
       entityId: `${row.kpiId}:${row.periodDate}`,
       detail: formatChanges(
         { value: row.value, note: row.note, numerator: row.numerator, denominator: row.denominator },
-        { value, note: newNote, numerator: null, denominator: null },
+        { value, note: newNote, ...parts },
       ),
     });
     revalidatePath("/");

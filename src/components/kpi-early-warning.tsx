@@ -23,7 +23,7 @@ export function KPIEarlyWarning({ warning }: KPIEarlyWarningProps) {
         <Icon aria-hidden className="mt-1 size-4 shrink-0" />
         <div className="min-w-0 space-y-3">
           <div>
-            <h2 className="text-lg font-semibold">Early warning</h2>
+            <h2 className="text-lg font-semibold">Peringatan dini</h2>
             <p className="mt-1 text-sm">Sistem menyarankan action plan sebelum risiko KPI makin melebar.</p>
           </div>
           <ul className="flex flex-wrap gap-2">

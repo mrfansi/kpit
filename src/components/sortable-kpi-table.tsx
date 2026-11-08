@@ -32,6 +32,9 @@ interface SortableKPITableProps {
   domainMap: Record<number, string>;
 }
 
+const periodLabels: Record<KPI["period"], string> = { daily: "Harian", weekly: "Mingguan", monthly: "Bulanan" };
+const refreshTypeLabels: Record<KPI["refreshType"], string> = { periodic: "Periodik", realtime: "Real-time" };
+
 function SortableRow({ kpi, domainName }: { kpi: KPI; domainName: string }) {
   const {
     attributes,
@@ -71,8 +74,8 @@ function SortableRow({ kpi, domainName }: { kpi: KPI; domainName: string }) {
       <TableCell className="hidden text-muted-foreground md:table-cell">{domainName}</TableCell>
       <TableCell className="hidden sm:table-cell">{kpi.unit}</TableCell>
       <TableCell className="num hidden text-right sm:table-cell">{kpi.target}</TableCell>
-      <TableCell className="hidden capitalize lg:table-cell">{kpi.period}</TableCell>
-      <TableCell className="hidden capitalize text-muted-foreground lg:table-cell">{kpi.refreshType}</TableCell>
+      <TableCell className="hidden lg:table-cell">{periodLabels[kpi.period]}</TableCell>
+      <TableCell className="hidden text-muted-foreground lg:table-cell">{refreshTypeLabels[kpi.refreshType]}</TableCell>
       <TableCell className="pr-0 text-right">
         <div className="flex justify-end gap-1">
           <Button variant="ghost" size="icon-sm" asChild>

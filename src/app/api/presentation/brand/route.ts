@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAuth } from "@/lib/ai/api-helpers";
+import { requireApiSession } from "@/lib/ai/api-helpers";
 import { checkMonthlyMutationRequest } from "@/lib/monthly-report-request";
 import { brandStyleSchema, contrastProblems, DEFAULT_BRAND_STYLE } from "@/lib/presentation/brand";
 import { getActivePresentationBrand, PresentationBrandConflict, savePresentationBrand } from "@/lib/presentation/brand-store";
@@ -12,14 +12,14 @@ const saveSchema = z.object({
 }).strict();
 
 export async function GET() {
-  const result = await requireAuth();
+  const result = await requireApiSession();
   if (result.error) return result.error;
   if (result.session.user.role !== "admin") return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });
   return NextResponse.json({ active: await getActivePresentationBrand(), default: DEFAULT_BRAND_STYLE }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(request: NextRequest) {
-  const result = await requireAuth();
+  const result = await requireApiSession();
   if (result.error) return result.error;
   if (result.session.user.role !== "admin") return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });
   const rejection = checkMonthlyMutationRequest(request);

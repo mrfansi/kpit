@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import cloudflare from "../../cloudflare.config";
@@ -22,8 +22,10 @@ export function wranglerConfigPath(): string {
     d1_databases: bindings.filter(([, b]) => b.type === "d1").map(([binding, b]) => ({ binding, database_name: b.name, database_id: b.id, migrations_dir: resolve("drizzle") })),
     r2_buckets: bindings.filter(([, b]) => b.type === "r2").map(([binding, b]) => ({ binding, bucket_name: b.name })),
   };
-  path = join(mkdtempSync(join(tmpdir(), "kpit-wrangler-")), "wrangler.json");
+  const directory = mkdtempSync(join(tmpdir(), "kpit-wrangler-"));
+  path = join(directory, "wrangler.json");
   writeFileSync(path, JSON.stringify(config));
+  process.on("exit", () => rmSync(directory, { recursive: true, force: true }));
   return path;
 }
 

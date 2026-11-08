@@ -8,6 +8,7 @@ import { ExportButtons } from "@/components/export-buttons";
 import { PeriodSelector } from "@/components/period-selector";
 import { KPIFilterBar } from "@/components/kpi-filter-bar";
 import { QuickEntryModal } from "@/components/quick-entry-modal";
+import { EmptyState } from "@/components/empty-state";
 import { DomainStatusBadges } from "@/components/domain-status-badges";
 import { formatPeriodDate, defaultReportingPeriod } from "@/lib/period";
 import { getKPIStatus } from "@/lib/kpi-status";
@@ -105,7 +106,7 @@ export default async function OverviewPage({ searchParams }: Props) {
             <Button variant="outline" size="sm" asChild>
               <Link href={`/report/all${selectedPeriod ? `?period=${selectedPeriod}` : ""}`}>
                 <FileText aria-hidden />
-                Executive Report
+                Laporan eksekutif
               </Link>
             </Button>
             <ExportButtons />
@@ -139,7 +140,7 @@ export default async function OverviewPage({ searchParams }: Props) {
           <section aria-labelledby="pinned-heading" className="space-y-3">
             <h2 id="pinned-heading" className="flex items-center gap-2 text-lg font-semibold">
               <Pin aria-hidden className="size-4 text-muted-foreground" />
-              Dipinned
+              Disematkan
             </h2>
             <KPITable
               rows={pinnedWithEntries}
@@ -171,12 +172,15 @@ export default async function OverviewPage({ searchParams }: Props) {
                 isFiltered
                   ? "Tidak ada KPI yang cocok dengan filter."
                   : kpisWithEntries.length > 0
-                    ? "Semua KPI domain ini ada di bagian Dipinned."
+                    ? "Semua KPI domain ini ada di bagian Disematkan."
                     : "Belum ada KPI untuk domain ini."
               }
             />
           </section>
         ))}
+        {isFiltered && byDomain.length === 0 && (
+          <EmptyState title="Tidak ada KPI yang cocok dengan filter." description="Ubah atau hapus filter untuk melihat semua KPI." />
+        )}
       </div>
     </div>
   );

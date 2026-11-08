@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
@@ -40,6 +40,15 @@ export function KPIFilterBar({ defaultQ = "", defaultStatus = "" }: KPIFilterBar
   const currentQ = searchParams.get("q") ?? defaultQ;
   const currentStatus = searchParams.get("status") ?? defaultStatus;
 
+  // Input terkontrol + debounce: satu navigasi per jeda mengetik, bukan satu per karakter.
+  const [q, setQ] = useState(currentQ);
+  const timer = useRef<number | undefined>(undefined);
+  const latest = useRef(updateParams);
+  useEffect(() => {
+    latest.current = updateParams;
+  }, [updateParams]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
   return (
     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center print:hidden">
       <div className="relative w-full sm:w-64 sm:shrink-0">
@@ -47,16 +56,25 @@ export function KPIFilterBar({ defaultQ = "", defaultStatus = "" }: KPIFilterBar
         <Input
           aria-label="Cari KPI"
           placeholder="Cari KPI…"
-          defaultValue={currentQ}
-          onChange={(e) => updateParams("q", e.target.value)}
+          value={q}
+          onChange={(e) => {
+            const value = e.target.value;
+            setQ(value);
+            clearTimeout(timer.current);
+            timer.current = window.setTimeout(() => latest.current("q", value), 300);
+          }}
           className="pl-9"
         />
-        {currentQ && (
+        {q && (
           <Button
             type="button"
             variant="ghost"
             size="icon-xs"
-            onClick={() => updateParams("q", "")}
+            onClick={() => {
+              clearTimeout(timer.current);
+              setQ("");
+              updateParams("q", "");
+            }}
             aria-label="Hapus pencarian"
             className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground"
           >

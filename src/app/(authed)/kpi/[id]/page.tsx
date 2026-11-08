@@ -238,7 +238,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                 aria-current={showForecast ? "true" : undefined}
               >
                 <TrendingUp aria-hidden />
-                Forecast
+                Proyeksi
               </Link>
             </Button>
           </div>

@@ -24,10 +24,10 @@ try {
       const file = join(folder, "seed.sql");
       const now = Math.floor(Date.now() / 1000);
       const userId = randomUUID();
-      // The user, its better-auth credential account and users.password_hash (read by the old worker) in one file.
+      // The user and its better-auth credential account in one file; users.password_hash is no longer used and stays ''.
       writeFileSync(file, [
-        `INSERT INTO users (id,email,name,password_hash,role,created_at,updated_at) VALUES ('${userId}',${emailSql},'Administrator','${hash}','admin',${now},${now}) ON CONFLICT(email) DO NOTHING;`,
-        `INSERT OR IGNORE INTO account (id,account_id,provider_id,user_id,password,created_at,updated_at) SELECT '${randomUUID()}',id,'credential',id,password_hash,${now},${now} FROM users WHERE id = '${userId}';`,
+        `INSERT INTO users (id,email,name,password_hash,role,created_at,updated_at) VALUES ('${userId}',${emailSql},'Administrator','','admin',${now},${now}) ON CONFLICT(email) DO NOTHING;`,
+        `INSERT OR IGNORE INTO account (id,account_id,provider_id,user_id,password,created_at,updated_at) SELECT '${randomUUID()}',id,'credential',id,'${hash}',${now},${now} FROM users WHERE id = '${userId}';`,
       ].join("\n"), { mode: 0o600 });
       wrangler(["d1", "execute", "DB", ...targetArgs(target), "--yes", "--file", file]);
       console.log(`Admin user tersedia: ${email}`);

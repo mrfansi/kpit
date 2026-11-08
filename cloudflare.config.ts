@@ -4,7 +4,7 @@ import { bindings, defineConfig, defineWorker } from "cf/config";
 // (wrangler's `keep_vars` has no cf equivalent), so each secret is declared with
 // `bindings.secret()`: the deploy then sends an `inherit` binding and keeps the value on the Worker.
 // Keep in sync with the secrets actually on the Worker.
-const SECRETS = ["AUTH_SECRET", "AUTH_URL", "AUTH_TRUST_HOST", "DEEPSEEK_API_KEY"];
+const SECRETS = ["AUTH_SECRET", "AUTH_URL", "DEEPSEEK_API_KEY"];
 
 export default defineConfig({
   // Mrfansi account; pins deploys/remote commands so they never hit another account.

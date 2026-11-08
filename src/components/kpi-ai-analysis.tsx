@@ -95,7 +95,7 @@ export function KPIAIAnalysis({ requestData }: KPIAIAnalysisProps) {
                 Menganalisis…
               </>
             ) : analysis ? (
-              "Regenerate"
+              "Buat ulang"
             ) : (
               "Analisis AI"
             )}

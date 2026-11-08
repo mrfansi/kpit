@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/ai/api-helpers";
+import { requireApiSession } from "@/lib/ai/api-helpers";
 import { isValidCalendarDate } from "@/lib/date-utils";
 import { format, parseISO } from "date-fns";
 import type { KPI } from "@/lib/db/schema";
@@ -251,7 +251,7 @@ async function buildHistoricalDomains(
 
 export async function GET(request: NextRequest) {
   // This route exposes the entire KPI/action-plan/timeline dataset — auth required.
-  const authResult = await requireAuth();
+  const authResult = await requireApiSession();
   if (authResult.error) return authResult.error;
 
   const { searchParams } = new URL(request.url);

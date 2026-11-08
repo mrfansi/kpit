@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import { auth } from "@/auth";
 import { getMonthlyReportBundle, getMonthlyReportImport, MonthlyReportError, saveMonthlyReport } from "@/lib/monthly-report-store";
 import { checkMonthlyMutationRequest } from "@/lib/monthly-report-request";
+import { requireApiSession } from "@/lib/ai/api-helpers";
 
 export const runtime = "nodejs";
 
@@ -41,8 +42,8 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const rejection = checkMonthlyMutationRequest(request);
   if (rejection) return NextResponse.json({ error: rejection.error }, { status: rejection.status });
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, error } = await requireApiSession();
+  if (error) return error;
   if (session.user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   let domain = "", period = "";
   try {

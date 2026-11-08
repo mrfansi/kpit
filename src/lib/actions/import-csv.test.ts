@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { domains, kpiEntries, kpis } from "../db/schema";
 import { createTestD1 } from "../test-d1";
+import { installTestEnv } from "../../testing/cloudflare-workers";
 import type * as ImportActions from "./import-csv";
 
 const load = createRequire(resolve("src/lib/actions/import-csv.test.ts"));
@@ -92,5 +93,57 @@ test("CSV entry import enforces the same rules as the manual form", async (t) =>
     const rows = await db.select().from(kpiEntries)
       .where(and(eq(kpiEntries.kpiId, other.id), eq(kpiEntries.periodDate, "2026-08-01")));
     assert.deepEqual(rows.map((r) => r.value), [42.5]);
+  });
+
+  await t.test("preview of 5000 rows runs one existence query, and overwrite keeps parts of an unchanged value", async () => {
+    const bulk = await db.insert(kpis).values(
+      Array.from({ length: 5 }, (_, i) => ({ ...base, domainId: domainA.id, name: `Massal ${i}`, unit: "jt" })),
+    ).returning();
+    await db.insert(kpiEntries).values([
+      { kpiId: bulk[0].id, periodDate: "2040-03-01", value: 90, numerator: 45, denominator: 50 },
+      { kpiId: bulk[1].id, periodDate: "2040-03-01", value: 7, numerator: 7, denominator: 1 },
+    ]);
+
+    const lines = ["kpi_id,period_date,value"];
+    for (const kpi of bulk) {
+      for (let m = 0; m < 1000; m++) {
+        const periodDate = `${2000 + Math.floor(m / 12)}-${String((m % 12) + 1).padStart(2, "0")}-01`;
+        lines.push(`${kpi.id},${periodDate},${periodDate === "2040-03-01" && kpi.id === bulk[0].id ? 90 : 1}`);
+      }
+    }
+
+    const real = environment.env.DB;
+    let queries = 0;
+    const counting = new Proxy(real, {
+      get(target, key) {
+        const value = Reflect.get(target, key);
+        if (typeof value !== "function") return value;
+        return key === "prepare" ? (sql: string) => { queries++; return target.prepare(sql); } : value.bind(target);
+      },
+    });
+    const previous = installTestEnv({ ...environment.env, DB: counting });
+    let resolvedRows: ImportActions.ImportRow[] = [];
+    try {
+      const preview = await resolveCSVRows(lines.join("\n"));
+      assert.deepEqual(preview.errors, []);
+      assert.equal(preview.resolved.length, 5000);
+      // Satu query untuk daftar KPI dan satu untuk entri yang ada.
+      assert.ok(queries <= 2, `expected <= 2 queries, got ${queries}`);
+      assert.deepEqual(
+        preview.resolved.filter((r) => r.existingValue !== undefined).map((r) => [r.kpiId, r.existingValue]),
+        [[bulk[0].id, 90], [bulk[1].id, 7]],
+      );
+      resolvedRows = preview.resolved.filter((r) => r.periodDate === "2040-03-01" && r.kpiId !== bulk[2].id);
+    } finally {
+      installTestEnv(previous);
+    }
+
+    // Baris pertama bernilai sama (parts tetap), baris kedua nilainya berubah (parts dibuang).
+    const result = await importCSVRows(resolvedRows.slice(0, 2));
+    assert.equal(result.imported, 2);
+    const stored = await db.select().from(kpiEntries).where(and(eq(kpiEntries.periodDate, "2040-03-01")));
+    const byKpi = new Map(stored.map((e) => [e.kpiId, [e.value, e.numerator, e.denominator]]));
+    assert.deepEqual(byKpi.get(bulk[0].id), [90, 45, 50]);
+    assert.deepEqual(byKpi.get(bulk[1].id), [1, null, null]);
   });
 });

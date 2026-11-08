@@ -2,7 +2,7 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { domains, monthlyReportRevisions, monthlyReports, users } from "@/lib/db/schema";
 import { computeMonthlyReport } from "@/lib/monthly-report";
-import { getMonthlyReportBundle, MonthlyReportError } from "@/lib/monthly-report-store";
+import { getMonthlyReportBundles, MonthlyReportError } from "@/lib/monthly-report-store";
 import type { MonthlyReportBundle } from "@/lib/monthly-report-types";
 import { monthlyReportContentSchema } from "@/lib/validations/monthly-report";
 import { formatDateTimeJakarta } from "@/lib/date-utils";
@@ -18,18 +18,20 @@ export function reportStatus(bundle: Pick<MonthlyReportBundle, "revision" | "que
 
 export type ReportSummary = { status: ReportStatus; revision: number; updatedAt: string | null; updatedBy: string | null };
 
-// Only domains with a saved report build a bundle (the status needs its question count); the rest are "Belum dibuat" without any extra query.
-export async function getReportSummaries(domainRows: { id: number; slug: string }[], period: string): Promise<Map<number, ReportSummary>> {
+// Only domains with a saved report build a bundle (the status needs its question count); one shared read set covers all of them.
+export async function getReportSummaries(domainRows: { id: number }[], period: string): Promise<Map<number, ReportSummary>> {
   const saved = await db.select({ domainId: monthlyReports.domainId, name: users.name, email: users.email }).from(monthlyReports)
     .leftJoin(users, eq(users.id, monthlyReports.updatedBy)).where(eq(monthlyReports.period, period));
   const byDomain = new Map(saved.map((a) => [a.domainId, a.name || a.email || null]));
-  const withReport = domainRows.filter((d) => byDomain.has(d.id));
-  const bundles = await Promise.all(withReport.map((d) => getMonthlyReportBundle(d.slug, period)));
+  const savedIds = domainRows.map((d) => d.id).filter((id) => byDomain.has(id));
+  const bundles = savedIds.length ? await getMonthlyReportBundles(period, savedIds) : new Map<number, MonthlyReportBundle>();
   const result = new Map<number, ReportSummary>();
-  for (const d of domainRows) result.set(d.id, { status: reportStatus({ revision: 0, questions: [] }), revision: 0, updatedAt: null, updatedBy: null });
-  bundles.forEach((bundle, i) => {
-    if (bundle) result.set(withReport[i].id, { status: reportStatus(bundle), revision: bundle.revision, updatedAt: bundle.updatedAt, updatedBy: byDomain.get(withReport[i].id) ?? null });
-  });
+  for (const d of domainRows) {
+    const bundle = bundles.get(d.id);
+    result.set(d.id, bundle
+      ? { status: reportStatus(bundle), revision: bundle.revision, updatedAt: bundle.updatedAt, updatedBy: byDomain.get(d.id) ?? null }
+      : { status: reportStatus({ revision: 0, questions: [] }), revision: 0, updatedAt: null, updatedBy: null });
+  }
   return result;
 }
 
@@ -45,13 +47,12 @@ export async function listRevisions(domainSlug: string, period: string) {
   return { domain, revisions: rows.map((r) => ({ revision: r.revision, createdAt: r.createdAt, author: r.name || r.email || r.authorId })) };
 }
 
-// Deck source for one stored revision. The current revision is the normal bundle (full readiness gate); an older one is rendered
-// from its stored content as an archive (archivedAt set), without the gate. Peers are the current peer reports.
-export async function getRevisionBundle(domainSlug: string, period: string, revision: number): Promise<MonthlyReportBundle & { archivedAt: string | null }> {
+// Deck source for one explicitly requested stored revision. Always rendered from its stored content as an archive (archivedAt set),
+// without the readiness gate, so an explicit revision link always opens. Peers are the current peer reports.
+export async function getRevisionBundle(domainSlug: string, period: string, revision: number): Promise<MonthlyReportBundle & { archivedAt: string }> {
   const [domain] = await db.select({ id: domains.id, name: domains.name, slug: domains.slug }).from(domains).where(eq(domains.slug, domainSlug)).limit(1);
   if (!domain) throw new MonthlyReportError(404, "Domain tidak ditemukan.");
-  const [[current], [row], peerRows] = await Promise.all([
-    db.select({ revision: monthlyReports.revision }).from(monthlyReports).where(and(eq(monthlyReports.domainId, domain.id), eq(monthlyReports.period, period))).limit(1),
+  const [[row], peerRows] = await Promise.all([
     db.select({ content: monthlyReportRevisions.content, createdAt: monthlyReportRevisions.createdAt }).from(monthlyReportRevisions)
       .innerJoin(monthlyReports, eq(monthlyReportRevisions.reportId, monthlyReports.id))
       .where(and(eq(monthlyReports.domainId, domain.id), eq(monthlyReports.period, period), eq(monthlyReportRevisions.revision, revision))).limit(1),
@@ -60,11 +61,6 @@ export async function getRevisionBundle(domainSlug: string, period: string, revi
       .where(and(eq(monthlyReports.period, period), ne(monthlyReports.domainId, domain.id))),
   ]);
   if (!row) throw new MonthlyReportError(404, "Revisi tidak ditemukan.");
-  if (current?.revision === revision) {
-    const bundle = await getMonthlyReportBundle(domainSlug, period);
-    if (!bundle) throw new MonthlyReportError(404, "Domain tidak ditemukan.");
-    return { ...bundle, archivedAt: null };
-  }
   const content = monthlyReportContentSchema.parse(row.content);
   const peers = peerRows.map((p) => ({ domain: { id: p.id, name: p.name, slug: p.slug }, period: p.period, content: monthlyReportContentSchema.parse(p.content) }));
   const computed = computeMonthlyReport(content, period, peers);

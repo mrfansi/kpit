@@ -3,10 +3,10 @@ export const ACTION_PLAN_STATUSES = ["open", "in_progress", "done", "cancelled"]
 export type ActionPlanStatus = (typeof ACTION_PLAN_STATUSES)[number];
 
 export const actionPlanStatusLabels: Record<ActionPlanStatus, string> = {
-  open: "Open",
-  in_progress: "In Progress",
-  done: "Done",
-  cancelled: "Cancelled",
+  open: "Terbuka",
+  in_progress: "Berjalan",
+  done: "Selesai",
+  cancelled: "Dibatalkan",
 };
 
 export const activeActionPlanStatuses: ActionPlanStatus[] = ["open", "in_progress"];

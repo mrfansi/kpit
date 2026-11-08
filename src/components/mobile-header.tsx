@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Settings, Home, Users, User, PenLine, Menu, Globe, Upload, LogIn, ClipboardList, ClipboardCheck, GanttChart, ShieldCheck, FileBarChart2 } from "lucide-react";
+import { BarChart2, Home, User, Menu, GanttChart, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
@@ -13,6 +13,7 @@ import { LogoutButton } from "@/components/logout-button";
 import { AIChat } from "@/components/ai-chat";
 import { domainIconMap } from "@/lib/domain-icons";
 import { canAccessAdminRoute } from "@/lib/admin-access";
+import { ADMIN_NAV_ITEMS, SectionLabel } from "@/components/sidebar";
 
 interface MobileHeaderProps {
   domains: Domain[];
@@ -49,17 +50,6 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
     })),
   ];
 
-  const adminItems = [
-    { href: "/admin/kpi", icon: Settings, label: "Kelola KPI" },
-    { href: "/admin/domain", icon: Globe, label: "Kelola Domain" },
-    { href: "/admin/input", icon: PenLine, label: "Input Data" },
-    { href: "/admin/actions", icon: ClipboardCheck, label: "Action Plan" },
-    { href: "/admin/reports/monthly", icon: FileBarChart2, label: "Laporan Bulanan" },
-    { href: "/admin/import", icon: Upload, label: "Import CSV" },
-    { href: "/admin/users", icon: Users, label: "Pengguna" },
-    { href: "/admin/timeline", icon: GanttChart, label: "Kelola Timeline" },
-    { href: "/admin/audit", icon: ClipboardList, label: "Audit Log" },
-  ];
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-3 lg:static lg:hidden print:hidden">
@@ -77,30 +67,23 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
           </SheetHeader>
 
           <nav aria-label="Navigasi utama" className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
-            {navItems.map(({ href, icon: Icon, label, color }) => (
-              <MobileNavItem
-                key={href}
-                href={href}
-                icon={Icon}
-                label={label}
-                color={color}
-                active={isNavActive(pathname, href)}
-                onNavigate={() => setOpen(false)}
-              />
+            {navItems.slice(0, 2).map(({ href, icon: Icon, label, color }) => (
+              <MobileNavItem key={href} href={href} icon={Icon} label={label} color={color} active={isNavActive(pathname, href)} onNavigate={() => setOpen(false)} />
+            ))}
+            <SectionLabel>Domain</SectionLabel>
+            {navItems.slice(2).map(({ href, icon: Icon, label, color }) => (
+              <MobileNavItem key={href} href={href} icon={Icon} label={label} color={color} active={isNavActive(pathname, href)} onNavigate={() => setOpen(false)} />
             ))}
 
             {/* Sejajar dengan Sidebar: garis pemisah + perisai, bukan kartu. */}
             {isAdmin && (
               <div className="mt-4 space-y-0.5 border-t pt-1">
-                <div className="flex items-center gap-1.5 px-2.5 pt-5 pb-1.5 text-xs text-muted-foreground">
-                  <ShieldCheck aria-hidden className="size-3.5 shrink-0" />
-                  <span>Admin</span>
-                </div>
-                {adminItems.map(({ href, icon: Icon, label }) => (
+                <SectionLabel icon={ShieldCheck}>Admin</SectionLabel>
+                {ADMIN_NAV_ITEMS.map(({ href, icon, label }) => (
                   <MobileNavItem
                     key={href}
                     href={href}
-                    icon={Icon}
+                    icon={icon}
                     label={label}
                     active={pathname.startsWith(href)}
                     onNavigate={() => setOpen(false)}
@@ -109,17 +92,6 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
               </div>
             )}
 
-            {!isAuthenticated && (
-              <div className="pt-4">
-                <MobileNavItem
-                  href="/login"
-                  icon={LogIn}
-                  label="Login Admin"
-                  active={pathname === "/login"}
-                  onNavigate={() => setOpen(false)}
-                />
-              </div>
-            )}
           </nav>
 
           {/* Kaki: identitas, asisten, akun, tema, keluar (urutan sama dengan sidebar). */}

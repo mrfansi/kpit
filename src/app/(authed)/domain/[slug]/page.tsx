@@ -18,8 +18,7 @@ import { getKPIStatus, getAchievementPct, statusConfig } from "@/lib/kpi-status"
 import { formatValue } from "@/lib/period";
 import { DomainAISummary } from "@/components/domain/domain-ai-summary";
 import { BatchCommentDraft } from "@/components/batch-comment-draft";
-import { auth } from "@/auth";
-import { canAccessAdminRoute } from "@/lib/admin-access";
+import { isAdminUser } from "@/lib/auth-utils";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -35,12 +34,11 @@ export default async function DomainPage({ params, searchParams }: Props) {
   const domain = domains.find((d) => d.slug === slug);
   if (!domain) notFound();
 
-  const [kpisWithEntries, actionCounts, session] = await Promise.all([
+  const [kpisWithEntries, actionCounts, canEdit] = await Promise.all([
     getKPIsWithLatestEntry(domain.id, selectedPeriod),
     getActionPlanCounts(domain.id),
-    auth(),
+    isAdminUser(),
   ]);
-  const canEdit = canAccessAdminRoute(session?.user?.role);
 
   // KPI domain ini yang belum diisi untuk periode terpilih (latestEntry adalah entry terbaru <= periode).
   const missingKPIs = kpisWithEntries
@@ -147,7 +145,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
 
         <SummaryStrip kpisWithEntries={kpisWithEntries} />
 
-        {session?.user && <DomainAISummary requestData={domainSummaryData} />}
+        <DomainAISummary requestData={domainSummaryData} />
 
         {!isFiltered && (
           <AttentionBar

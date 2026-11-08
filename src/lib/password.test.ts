@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import bcrypt from "bcryptjs";
-import { hashPassword, isLegacyHash, verifyPassword } from "./password";
+import { hashPassword, verifyPassword } from "./password";
 
 test("a freshly hashed password verifies, a wrong one does not", async () => {
   const hash = await hashPassword("rahasia-123");
@@ -31,11 +30,4 @@ test("an iteration count above the cap is rejected even with a matching key", as
   const [, , salt, key] = (await hashPassword("x")).split("$");
   assert.equal(await verifyPassword({ hash: `pbkdf2-sha256$100001$${salt}$${key}`, password: "x" }), false);
   assert.equal(await verifyPassword({ hash: `pbkdf2-sha256$100000$${salt}$${key}`, password: "x" }), true);
-});
-
-test("legacy bcrypt hashes still verify", async () => {
-  const hash = bcrypt.hashSync("lama", 4);
-  assert.equal(isLegacyHash(hash), true);
-  assert.equal(await verifyPassword({ hash, password: "lama" }), true);
-  assert.equal(await verifyPassword({ hash, password: "baru" }), false);
 });

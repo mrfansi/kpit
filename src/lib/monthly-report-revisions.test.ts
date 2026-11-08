@@ -25,7 +25,7 @@ test("summaries match the editor's question count and old revisions keep their o
     const first = await saveMonthlyReport("finance", period, { ...initial.content, worstOutcome: "revisi satu" }, 0, { id: "u1" });
     await saveMonthlyReport("finance", period, { ...first.content, worstOutcome: "revisi dua" }, 1, { id: "u1" });
 
-    const summaries = await getReportSummaries([{ id: 1, slug: "finance" }, { id: 2, slug: "sales" }], period);
+    const summaries = await getReportSummaries([{ id: 1 }, { id: 2 }], period);
     const finance = summaries.get(1)!;
     const editor = await getMonthlyReportBundle("finance", period);
     assert.equal(finance.revision, 2);
@@ -36,10 +36,11 @@ test("summaries match the editor's question count and old revisions keep their o
     const oldRev = await getRevisionBundle("finance", period, 1);
     assert.equal(oldRev.content.worstOutcome, "revisi satu");
     assert.ok(oldRev.archivedAt);
+    // An explicit revision (even the current one) always renders its stored content as an archive, with no readiness gate.
     const currentRev = await getRevisionBundle("finance", period, 2);
-    const { archivedAt, ...rest } = currentRev;
-    assert.equal(archivedAt, null);
-    assert.deepEqual(rest, editor);
+    assert.ok(currentRev.archivedAt);
+    assert.equal(currentRev.revision, 2);
+    assert.equal(currentRev.content.worstOutcome, "revisi dua");
     const listed = await listRevisions("finance", period);
     assert.deepEqual(listed?.revisions.map((r) => [r.revision, r.author]), [[2, "Ani"], [1, "Ani"]]);
     await assert.rejects(() => getRevisionBundle("finance", period, 3), (e: unknown) => e instanceof MonthlyReportError && e.status === 404);

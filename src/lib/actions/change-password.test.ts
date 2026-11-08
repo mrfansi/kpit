@@ -7,7 +7,7 @@ import { getAuth } from "@/auth";
 import { db } from "@/lib/db";
 import { account, session as sessions, users } from "@/lib/db/schema";
 import { createUser } from "@/lib/db/users";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { createTestD1 } from "@/lib/test-d1";
 import type * as UserActions from "./user-actions";
 
@@ -75,9 +75,9 @@ test("changePasswordAction checks the current password and revokes other session
   await t.test("a successful change keeps the current session and revokes the other one", async () => {
     const result = await changePasswordAction({}, form({ currentPassword: "Old-password-1", password: "New-password-1", confirm: "New-password-1" }));
     assert.deepEqual(result, { success: true });
-    const [user] = await db.select().from(users).where(eq(users.id, "cp-user"));
     const [credential] = await db.select().from(account).where(eq(account.userId, "cp-user"));
-    assert.equal(user.passwordHash, credential.password);
+    assert.ok(await verifyPassword({ hash: credential.password!, password: "New-password-1" }));
+    assert.equal((await db.select().from(users).where(eq(users.id, "cp-user")))[0].passwordHash, "");
     assert.equal((await db.select().from(sessions).where(eq(sessions.userId, "cp-user"))).length, 1);
     assert.ok(await isValid(current));
     assert.equal(await isValid(other), false);

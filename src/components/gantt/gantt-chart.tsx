@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useTransition, useMemo } from "react";
+import { useState, useRef, useCallback, useTransition, useMemo, useEffect } from "react";
 import {
   addDays,
   parseISO,
@@ -89,6 +89,16 @@ export function GanttChart({
     () => computeGanttLayout(localProjects, viewMode, panOffset),
     [viewMode, localProjects, panOffset]
   );
+
+  // Pusatkan hari ini saat mount dan tiap "Hari ini"; tick memaksa efek jalan walau panOffset sudah 0.
+  const [todayTick, setTodayTick] = useState(0);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const x = layout.dateToX(format(new Date(), "yyyy-MM-dd"));
+    el.scrollTo({ left: x - el.clientWidth / 2 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hanya saat tick; layout berubah saat drag tidak boleh menggeser scroll
+  }, [todayTick]);
 
   // Pan
   const handlePan = useCallback(
@@ -224,7 +234,7 @@ export function GanttChart({
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onPan={handlePan}
-        onJumpToToday={() => setPanOffset(0)}
+        onJumpToToday={() => { setPanOffset(0); setTodayTick((t) => t + 1); }}
         canEdit={canEdit}
         onAddProject={() => { setEditingProject(null); setProjectDialogOpen(true); }}
       />
@@ -232,7 +242,7 @@ export function GanttChart({
       <div className="flex-1 flex overflow-hidden">
         {/* Left panel: project names */}
         <div
-          className="shrink-0 bg-background z-30 overflow-hidden"
+          className="shrink-0 bg-background z-30 overflow-hidden max-sm:max-w-[140px]"
           style={{ width: listWidth }}
         >
           {/* Tidak sticky: panel kiri overflow-hidden dan tidak pernah bergulir sendiri,
@@ -241,7 +251,7 @@ export function GanttChart({
             className="border-b bg-background flex items-center px-3"
             style={{ height: HEADER_HEIGHT }}
           >
-            <span className="text-sm text-muted-foreground">Projects</span>
+            <span className="text-sm text-muted-foreground">Daftar project</span>
           </div>
           <div>
             {localProjects.map((project) => (
@@ -274,13 +284,13 @@ export function GanttChart({
                       </button>
                       <button
                         type="button"
-                        aria-label={`Edit project ${project.name}`}
+                        aria-label={`Ubah project ${project.name}`}
                         className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-100 lg:opacity-0 lg:group-hover/row:opacity-100 lg:focus-visible:opacity-100 transition-[opacity,color,background-color] duration-[var(--dur-micro)] hover:bg-accent hover:text-foreground"
                         onClick={() => {
                           setEditingProject(project);
                           setProjectDialogOpen(true);
                         }}
-                        title="Edit project"
+                        title="Ubah project"
                       >
                         <Pencil aria-hidden className="size-3.5" />
                       </button>
@@ -338,7 +348,12 @@ export function GanttChart({
         />
 
         {/* Right panel: scrollable canvas */}
-        <div ref={scrollRef} className="flex-1 overflow-auto">
+        <div
+          ref={scrollRef}
+          tabIndex={0}
+          aria-label="Linimasa project"
+          className="flex-1 overflow-auto focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        >
           <div style={{ width: layout.totalWidth, minHeight: "100%" }}>
             <GanttHeader columns={layout.columns} totalWidth={layout.totalWidth} />
 

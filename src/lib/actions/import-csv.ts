@@ -1,9 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { inChunks } from "@/lib/db/chunks";
 import { kpis, kpiEntries } from "@/lib/db/schema";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
 import { parsePlainNumber, kpiNameLookup, checkEntry, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
@@ -37,6 +36,23 @@ const kpiColumns = {
   period: kpis.period,
   isActive: kpis.isActive,
 };
+
+/**
+ * Satu query per file, bukan per 50 baris: D1 membatasi 50 query per invocation.
+ * shortcut: mengambil semua pasangan KPI x periode yang disebut, lalu mencocokkan di JS; upgrade bila tabel entri sangat besar.
+ */
+async function findExisting(rows: { kpiId: number; periodDate: string }[]) {
+  const kpiIds = JSON.stringify([...new Set(rows.map((r) => r.kpiId))]);
+  const periods = JSON.stringify([...new Set(rows.map((r) => r.periodDate))]);
+  const found = await db
+    .select({ kpiId: kpiEntries.kpiId, periodDate: kpiEntries.periodDate, value: kpiEntries.value, numerator: kpiEntries.numerator, denominator: kpiEntries.denominator })
+    .from(kpiEntries)
+    .where(and(
+      sql`${kpiEntries.kpiId} in (select value from json_each(${kpiIds}))`,
+      sql`${kpiEntries.periodDate} in (select value from json_each(${periods}))`,
+    ));
+  return new Map(found.map((e) => [`${e.kpiId}:${e.periodDate}`, e]));
+}
 
 /** Validate and resolve CSV rows against DB KPIs */
 export async function resolveCSVRows(text: string): Promise<{
@@ -112,15 +128,9 @@ export async function resolveCSVRows(text: string): Promise<{
   // Cek entri lama yang bertabrakan dengan baris yang akan diimport, supaya
   // preview bisa memperingatkan admin sebelum data lama ditimpa.
   if (resolved.length > 0) {
-    const existing = await inChunks(resolved, 0, (chunk) => db
-      .select({ kpiId: kpiEntries.kpiId, periodDate: kpiEntries.periodDate, value: kpiEntries.value })
-      .from(kpiEntries)
-      .where(or(...chunk.map((row) =>
-        and(eq(kpiEntries.kpiId, row.kpiId!), eq(kpiEntries.periodDate, row.periodDate))
-      ))), 2);
-    const existingMap = new Map(existing.map((entry) => [`${entry.kpiId}:${entry.periodDate}`, entry.value]));
+    const existing = await findExisting(resolved.map((row) => ({ kpiId: row.kpiId!, periodDate: row.periodDate })));
     for (const row of resolved) {
-      row.existingValue = existingMap.get(`${row.kpiId}:${row.periodDate}`);
+      row.existingValue = existing.get(`${row.kpiId}:${row.periodDate}`)?.value;
     }
   }
 
@@ -163,17 +173,26 @@ export async function importCSVRows(rows: ImportRow[]): Promise<ImportResult> {
   }
 
   try {
-    const [first, ...rest] = validRows.map((row) => [
-      db.delete(kpiEntries).where(
-        and(eq(kpiEntries.kpiId, row.kpiId), eq(kpiEntries.periodDate, row.periodDate))
-      ),
-      db.insert(kpiEntries).values({
-        kpiId: row.kpiId,
-        periodDate: row.periodDate,
-        value: row.value,
-        note: row.note,
-      }),
-    ] as const).flat();
+    const existing = await findExisting(validRows);
+    const [first, ...rest] = validRows.map((row) => {
+      // Nilai tidak berubah: pembilang/penyebut lama tetap cocok, jadi dipertahankan.
+      const old = existing.get(`${row.kpiId}:${row.periodDate}`);
+      const parts = old?.value === row.value
+        ? { numerator: old.numerator, denominator: old.denominator }
+        : {};
+      return [
+        db.delete(kpiEntries).where(
+          and(eq(kpiEntries.kpiId, row.kpiId), eq(kpiEntries.periodDate, row.periodDate))
+        ),
+        db.insert(kpiEntries).values({
+          kpiId: row.kpiId,
+          periodDate: row.periodDate,
+          value: row.value,
+          note: row.note,
+          ...parts,
+        }),
+      ] as const;
+    }).flat();
     if (first) await db.batch([first, ...rest]);
     imported = validRows.length;
   } catch (err) {

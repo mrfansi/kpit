@@ -16,6 +16,20 @@ interface SidebarProps {
   user?: { name?: string | null; email?: string | null; role?: string | null } | null;
 }
 
+// Satu sumber untuk sidebar desktop dan menu mobile supaya keduanya tidak menyimpang.
+export const ADMIN_NAV_ITEMS: { href: string; icon: React.ElementType; label: string }[] = [
+  { href: "/admin/kpi", icon: Settings, label: "Kelola KPI" },
+  { href: "/admin/domain", icon: Globe, label: "Kelola Domain" },
+  { href: "/admin/input", icon: PenLine, label: "Input Data" },
+  { href: "/admin/actions", icon: ClipboardCheck, label: "Action Plan" },
+  { href: "/admin/reports/monthly", icon: FileBarChart2, label: "Laporan Bulanan" },
+  { href: "/admin/presentation/brand", icon: Palette, label: "Brand Presentasi" },
+  { href: "/admin/import", icon: Upload, label: "Import CSV" },
+  { href: "/admin/users", icon: Users, label: "Pengguna" },
+  { href: "/admin/timeline", icon: GanttChart, label: "Kelola Timeline" },
+  { href: "/admin/audit", icon: ClipboardList, label: "Audit Log" },
+];
+
 // Overview juga "aktif" di /report/all (report gabungan semua domain, tidak
 // domain-spesifik), dan tiap domain juga aktif di scorecard-nya sendiri
 // (/report/[slug]) — tanpa ini pengguna berada di halaman yang menurut
@@ -73,16 +87,9 @@ export function Sidebar({ domains, user }: SidebarProps) {
         {isAdmin && (
           <div className="mt-4 space-y-0.5 border-t pt-1">
             <SectionLabel icon={ShieldCheck}>Admin</SectionLabel>
-            <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
-            <NavItem href="/admin/domain" icon={Globe} label="Kelola Domain" active={pathname.startsWith("/admin/domain")} />
-            <NavItem href="/admin/input" icon={PenLine} label="Input Data" active={pathname === "/admin/input"} />
-            <NavItem href="/admin/actions" icon={ClipboardCheck} label="Action Plan" active={pathname.startsWith("/admin/actions")} />
-            <NavItem href="/admin/reports/monthly" icon={FileBarChart2} label="Laporan Bulanan" active={pathname.startsWith("/admin/reports/monthly")} />
-            <NavItem href="/admin/presentation/brand" icon={Palette} label="Brand Presentasi" active={pathname.startsWith("/admin/presentation/brand")} />
-            <NavItem href="/admin/import" icon={Upload} label="Import CSV" active={pathname.startsWith("/admin/import")} />
-            <NavItem href="/admin/users" icon={Users} label="Pengguna" active={pathname.startsWith("/admin/users")} />
-            <NavItem href="/admin/timeline" icon={GanttChart} label="Kelola Timeline" active={pathname.startsWith("/admin/timeline")} />
-            <NavItem href="/admin/audit" icon={ClipboardList} label="Audit Log" active={pathname.startsWith("/admin/audit")} />
+            {ADMIN_NAV_ITEMS.map(({ href, icon, label }) => (
+              <NavItem key={href} href={href} icon={icon} label={label} active={pathname.startsWith(href)} />
+            ))}
           </div>
         )}
       </nav>
@@ -115,7 +122,7 @@ export function Sidebar({ domains, user }: SidebarProps) {
   );
 }
 
-function SectionLabel({ children, icon: Icon }: { children: React.ReactNode; icon?: React.ElementType }) {
+export function SectionLabel({ children, icon: Icon }: { children: React.ReactNode; icon?: React.ElementType }) {
   return (
     <div className="flex items-center gap-1.5 px-2.5 pt-5 pb-1.5 text-xs text-muted-foreground">
       {Icon && <Icon aria-hidden className="size-3.5 shrink-0" />}

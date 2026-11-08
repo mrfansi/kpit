@@ -2,6 +2,13 @@ import type { ComputedReportMetric, ComputedReportValue, MonthlyObservation, Mon
 
 export const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
+const monthLabelFormat = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" });
+// "2026-11-01" -> "November 2026"; unparsable input is shown as given.
+function monthLabel(iso: string): string {
+  const date = new Date(`${iso}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? iso : monthLabelFormat.format(date);
+}
+
 // An unusable ytdStartMonth (other year, after the report month) is reported as a question and counted as January meanwhile.
 export function ytdStartInvalid(metric: Pick<MonthlyReportMetric, "ytdStartMonth">, period: string): boolean {
   const start = metric.ytdStartMonth;
@@ -142,11 +149,11 @@ function sharedMetricComparison(
     if (local.aggregation === "latest" && month !== previous && month !== months.at(-1) && !a && !b) continue;
     if (local.aggregation === "latest" && month !== previous && month !== months.at(-1) && a?.state === "missing" && b?.state === "missing") continue;
     if (!a || !b || a.state === "missing" || b.state === "missing")
-      return { state: "awaiting_peer", detail: `Cakupan observasi bersama ${month} belum lengkap di kedua divisi.` };
+      return { state: "awaiting_peer", detail: `Cakupan observasi bersama ${monthLabel(month)} belum lengkap di kedua divisi.` };
     if (a.state !== b.state || a.actual !== b.actual || (local.aggregation === "ratio" && (a.numerator !== b.numerator || a.denominator !== b.denominator)))
-      return { state: "conflict", detail: `Observasi ${month} berbeda (status/aktual${local.aggregation === "ratio" ? "/numerator/denominator" : ""}); periksa sumber dan koreksi sebelum presentasi.` };
+      return { state: "conflict", detail: `Observasi ${monthLabel(month)} berbeda (status/aktual${local.aggregation === "ratio" ? "/numerator/denominator" : ""}); periksa sumber dan koreksi sebelum presentasi.` };
     if (b.state === "provided" && (!b.source.trim() || b.actual === null) || b.target !== null && !b.targetSource.trim())
-      return { state: "awaiting_peer", detail: `Sumber aktual atau target observasi divisi pasangan ${month} belum diberikan.` };
+      return { state: "awaiting_peer", detail: `Sumber aktual atau target observasi divisi pasangan ${monthLabel(month)} belum diberikan.` };
   }
   const aYtd = aggregate(months.map((month) => localObs.get(month)), local.aggregation, local.unit);
   const bYtd = aggregate(months.map((month) => peerObs.get(month)), peer.aggregation, peer.unit);
@@ -202,19 +209,19 @@ export function computeMonthlyReport(
     if (ytdStartInvalid(metric, period)) question(questions, `${path}.ytdStart`, `Awal YTD ${metric.name} harus bulan antara Januari dan bulan laporan di tahun yang sama.`);
     for (const o of metric.observations) {
       if (o.state === "provided" && (o.actual === null || !o.source.trim()))
-        question(questions, `${path}.observations.${o.month}.source`, `Cantumkan sumber nilai ${metric.name} ${o.month}.`);
+        question(questions, `${path}.observations.${o.month}.source`, `Cantumkan sumber nilai ${metric.name} ${monthLabel(o.month)}.`);
       if (o.target !== null && !o.targetSource.trim())
-        question(questions, `${path}.observations.${o.month}.targetSource`, `Cantumkan sumber target ${metric.name} ${o.month}.`);
+        question(questions, `${path}.observations.${o.month}.targetSource`, `Cantumkan sumber target ${metric.name} ${monthLabel(o.month)}.`);
     }
     for (const month of requiredMonths) {
       const o = obs.get(month);
-      if (!o || o.state === "missing") question(questions, `${path}.observations.${month}`, `Isi ${metric.name} ${month} atau konfirmasi belum dilacak.`);
-      else if (o.state === "provided" && (o.actual === null || o.target === null || !o.source.trim() || !o.targetSource.trim())) question(questions, `${path}.observations.${month}`, `Lengkapi nilai, target, dan sumber ${metric.name} ${month}.`);
-      if (metric.aggregation === "ratio" && o?.state === "provided" && (o.numerator === null || o.denominator === null || o.denominator <= 0)) question(questions, `${path}.observations.${month}.ratio`, `Lengkapi numerator dan denominator positif untuk ${metric.name} ${month}.`);
+      if (!o || o.state === "missing") question(questions, `${path}.observations.${month}`, `Isi ${metric.name} ${monthLabel(month)} atau konfirmasi belum dilacak.`);
+      else if (o.state === "provided" && (o.actual === null || o.target === null || !o.source.trim() || !o.targetSource.trim())) question(questions, `${path}.observations.${month}`, `Lengkapi nilai, target, dan sumber ${metric.name} ${monthLabel(month)}.`);
+      if (metric.aggregation === "ratio" && o?.state === "provided" && (o.numerator === null || o.denominator === null || o.denominator <= 0)) question(questions, `${path}.observations.${month}.ratio`, `Lengkapi numerator dan denominator positif untuk ${metric.name} ${monthLabel(month)}.`);
       if (metric.aggregation === "ratio" && o?.state === "provided" && o.numerator !== null && o.denominator !== null && o.denominator > 0 && o.actual !== null) {
         const derived = o.numerator / o.denominator * (metric.unit === "%" ? 100 : 1);
         if (!Number.isFinite(derived) || Math.abs(derived - o.actual) > 0.005 + Math.max(1e-9, Math.abs(derived) * 1e-12))
-          question(questions, `${path}.observations.${month}.actual`, `Nilai rasio ${metric.name} ${month} tidak sesuai numerator/denominator.`);
+          question(questions, `${path}.observations.${month}.actual`, `Nilai rasio ${metric.name} ${monthLabel(month)} tidak sesuai numerator/denominator.`);
       }
     }
     if (ytd.state === "missing") question(questions, `${path}.ytd`, `YTD ${metric.name} belum memiliki cakupan/input lengkap.`);

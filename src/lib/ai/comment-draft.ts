@@ -1,12 +1,19 @@
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
 import { AIServiceError } from "@/lib/ai/types";
+import { and, desc, inArray } from "drizzle-orm";
+import { db } from "@/lib/db";
 import {
-  getKPIActionPlans,
-  getKPIById,
-  getKPIComments,
-  getKPIEntries,
-  getKPITargets,
-} from "@/lib/queries";
+  kpiActionPlans,
+  kpiComments,
+  kpiEntries,
+  kpiTargets,
+  type KPI,
+  type KPIActionPlan,
+  type KPIComment,
+  type KPIEntry,
+  type KPITarget,
+} from "@/lib/db/schema";
+import { getKPIById } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
 import { formatPeriodDate, formatValue, shiftMonth } from "@/lib/period";
 
@@ -23,6 +30,43 @@ export type DraftResult =
   | { ok: true; kpiId: number; kpiName: string; draft: string }
   | { ok: false; kpiId: number; kpiName: string; reason: DraftFailureReason; message: string };
 
+export interface DraftInputs {
+  kpi: KPI;
+  entries: KPIEntry[];
+  targets: KPITarget[];
+  comments: KPIComment[];
+  actionPlans: KPIActionPlan[];
+}
+
+/**
+ * Muat data draf untuk banyak KPI sekaligus: empat query konstan, berapa pun jumlah KPI
+ * (D1 membatasi 50 query per invokasi, jadi N x 5 query per KPI tidak muat).
+ * Hanya baris yang dipakai prompt yang diambil: entri periode ini dan sebelumnya, target
+ * periode ini, komentar periode sebelumnya, dan semua action plan.
+ */
+export async function loadDraftInputs(kpis: KPI[], periodDate: string): Promise<Map<number, DraftInputs>> {
+  const ids = kpis.map((k) => k.id);
+  const prevPeriod = shiftMonth(periodDate, -1);
+  const [entries, targets, comments, actionPlans] = await Promise.all([
+    db.select().from(kpiEntries).where(and(inArray(kpiEntries.kpiId, ids), inArray(kpiEntries.periodDate, [periodDate, prevPeriod]))),
+    db.select().from(kpiTargets).where(and(inArray(kpiTargets.kpiId, ids), inArray(kpiTargets.periodDate, [periodDate]))),
+    db.select().from(kpiComments).where(and(inArray(kpiComments.kpiId, ids), inArray(kpiComments.periodDate, [prevPeriod]))).orderBy(desc(kpiComments.createdAt)),
+    db.select().from(kpiActionPlans).where(inArray(kpiActionPlans.kpiId, ids)).orderBy(kpiActionPlans.dueDate, desc(kpiActionPlans.updatedAt)),
+  ]);
+  return new Map(
+    kpis.map((kpi) => [
+      kpi.id,
+      {
+        kpi,
+        entries: entries.filter((r) => r.kpiId === kpi.id),
+        targets: targets.filter((r) => r.kpiId === kpi.id),
+        comments: comments.filter((r) => r.kpiId === kpi.id),
+        actionPlans: actionPlans.filter((r) => r.kpiId === kpi.id),
+      },
+    ]),
+  );
+}
+
 /**
  * Menyusun draf untuk satu KPI. Kegagalan dikembalikan sebagai nilai, bukan
  * dilempar — batch harus bisa sebagian berhasil: sembilan KPI dengan dua yang
@@ -30,9 +74,10 @@ export type DraftResult =
  */
 export async function draftCommentForKPI(
   kpiId: number,
-  periodDate: string
+  periodDate: string,
+  preloaded?: DraftInputs
 ): Promise<DraftResult> {
-  const kpi = await getKPIById(kpiId);
+  const kpi = preloaded?.kpi ?? (await getKPIById(kpiId));
   if (!kpi) {
     return {
       ok: false,
@@ -44,12 +89,8 @@ export async function draftCommentForKPI(
   }
 
   const prevPeriod = shiftMonth(periodDate, -1);
-  const [entries, targetOverrides, comments, actionPlans] = await Promise.all([
-    getKPIEntries(kpiId),
-    getKPITargets(kpiId),
-    getKPIComments(kpiId),
-    getKPIActionPlans(kpiId),
-  ]);
+  const { entries, targets: targetOverrides, comments, actionPlans } =
+    preloaded ?? (await loadDraftInputs([kpi], periodDate)).get(kpi.id)!;
 
   const entry = entries.find((e) => e.periodDate === periodDate) ?? null;
   if (!entry) {

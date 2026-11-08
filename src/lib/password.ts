@@ -1,6 +1,4 @@
-import bcrypt from "bcryptjs";
-
-// Native WebCrypto instead of pure-JS bcrypt (~350 ms CPU). PBKDF2 is still ~80 ms of CPU locally (workerd caps it at
+// Native WebCrypto instead of a pure-JS hash (~350 ms CPU). PBKDF2 is still ~80 ms of CPU locally (workerd caps it at
 // 100000 iterations), over the free plan's 10 ms limit, so every caller must be rate limited (better-auth sign-in, changePasswordAction).
 const ITERATIONS = 100_000;
 const PREFIX = "pbkdf2-sha256";
@@ -20,13 +18,7 @@ export async function hashPassword(password: string) {
   return `${PREFIX}$${ITERATIONS}$${toBase64(salt)}$${toBase64(await derive(password, salt, ITERATIONS))}`;
 }
 
-/** bcrypt hashes written before the PBKDF2 switch ($2a/$2b/$2y). */
-export function isLegacyHash(hash: string) {
-  return hash.startsWith("$2");
-}
-
 export async function verifyPassword({ hash, password }: { hash: string; password: string }) {
-  if (isLegacyHash(hash)) return bcrypt.compare(password, hash);
   const [prefix, iterations, salt, key, ...extra] = hash.split("$");
   const count = Number(iterations);
   if (prefix !== PREFIX || extra.length || !Number.isInteger(count) || count < 1 || count > ITERATIONS || !salt || !key) return false;

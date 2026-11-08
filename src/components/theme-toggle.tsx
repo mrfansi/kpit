@@ -6,7 +6,7 @@ import { Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function ThemeToggle({ className }: { className?: string }) {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -14,7 +14,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   }, []);
   if (!mounted) return <Button type="button" variant="ghost" size="icon" className={className} disabled aria-hidden suppressHydrationWarning><Sun aria-hidden /></Button>;
 
-  const isDark = theme === "dark";
+  const isDark = resolvedTheme === "dark";
   return (
     <Button
       type="button"
