@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { hashPassword } from "../lib/password";
-import { parseTarget, queryD1, targetArgs, wrangler } from "./export-to-d1";
+import { parseTarget, queryD1, targetArgs, wrangler } from "./wrangler-config";
 
 const email = process.env.SEED_ADMIN_EMAIL;
 const password = process.env.SEED_ADMIN_PASSWORD;

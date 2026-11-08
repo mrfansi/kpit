@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { MarkdownExportDialog } from "@/components/report/markdown-export-dialog";
-import { REPORT_DIVISIONS, type ComputedReportValue, type MonthlyReportBundle, type MonthlyReportContent, type MonthlyReportMetric, type MonthlyObservation, type ObservationState } from "@/lib/monthly-report-types";
-import { appendTimelineActivities, applyNotes, fieldId, refreshFromEntries } from "@/lib/monthly-report-import";
+import { REPORT_DIVISIONS, type ComputedReportValue, type MonthlyPreviousAction, type MonthlyReportBundle, type MonthlyReportContent, type MonthlyReportMetric, type MonthlyObservation, type ObservationState } from "@/lib/monthly-report-types";
+import { appendTimelineActivities, applyNotes, applyPreviousActions, fieldId, markManualActual, refreshFromEntries } from "@/lib/monthly-report-import";
+import { reportMonths, SHORT_MONTHS, ytdStartInvalid } from "@/lib/monthly-report";
 import { statusConfig } from "@/lib/kpi-status";
 import { ChevronRight } from "lucide-react";
 
@@ -43,26 +44,30 @@ function RowGroup<T>({ id, rows, title, create, onChange, render, maxRows }: { i
 }
 const pullTitles = {
   entries: { done: "Realisasi diperbarui dari entri KPI", none: "Tidak ada realisasi yang perlu diperbarui; baris yang Anda ubah sendiri tidak disentuh." },
-  notes: { done: "Terisi dari komentar dan action plan", none: "Tidak ada bidang kosong yang bisa diisi dari komentar atau action plan." },
+  notes: { done: "Terisi dari komentar dan action plan", none: "Tidak ada bidang kosong yang bisa diisi: komentar hanya dipakai untuk KPI yang meleset dari target." },
   timeline: { done: "Kegiatan ditambahkan dari timeline", none: "Tidak ada project timeline baru untuk bulan ini." },
+  previous: { done: "Aksi bulan lalu diimpor", none: "Tidak ada aksi bulan lalu untuk diimpor." },
 };
 // Opens every collapsed KPI around the field, then focuses it. Falls back to the closest ancestor path (e.g. a KPI block).
 function focusField(path: string) {
-  const segments = path.split(".");
+  // The mismatch question points at ".entry"; the field that fixes it is the source.
+  const segments = path.replace(/\.entry$/, ".source").split(".");
   let el: HTMLElement | null = null;
   while (segments.length && !(el = document.getElementById(fieldId(segments.join("."))))) segments.pop();
   if (!el) return;
-  for (let d: HTMLDetailsElement | null = el.closest("details"); d; d = d.parentElement?.closest("details") ?? null) d.open = true;
-  el.scrollIntoView({ block: "center" });
   const fields = "input:not(:disabled),textarea:not(:disabled),select:not(:disabled)";
   const focusable = `${fields},button:not(:disabled),summary`;
   // Prefer a form field over the block's own buttons (e.g. "Hapus"), which come first in document order.
   const target = el.matches(focusable) ? el : el instanceof HTMLDetailsElement ? el.querySelector<HTMLElement>("summary") : el.querySelector<HTMLElement>(fields) ?? el.querySelector<HTMLElement>(focusable);
+  // Open from the target itself: it may sit in a collapsed <details> nested inside the matched block.
+  for (let d: HTMLDetailsElement | null = (target ?? el).closest("details"); d; d = d.parentElement?.closest("details") ?? null) d.open = true;
+  el.scrollIntoView({ block: "center" });
   if (!target && !el.hasAttribute("tabindex")) el.tabIndex = -1;
   (target ?? el).focus();
 }
+const monthFormat = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" });
 function observationLabel(month: string, period: string) {
-  const label = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}T00:00:00Z`));
+  const label = monthFormat.format(new Date(`${month}T00:00:00Z`));
   const [year, m] = period.split("-").map(Number);
   const previous = new Date(Date.UTC(year, m - 2, 1)).toISOString().slice(0, 10);
   return `${label}${month === period ? " (bulan laporan)" : month === previous ? " (bulan sebelumnya)" : ""}`;
@@ -75,6 +80,7 @@ function MetricEditor({ metric, metricIndex, computed, period, onChange }: { met
   function observation(index: number, next: MonthlyObservation) { onChange({ ...metric, observations: metric.observations.map((item, i) => i === index ? next : item) }); }
   const renderedMonths = new Set(metric.observations.map((item) => item.month));
   const [year, month] = period.split("-").map(Number);
+  const ytdStartValue = metric.ytdStartMonth ?? `${year}-01-01`;
   const previous = new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 10);
   const missingMonths = [previous, period].filter((item) => !renderedMonths.has(item));
   // Disclosure = konten interaktif sendiri: kartu ber-border dengan padding pada summary dan isi.
@@ -82,6 +88,7 @@ function MetricEditor({ metric, metricIndex, computed, period, onChange }: { met
     <div className="grid gap-3 md:grid-cols-2"><Field id={fieldId(`${p}.identity`)} label="Nama KPI" value={metric.name} onChange={(name) => onChange({ ...metric, name })} /><Field label="Satuan" value={metric.unit} onChange={(unit) => onChange({ ...metric, unit })} /><Field label="Definisi KPI" value={metric.definition} onChange={(definition) => onChange({ ...metric, definition })} multiline /><Choice label="Arah target" value={metric.direction} onChange={(direction) => onChange({ ...metric, direction: direction as MonthlyReportMetric["direction"] })} options={[{ value: "higher_better", label: "Semakin tinggi semakin baik" }, { value: "lower_better", label: "Semakin rendah semakin baik" }]} /></div>
     <Toggle id={fieldId(`${p}.definition`)} label="Definisi dan target KPI sudah diperiksa; bila belum jelas atau berubah, sudah dikonfirmasi dengan CEO sebelum dinyatakan final" checked={metric.definitionConfirmed} onChange={(definitionConfirmed) => onChange({ ...metric, definitionConfirmed })} />
     <div className="grid gap-3 md:grid-cols-2"><Choice id={fieldId(`${p}.aggregation`)} label="Aturan agregasi YTD" value={metric.aggregation ?? ""} onChange={(aggregation) => onChange({ ...metric, aggregation: aggregation ? aggregation as MonthlyReportMetric["aggregation"] : null })} options={[{ value: "", label: "Pilih aturan" }, { value: "sum", label: "Jumlah bulanan" }, { value: "average", label: "Rata-rata bulanan" }, { value: "latest", label: "Nilai terakhir (posisi akhir bulan)" }, { value: "ratio", label: "Rasio pembilang / penyebut" }]} /><Field label="Penjelasan agregasi / cakupan pengukuran" value={metric.aggregationNote} onChange={(aggregationNote) => onChange({ ...metric, aggregationNote })} multiline /></div>
+    <div className="grid gap-3 md:grid-cols-2"><Choice id={fieldId(`${p}.ytdStart`)} label="YTD mulai" value={ytdStartValue} onChange={(start) => onChange({ ...metric, ytdStartMonth: start === `${year}-01-01` ? null : start })} options={[...(ytdStartInvalid(metric, period) ? [{ value: ytdStartValue, label: `${ytdStartValue} (tidak valid)` }] : []), ...reportMonths(period).map((m) => ({ value: m, label: `${SHORT_MONTHS[Number(m.slice(5, 7)) - 1]} ${year}` }))]} /></div>
     <div className="grid gap-3 md:grid-cols-2"><Field id={fieldId(`${p}.sharedMetricKey`)} label="Kunci metrik bersama (opsional)" value={metric.sharedMetricKey} onChange={(sharedMetricKey) => onChange({ ...metric, sharedMetricKey })} hint="Gunakan kunci sama untuk angka yang dilaporkan lintas divisi." /><Field id={fieldId(`${p}.reconciliationNote`)} label="Catatan rekonsiliasi definisi dan sumber" value={metric.reconciliationNote} onChange={(reconciliationNote) => onChange({ ...metric, reconciliationNote })} multiline /></div>
     <Toggle id={fieldId(`${p}.sharingReviewed`)} label="Saya sudah memeriksa apakah metrik ini dipakai bersama divisi lain" checked={metric.sharingReviewed} onChange={(sharingReviewed) => onChange({ ...metric, sharingReviewed })} />
     <div className="grid gap-3 md:grid-cols-2"><Field id={fieldId(`${p}.deviation`)} label="Penyebab deviasi target (jika meleset)" value={metric.deviationCause} onChange={(deviationCause) => onChange({ ...metric, deviationCause })} multiline /><Field label="Bukti / referensi deviasi" value={metric.deviationEvidence} onChange={(deviationEvidence) => onChange({ ...metric, deviationEvidence })} multiline /></div>
@@ -89,14 +96,14 @@ function MetricEditor({ metric, metricIndex, computed, period, onChange }: { met
     {missingMonths.length > 0 && <p className="text-sm text-destructive">Bulan <span className="num">{missingMonths.join(", ")}</span> belum ada di snapshot. Muat ulang untuk memulihkan cakupan KPI.</p>}
     {metric.observations.map((row, index) => <div key={row.month} className="space-y-3 border-t pt-4"><h4 className="text-sm font-semibold">{observationLabel(row.month, period)}</h4><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <Choice id={fieldId(`${p}.observations.${row.month}`)} label="Status angka" value={row.state} onChange={(state) => observation(index, { ...row, state: state as ObservationState, actual: state === "provided" ? row.actual : null })} options={stateOptions} />
-      <NumberField id={fieldId(`${p}.observations.${row.month}.actual`)} label="Realisasi" value={row.actual} disabled={row.state !== "provided"} onChange={(actual) => observation(index, { ...row, actual })} />
+      <NumberField id={fieldId(`${p}.observations.${row.month}.actual`)} label="Realisasi" value={row.actual} disabled={row.state !== "provided"} onChange={(actual) => observation(index, markManualActual({ ...row, actual }))} />
       <NumberField label="Target" value={row.target} onChange={(target) => observation(index, { ...row, target })} />
       <Field id={fieldId(`${p}.observations.${row.month}.source`)} label="Sumber realisasi" value={row.source} onChange={(source) => observation(index, { ...row, source })} />
       <Field id={fieldId(`${p}.observations.${row.month}.targetSource`)} label="Sumber target" value={row.targetSource} onChange={(targetSource) => observation(index, { ...row, targetSource })} />
-      {metric.aggregation === "ratio" && <><NumberField id={fieldId(`${p}.observations.${row.month}.ratio`)} label="Pembilang" value={row.numerator} disabled={row.state !== "provided"} onChange={(numerator) => observation(index, { ...row, numerator })} /><NumberField label="Penyebut" value={row.denominator} disabled={row.state !== "provided"} onChange={(denominator) => observation(index, { ...row, denominator })} /></>}
+      {metric.aggregation === "ratio" && <><NumberField id={fieldId(`${p}.observations.${row.month}.ratio`)} label="Pembilang" value={row.numerator} disabled={row.state !== "provided"} onChange={(numerator) => observation(index, markManualActual({ ...row, numerator }))} /><NumberField label="Penyebut" value={row.denominator} disabled={row.state !== "provided"} onChange={(denominator) => observation(index, markManualActual({ ...row, denominator }))} /></>}
     </div></div>)}
     {computed && <div className="space-y-2"><p className="text-sm font-semibold">Hitungan tersimpan</p><dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm sm:grid-cols-3 sm:gap-x-8">
-      {([["Bulan ini", computed.current], ["Bulan lalu", computed.previous], ["YTD", computed.ytd]] as const).map(([term, item]) => <div key={term} className="col-span-2 grid grid-cols-subgrid sm:col-span-1 sm:flex sm:flex-col sm:gap-0.5"><dt className="text-muted-foreground">{term}</dt><dd className={item.state === "provided" && item.value !== null ? "num font-semibold" : "text-muted-foreground"}>{computedText(item)}</dd></div>)}
+      {([["Bulan ini", computed.current], ["Bulan lalu", computed.previous], [computed.ytd.label ?? "YTD", computed.ytd]] as const).map(([term, item]) => <div key={term} className="col-span-2 grid grid-cols-subgrid sm:col-span-1 sm:flex sm:flex-col sm:gap-0.5"><dt className="text-muted-foreground">{term}</dt><dd className={item.state === "provided" && item.value !== null ? "num font-semibold" : "text-muted-foreground"}>{computedText(item)}</dd></div>)}
     </dl></div>}
   </div></details>;
 }
@@ -122,14 +129,14 @@ export function MonthlyReportEditor({ initial }: { initial: MonthlyReportBundle 
   }
   function change<K extends keyof MonthlyReportContent>(key: K, value: MonthlyReportContent[K]) { replace({ ...contentRef.current, [key]: value }); }
   // Pulls source data and applies it to the editor's current (possibly unsaved) content; nothing is saved until the user saves.
-  async function pull(kind: "entries" | "notes" | "timeline") {
+  async function pull(kind: "entries" | "notes" | "timeline" | "previous") {
     setBusy(true); setError(""); setNotice(""); setImported(null);
     try {
-      const response = await fetch(`/api/report/monthly?${params}&import=${kind}`);
+      const response = await fetch(`/api/report/monthly?${params}&import=${kind === "previous" ? "notes" : kind}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `Pengambilan data gagal (${response.status}).`);
       const current = contentRef.current;
-      const result = kind === "entries" ? refreshFromEntries(current, data.entries) : kind === "notes" ? applyNotes(current, data) : appendTimelineActivities(current, data.lines);
+      const result = kind === "entries" ? refreshFromEntries(current, data.entries) : kind === "notes" ? applyNotes(current, data, bundle.period) : kind === "previous" ? applyPreviousActions(current, data.previousActions ?? []) : appendTimelineActivities(current, data.lines);
       if (!result.changes.length) { setNotice(pullTitles[kind].none); return; }
       replace(result.content);
       setImported({ title: pullTitles[kind].done, lines: result.changes });
@@ -177,7 +184,7 @@ export function MonthlyReportEditor({ initial }: { initial: MonthlyReportBundle 
   const questionCount = bundle.questions.length;
   return <div className="max-w-6xl space-y-10 pb-12">
     <div className="space-y-4">
-      <PageHeader title={`Laporan bulanan: ${bundle.domain.name}`} description={<>Periode <span className="num">{bundle.period}</span>, revisi <span className="num">{bundle.revision}</span>{bundle.updatedAt ? <>, diperbarui <span className="num">{new Date(bundle.updatedAt).toLocaleString("id-ID")}</span></> : ", belum disimpan"}</>} actions={<Button variant="outline" size="sm" asChild><Link href={`/admin/reports/monthly?period=${bundle.period}`}>Semua domain</Link></Button>} />
+      <PageHeader title={`Laporan bulanan: ${bundle.domain.name}`} description={<>Periode <span className="num">{bundle.period}</span>, revisi <span className="num">{bundle.revision}</span>{bundle.updatedAt ? <>, diperbarui <span className="num">{new Date(bundle.updatedAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short" })}</span></> : ", belum disimpan"}</>} actions={<Button variant="outline" size="sm" asChild><Link href={`/admin/reports/monthly?period=${bundle.period}`}>Semua domain</Link></Button>} />
       <div className="flex flex-wrap items-center gap-2 border-y py-3">
         <div className="mr-auto"><span className={`inline-block rounded-sm px-2 py-0.5 text-sm ${dirty ? "border border-edge" : "bg-secondary"}`}>{dirty ? "Perubahan belum disimpan" : bundle.ready ? "Siap untuk presentasi final" : <>Draf, <span className="num">{questionCount}</span> pertanyaan terbuka</>}</span></div>
         <Button type="button" variant="outline" onClick={() => void assist()} disabled={busy || conflict}>{busy ? "Memproses…" : "Periksa / Bantu dengan AI"}</Button>
@@ -207,6 +214,10 @@ export function MonthlyReportEditor({ initial }: { initial: MonthlyReportBundle 
     <p className="text-sm text-muted-foreground">Perubahan di sini hanya mengubah snapshot laporan bulanan tersimpan, bukan entri KPI asal. Laporan dan presentasi memakai snapshot ini setelah disimpan.</p>
     <Section id="f-metrics" title="KPI, target, MoM & YTD" detail="Klik setiap KPI untuk mengisi definisi, sumber, riwayat bulanan, target, agregasi, dan bukti deviasi.">{content.metrics.length ? content.metrics.map((metric, index) => <MetricEditor key={metric.kpiId} metric={metric} metricIndex={index} computed={bundle.metrics.find((item) => item.kpiId === metric.kpiId)} period={bundle.period} onChange={(next) => change("metrics", content.metrics.map((item, i) => i === index ? next : item))} />) : <p className="text-sm text-muted-foreground">Belum ada KPI aktif untuk domain ini. Tambahkan KPI melalui Kelola KPI, lalu muat ulang laporan.</p>}</Section>
     <Section title="Isu, risiko & eskalasi"><Toggle id="f-risksReviewed" label="Daftar risiko sudah diperiksa; kosong berarti tidak ada risiko yang perlu dilaporkan" checked={content.risksReviewed} onChange={(v) => change("risksReviewed", v)} /><RowGroup id="f-risks" rows={content.risks} title="Risiko" create={() => ({ issue: "", impact: "", escalationOwner: "" })} onChange={(rows) => change("risks", rows)} render={(row, update) => <><Field label="Isu / risiko" value={row.issue} onChange={(issue) => update({ ...row, issue })} multiline /><Field label="Dampak" value={row.impact} onChange={(impact) => update({ ...row, impact })} multiline /><Field label="Pemilik eskalasi" value={row.escalationOwner} onChange={(escalationOwner) => update({ ...row, escalationOwner })} /></>} /></Section>
+    <Section title="Tindak lanjut aksi bulan lalu" detail="Aksi yang dijanjikan bulan lalu. Tandai hasilnya; ini tampil di slide Rencana bulan depan, di atas aksi bulan depan.">
+      {content.previousActions.length ? <div className="space-y-3">{content.previousActions.map((row, index) => <div key={index} id={fieldId(`previousActions.${index}`)} className="space-y-3 rounded-card bg-paper-2 p-4"><div><p className="font-medium">{row.action}</p><p className="text-sm text-muted-foreground">PIC {row.pic || "belum diisi"}, tenggat <span className="num">{row.deadline || "belum diisi"}</span></p></div><div className="grid gap-3 md:grid-cols-2"><Choice id={fieldId(`previousActions.${index}.status`)} label="Status" value={row.status} onChange={(status) => change("previousActions", content.previousActions.map((item, i) => i === index ? { ...item, status: status as MonthlyPreviousAction["status"] } : item))} options={[{ value: "", label: "Pilih status" }, { value: "done", label: "Selesai" }, { value: "in_progress", label: "Berjalan" }, { value: "dropped", label: "Dibatalkan" }]} /><Field id={fieldId(`previousActions.${index}.note`)} label="Catatan" value={row.note} onChange={(note) => change("previousActions", content.previousActions.map((item, i) => i === index ? { ...item, note } : item))} /></div></div>)}</div>
+        : <div className="flex flex-wrap items-center gap-3"><p className="text-sm text-muted-foreground">Belum ada aksi bulan lalu di laporan ini.</p><Button type="button" variant="outline" size="sm" onClick={() => void pull("previous")} disabled={busy || conflict}>Impor aksi bulan lalu</Button></div>}
+    </Section>
     <Section title="Rencana bulan depan" detail="Satu atau lebih tindakan konkret dengan PIC dan tenggat."><RowGroup id="f-actions" rows={content.actions} title="Tindakan" create={() => ({ action: "", pic: "", deadline: "" })} onChange={(rows) => change("actions", rows)} render={(row, update) => <><Field label="Tindakan" value={row.action} onChange={(action) => update({ ...row, action })} multiline /><Field label="PIC" value={row.pic} onChange={(pic) => update({ ...row, pic })} /><Field label="Tenggat" type="date" value={row.deadline} onChange={(deadline) => update({ ...row, deadline })} /></>} /></Section>
     <Section title="Keputusan C-level"><Toggle id="f-decisionsReviewed" label="Kebutuhan keputusan sudah diperiksa; kosong berarti tidak ada permintaan keputusan" checked={content.decisionsReviewed} onChange={(v) => change("decisionsReviewed", v)} /><RowGroup id="f-decisions" rows={content.decisions} title="Keputusan" create={() => ({ request: "", options: "", impact: "" })} onChange={(rows) => change("decisions", rows)} render={(row, update) => <><Field label="Keputusan yang diminta" value={row.request} onChange={(request) => update({ ...row, request })} multiline /><Field label="Opsi" value={row.options} onChange={(options) => update({ ...row, options })} multiline /><Field label="Dampak" value={row.impact} onChange={(impact) => update({ ...row, impact })} multiline /></>} /></Section>
     {content.division === "finance" && <Section id="f-finance" title="Laporan keuangan" detail="Laba rugi, arus kas, dan neraca memakai angka serta sumber sendiri; tandai belum dilacak bila dikonfirmasi.">{([ ["incomeStatement", "Laba rugi"], ["cashFlow", "Arus kas"], ["balanceSheet", "Neraca"] ] as const).map(([key, label]) => <div key={key} id={fieldId(`finance.${key}`)} className="space-y-3"><h3 className="font-semibold">{label}</h3><Field label={`Satuan ${label}`} value={content.finance[key].unit} onChange={(unit) => change("finance", { ...content.finance, [key]: { ...content.finance[key], unit } })} /><RowGroup id={fieldId(`finance.${key}.rows`)} rows={content.finance[key].rows} title={`Baris ${label}`} create={() => ({ label: "", value: null, source: "", state: "missing" as const })} onChange={(rows) => change("finance", { ...content.finance, [key]: { ...content.finance[key], rows } })} render={(row, update) => <><Field label="Nama pos" value={row.label} onChange={(label) => update({ ...row, label })} /><Choice label="Status" value={row.state} options={stateOptions} onChange={(state) => update({ ...row, state: state as ObservationState, value: state === "provided" ? row.value : null })} /><NumberField label="Nilai" value={row.value} disabled={row.state !== "provided"} onChange={(value) => update({ ...row, value })} /><Field label="Sumber" value={row.source} onChange={(source) => update({ ...row, source })} /></>} /></div>)}</Section>}

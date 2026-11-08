@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -24,4 +25,30 @@ export function wranglerConfigPath(): string {
   path = join(mkdtempSync(join(tmpdir(), "kpit-wrangler-")), "wrangler.json");
   writeFileSync(path, JSON.stringify(config));
   return path;
+}
+
+export type Row = Record<string, string | number | null>;
+export interface Target { local: boolean; persistTo?: string }
+const localState = ".cloudflare/state";
+
+export function wrangler(args: string[]): string {
+  return execFileSync(process.execPath, [resolve("node_modules/wrangler/bin/wrangler.js"), ...args, "--config", wranglerConfigPath()], { encoding: "utf8", env: { ...process.env, CI: "1", WRANGLER_SEND_METRICS: "false" }, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+}
+export function targetArgs(target: Target): string[] {
+  if (!target.local && target.persistTo) throw new Error("--persist-to is only valid with --local");
+  // Without --persist-to, local commands use the state directory the vinext dev server reads.
+  return target.local ? ["--local", "--persist-to", resolve(target.persistTo ?? localState)] : ["--remote"];
+}
+export function queryD1(command: string, target: Target): Row[] {
+  const results = JSON.parse(wrangler(["d1", "execute", "DB", ...targetArgs(target), "--yes", "--json", "--command", command])) as { success: boolean; results: Row[] }[];
+  if (!results.length || results.some((result) => !result.success)) throw new Error("D1 query failed");
+  return results.flatMap((result) => result.results);
+}
+export function parseTarget(args: string[]): Target {
+  if (args.includes("--local") === args.includes("--remote")) throw new Error("Specify exactly one of --local or --remote");
+  const at = args.indexOf("--persist-to");
+  if (at !== -1 && (!args[at + 1] || args[at + 1].startsWith("--"))) throw new Error("--persist-to requires a directory");
+  const target = { local: args.includes("--local"), persistTo: at === -1 ? undefined : args[at + 1] };
+  targetArgs(target);
+  return target;
 }

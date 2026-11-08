@@ -27,7 +27,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 interface QuickEntryModalProps {
-  kpis: KPI[];
+  kpis: Pick<KPI, "id" | "name">[];
   /** Map kpiId → latestPeriodDate (ISO date string) */
   kpiLatestPeriods?: Record<number, string>;
 }

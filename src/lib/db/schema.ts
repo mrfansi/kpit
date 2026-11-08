@@ -61,6 +61,8 @@ export const kpiEntries = sqliteTable("kpi_entries", {
   value: real("value").notNull(),
   periodDate: text("period_date").notNull(), // ISO date: YYYY-MM-DD (awal bulan/minggu)
   note: text("note"),
+  numerator: real("numerator"), // opsional: value = numerator / denominator (x100 untuk unit %)
+  denominator: real("denominator"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
@@ -126,7 +128,7 @@ export const auditLogs = sqliteTable("audit_logs", {
   userId: text("user_id"),
   userEmail: text("user_email"),
   action: text("action").notNull(), // 'create' | 'update' | 'delete'
-  entity: text("entity").notNull(), // 'kpi' | 'entry' | 'domain' | 'user'
+  entity: text("entity").notNull(), // lihat AUDIT_ENTITIES di lib/db/audit.ts
   entityId: text("entity_id"),
   detail: text("detail"),
   createdAt: integer("created_at", { mode: "timestamp" })

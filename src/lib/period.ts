@@ -30,6 +30,12 @@ export function defaultReportingPeriod(now: Date = new Date()): string {
   return format(subMonths(startOfMonth(jakartaToday(now)), 1), "yyyy-MM-dd");
 }
 
+/** Shift a YYYY-MM-DD period to the first day of the month `months` away (UTC, so year boundaries are exact). */
+export function shiftMonth(period: string, months: number): string {
+  const [y, m] = period.split("-").map(Number);
+  return `${new Date(Date.UTC(y, m - 1 + months, 1)).toISOString().slice(0, 8)}01`;
+}
+
 export function formatPeriodDate(dateStr: string, fmt = "MMM yyyy"): string {
   return format(parseISO(dateStr), fmt, { locale: localeId });
 }
@@ -52,10 +58,12 @@ export function listLastNMonths(n: number, now: Date = new Date()): { label: str
     }));
 }
 
+const idNumber = new Intl.NumberFormat("id-ID");
+
 export function formatCurrency(value: number): string {
   if (value >= 1_000_000_000) return `Rp ${(value / 1_000_000_000).toFixed(1)}M`;
   if (value >= 1_000_000) return `Rp ${(value / 1_000_000).toFixed(0)}jt`;
-  return `Rp ${value.toLocaleString("id-ID")}`;
+  return `Rp ${idNumber.format(value)}`;
 }
 
 export function formatValue(value: number, unit: string): string {
@@ -63,5 +71,5 @@ export function formatValue(value: number, unit: string): string {
   // Round to remove floating point artifacts (e.g. 0.19999999 → 0.2)
   const rounded = Math.round(value * 10000) / 10000;
   if (unit === "%") return `${rounded}%`;
-  return `${rounded.toLocaleString("id-ID")} ${unit}`;
+  return `${idNumber.format(rounded)} ${unit}`;
 }

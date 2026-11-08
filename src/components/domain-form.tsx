@@ -36,11 +36,11 @@ export function DomainForm({ domain }: DomainFormProps) {
 
   async function onSubmit(values: DomainFormValues) {
     try {
-      if (isEdit) {
-        await updateDomain(domain.id, values);
-      } else {
-        await createDomain(values);
-      }
+      // Sukses me-redirect (dilempar ulang di bawah); yang kembali hanya error validasi.
+      const result = isEdit
+        ? await updateDomain(domain.id, values)
+        : await createDomain(values);
+      toast.error(result.error);
     } catch (err) {
       unstable_rethrow(err);
       toast.error("Gagal menyimpan domain, coba lagi");

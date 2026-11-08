@@ -27,10 +27,10 @@ async function handleDelete(
 ) {
   const id = Number(formData.get("id"));
   try {
-    await deleteStatus(id);
-    return { error: null };
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Gagal menghapus status" };
+    const result = await deleteStatus(id);
+    return { error: result?.error ?? null };
+  } catch {
+    return { error: "Gagal menghapus status" };
   }
 }
 

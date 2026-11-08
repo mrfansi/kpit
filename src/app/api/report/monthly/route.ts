@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     const search = request.nextUrl.searchParams;
     const kind = search.get("refresh") === "1" ? "entries" : search.get("import");
     if (kind) {
+      if (session.user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       if (kind !== "entries" && kind !== "notes" && kind !== "timeline") throw new MonthlyReportError(400, "Unknown import kind");
       const data = await getMonthlyReportImport(domain, period, kind);
       return data ? NextResponse.json(data) : NextResponse.json({ error: "Domain not found" }, { status: 404 });

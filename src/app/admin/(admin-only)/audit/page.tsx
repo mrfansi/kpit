@@ -10,11 +10,24 @@ import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { AUDIT_ENTITIES, type AuditEntity } from "@/lib/db/audit";
 import { AuditFilters } from "./audit-filters";
 
 const PAGE_SIZE = 50;
 const AUDIT_ACTIONS = ["create", "update", "delete"] as const;
-const AUDIT_ENTITIES = ["kpi", "entry", "domain", "user"] as const;
+const ENTITY_LABELS: Record<AuditEntity, string> = {
+  kpi: "KPI",
+  kpi_entry: "Entri KPI",
+  kpi_target: "Target KPI",
+  kpi_comment: "Komentar KPI",
+  kpi_action_plan: "Rencana Aksi",
+  domain: "Domain",
+  user: "Pengguna",
+  timeline_project: "Proyek Timeline",
+  timeline_project_log: "Log Proyek Timeline",
+  timeline_project_status: "Status Timeline",
+  monthly_report: "Laporan Bulanan",
+};
 
 interface Props {
   searchParams: Promise<{ page?: string; action?: string; entity?: string }>;
@@ -26,7 +39,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
   const offset = (currentPage - 1) * PAGE_SIZE;
 
   const filterAction = AUDIT_ACTIONS.includes(action as (typeof AUDIT_ACTIONS)[number]) ? action : undefined;
-  const filterEntity = AUDIT_ENTITIES.includes(entity as (typeof AUDIT_ENTITIES)[number]) ? entity : undefined;
+  const filterEntity = AUDIT_ENTITIES.find((e) => e === entity);
 
   const conditions = [
     filterAction ? eq(auditLogs.action, filterAction) : undefined,
@@ -50,7 +63,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
         description={<><span className="num">{totalCount}</span> total aktivitas</>}
       />
       <div className="space-y-3">
-        <AuditFilters actions={[...AUDIT_ACTIONS]} entities={[...AUDIT_ENTITIES]} />
+        <AuditFilters actions={[...AUDIT_ACTIONS]} entities={AUDIT_ENTITIES.map((value) => ({ value, label: ENTITY_LABELS[value] }))} />
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -83,7 +96,7 @@ export default async function AdminAuditPage({ searchParams }: Props) {
                     {l.action}
                   </Badge>
                 </TableCell>
-                <TableCell className="hidden py-3 capitalize md:table-cell">{l.entity}</TableCell>
+                <TableCell className="hidden py-3 md:table-cell">{ENTITY_LABELS[l.entity as AuditEntity] ?? l.entity}</TableCell>
                 <TableCell className="py-3 pr-0 whitespace-normal text-muted-foreground">{l.detail ?? l.entityId ?? "-"}</TableCell>
               </TableRow>
             ))}

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { getKPIById, getKPIEntries } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
-import { formatPeriodDate, formatValue, getPeriodRange } from "@/lib/period";
-import { TrendChart } from "@/components/trend-chart";
+import { formatPeriodDate, formatValue, getPeriodRange, shiftMonth } from "@/lib/period";
+import { TrendChart } from "@/components/trend-chart-lazy";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Target, TrendingUp, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
@@ -25,12 +25,6 @@ import { getKPIEarlyWarning } from "@/lib/kpi-warning";
 interface Props {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ range?: string; forecast?: string; page?: string }>;
-}
-
-/** Awal bulan, digeser `months` bulan dari periodDate (YYYY-MM-DD). */
-function shiftMonth(periodDate: string, months: number) {
-  const [y, m] = periodDate.split("-").map(Number);
-  return `${new Date(Date.UTC(y, m - 1 + months, 1)).toISOString().slice(0, 8)}01`;
 }
 
 const RANGE_OPTIONS = [

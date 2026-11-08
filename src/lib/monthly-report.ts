@@ -1,11 +1,27 @@
-import type { ComputedReportMetric, ComputedReportValue, MonthlyObservation, MonthlyReportContent, ReportQuestion, ReportReconciliation } from "./monthly-report-types";
+import type { ComputedReportMetric, ComputedReportValue, MonthlyObservation, MonthlyReportContent, MonthlyReportMetric, ReportQuestion, ReportReconciliation } from "./monthly-report-types";
+
+export const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+// An unusable ytdStartMonth (other year, after the report month) is reported as a question and counted as January meanwhile.
+export function ytdStartInvalid(metric: Pick<MonthlyReportMetric, "ytdStartMonth">, period: string): boolean {
+  const start = metric.ytdStartMonth;
+  return !!start && (start.slice(0, 4) !== period.slice(0, 4) || start > period);
+}
+export function ytdStart(metric: Pick<MonthlyReportMetric, "ytdStartMonth">, period: string): string {
+  return metric.ytdStartMonth && !ytdStartInvalid(metric, period) ? metric.ytdStartMonth : `${period.slice(0, 4)}-01-01`;
+}
+export function ytdWindow(metric: Pick<MonthlyReportMetric, "ytdStartMonth">, period: string): string[] {
+  const start = ytdStart(metric, period);
+  return reportMonths(period).filter((month) => month >= start);
+}
+export const ytdLabel = (start: string, period: string) => `YTD ${SHORT_MONTHS[Number(start.slice(5, 7)) - 1]}–${SHORT_MONTHS[Number(period.slice(5, 7)) - 1]}`;
 
 export function emptyMonthlyReportContent(): MonthlyReportContent {
   return {
     division: null, summary: [], worstOutcome: "", narrativeSource: "", kpiSetChangeNote: "", metrics: [],
     risksReviewed: false, risks: [], actions: [], decisionsReviewed: false, decisions: [],
     finance: { incomeStatement: { unit: "", rows: [] }, cashFlow: { unit: "", rows: [] }, balanceSheet: { unit: "", rows: [] } },
-    channelBreakdowns: [], activities: [], appendices: [], aiNotes: "",
+    channelBreakdowns: [], activities: [], appendices: [], aiNotes: "", previousActions: [],
   };
 }
 
@@ -84,7 +100,7 @@ function aggregate(observations: (MonthlyObservation | undefined)[], rule: Month
   const present = observations.filter((o): o is MonthlyObservation => !!o);
   const source = present.map((o) => `${o.month}: ${o.source}`).join("; ");
   const targetSource = present.map((o) => `${o.month}: ${o.targetSource}`).join("; ");
-  const calculation = rule ? `${rule} Januari–${present.at(-1)?.month ?? "?"}` : "Aturan agregasi belum dipilih";
+  const calculation = rule ? `${rule} ${present[0]?.month ?? "?"}–${present.at(-1)?.month ?? "?"}` : "Aturan agregasi belum dipilih";
   const base: ComputedReportValue = { value: null, target: null, state, source, targetSource, calculation };
   if (!rule || present.length !== observations.length) return base;
   const allTargets = present.every((o) => o.target !== null);
@@ -113,6 +129,8 @@ function sharedMetricComparison(
 ): { state: "matched" | "conflict" | "awaiting_peer"; detail: string } {
   if (local.unit !== peer.unit || local.definition.trim() !== peer.definition.trim() || local.aggregation !== peer.aggregation)
     return { state: "conflict", detail: "Satuan, definisi, atau aturan agregasi angka bersama berbeda." };
+  if (ytdStart(peer, months.at(-1)!) !== months[0])
+    return { state: "conflict", detail: "Awal YTD angka bersama berbeda; samakan bulan mulai YTD di kedua divisi." };
   if (!peer.definitionConfirmed || !peer.aggregation || !peer.aggregationNote.trim())
     return { state: "awaiting_peer", detail: "Divisi pasangan belum mengonfirmasi definisi dan dasar perhitungan angka bersama." };
   const localObs = new Map(local.observations.map((o) => [o.month, o]));
@@ -120,6 +138,7 @@ function sharedMetricComparison(
   for (const month of new Set([...months, previous, ...localObs.keys(), ...peerObs.keys()])) {
     const a = localObs.get(month);
     const b = peerObs.get(month);
+    if (month < months[0] && month !== previous) continue;
     if (local.aggregation === "latest" && month !== previous && month !== months.at(-1) && !a && !b) continue;
     if (local.aggregation === "latest" && month !== previous && month !== months.at(-1) && a?.state === "missing" && b?.state === "missing") continue;
     if (!a || !b || a.state === "missing" || b.state === "missing")
@@ -144,7 +163,6 @@ export function computeMonthlyReport(
 ): { metrics: ComputedReportMetric[]; questions: ReportQuestion[]; reconciliations: ReportReconciliation[]; ready: boolean } {
   const questions: ReportQuestion[] = [];
   const reconciliations: ReportReconciliation[] = [];
-  const months = reportMonths(period);
   const previous = previousReportMonth(period);
   if (!content.division) question(questions, "division", "Pilih salah satu dari enam divisi laporan.");
   if (content.summary.filter((s) => s.trim()).length < 2 || content.summary.filter((s) => s.trim()).length > 4) question(questions, "summary", "Tulis 2–4 poin lain; bersama hasil terburuk menjadi total 3–5 poin utama.");
@@ -154,6 +172,7 @@ export function computeMonthlyReport(
   content.risks.forEach((r, i) => { if (!r.issue.trim() || !r.impact.trim() || !r.escalationOwner.trim()) question(questions, `risks.${i}`, "Lengkapi isu, dampak, dan pemilik eskalasi."); });
   if (!content.decisionsReviewed) question(questions, "decisionsReviewed", "Konfirmasi keputusan yang diminta, termasuk jika nihil.");
   content.decisions.forEach((d, i) => { if (!d.request.trim() || !d.options.trim() || !d.impact.trim()) question(questions, `decisions.${i}`, "Lengkapi permintaan keputusan, opsi, dan dampak."); });
+  content.previousActions.forEach((a, i) => { if (!a.status) question(questions, `previousActions.${i}.status`, `Tandai tindak lanjut aksi bulan lalu "${a.action.slice(0, 60)}": selesai, berjalan, atau dibatalkan.`); });
   const nextMonth = new Date(`${period}T00:00:00Z`);
   nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
   const firstNext = nextMonth.toISOString().slice(0, 10);
@@ -173,12 +192,14 @@ export function computeMonthlyReport(
     const obs = new Map(metric.observations.map((o) => [o.month, o]));
     const current = observationValue(obs.get(period));
     const prev = observationValue(obs.get(previous));
-    const ytd = aggregate(months.map((m) => obs.get(m)), metric.aggregation, metric.unit);
+    const ytdMonths = ytdWindow(metric, period);
+    const ytd: ComputedReportValue = { ...aggregate(ytdMonths.map((m) => obs.get(m)), metric.aggregation, metric.unit), label: ytdLabel(ytdMonths[0], period) };
     if (!metric.name.trim() || !metric.unit.trim()) question(questions, `${path}.identity`, "Lengkapi nama dan satuan KPI.");
     if (!metric.definition.trim() || !metric.definitionConfirmed) question(questions, `${path}.definition`, `Konfirmasi definisi KPI ${metric.name}.`);
     if (!metric.aggregation || !metric.aggregationNote.trim()) question(questions, `${path}.aggregation`, `Tetapkan aturan dan penjelasan agregasi ${metric.name}.`);
     if (!metric.sharingReviewed) question(questions, `${path}.sharingReviewed`, `Konfirmasi apakah ${metric.name} adalah angka bersama lintas divisi.`);
-    const requiredMonths = new Set(metric.aggregation === "latest" ? [previous, period] : [previous, ...months]);
+    const requiredMonths = new Set(metric.aggregation === "latest" ? [previous, period] : [previous, ...ytdMonths]);
+    if (ytdStartInvalid(metric, period)) question(questions, `${path}.ytdStart`, `Awal YTD ${metric.name} harus bulan antara Januari dan bulan laporan di tahun yang sama.`);
     for (const o of metric.observations) {
       if (o.state === "provided" && (o.actual === null || !o.source.trim()))
         question(questions, `${path}.observations.${o.month}.source`, `Cantumkan sumber nilai ${metric.name} ${o.month}.`);
@@ -198,13 +219,13 @@ export function computeMonthlyReport(
     }
     if (ytd.state === "missing") question(questions, `${path}.ytd`, `YTD ${metric.name} belum memiliki cakupan/input lengkap.`);
     if (ytd.state === "provided" && ytd.value === null) question(questions, `${path}.ytd.value`, `Hasil YTD ${metric.name} tidak dapat direpresentasikan; periksa angka/input agregasi.`);
-    if (ytd.target === null && (metric.aggregation === "latest" ? obs.get(period)?.target !== null && obs.has(period) : months.every((m) => obs.get(m)?.target !== null && obs.has(m))))
+    if (ytd.target === null && (metric.aggregation === "latest" ? obs.get(period)?.target !== null && obs.has(period) : ytdMonths.every((m) => obs.get(m)?.target !== null && obs.has(m))))
       question(questions, `${path}.ytd.target`, `Target YTD ${metric.name} tidak dapat dihitung dengan input yang tersedia.`);
     const missedTarget = current.state === "provided" && current.value !== null && current.target !== null && (metric.direction === "higher_better" ? current.value < current.target : current.value > current.target);
     if (missedTarget && (!metric.deviationCause.trim() || !metric.deviationEvidence.trim())) question(questions, `${path}.deviation`, `Jelaskan sebab dan bukti deviasi ${metric.name} dari target efektif.`);
     if (metric.sharedMetricKey.trim()) {
       const linked = peers.filter((p) => p.period === period).flatMap((p) => p.content.metrics.filter((m) => m.sharedMetricKey.trim() === metric.sharedMetricKey.trim()).map((m) => ({ domainId: p.domain.id, domainName: p.domain.name, metric: m })));
-      const comparisons = linked.map((p) => sharedMetricComparison(metric, p.metric, months, previous));
+      const comparisons = linked.map((p) => sharedMetricComparison(metric, p.metric, ytdMonths, previous));
       const conflict = comparisons.find((comparison) => comparison.state === "conflict");
       const awaiting = comparisons.find((comparison) => comparison.state === "awaiting_peer");
       const state = !linked.length ? "awaiting_peer" : conflict ? "conflict" : awaiting ? "awaiting_peer" : "matched";

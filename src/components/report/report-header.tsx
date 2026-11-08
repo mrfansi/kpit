@@ -1,5 +1,3 @@
-import { format } from "date-fns";
-import { id as idLocale } from "date-fns/locale";
 import { ReportPrintButton } from "./report-print-button";
 
 interface ReportHeaderProps {
@@ -8,7 +6,8 @@ interface ReportHeaderProps {
 }
 
 export function ReportHeader({ projectCount, averageProgress }: ReportHeaderProps) {
-  const generatedAt = format(new Date(), "dd MMMM yyyy, HH:mm", { locale: idLocale });
+  const now = new Date();
+  const generatedAt = `${now.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric", timeZone: "Asia/Jakarta" })}, ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })}`;
 
   return (
     <div className="mb-10 space-y-6">

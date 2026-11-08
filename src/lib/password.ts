@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 
-// Native WebCrypto: pure-JS bcrypt (~350 ms CPU) does not fit the Workers free plan's 10 ms limit.
-// workerd caps PBKDF2 at 100000 iterations.
+// Native WebCrypto instead of pure-JS bcrypt (~350 ms CPU). PBKDF2 is still ~80 ms of CPU locally (workerd caps it at
+// 100000 iterations), over the free plan's 10 ms limit, so every caller must be rate limited (better-auth sign-in, changePasswordAction).
 const ITERATIONS = 100_000;
 const PREFIX = "pbkdf2-sha256";
 

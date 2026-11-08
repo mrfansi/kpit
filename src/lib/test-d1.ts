@@ -2,8 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getPlatformProxy, type PlatformProxy } from "wrangler";
-import { wrangler } from "@/scripts/export-to-d1";
-import { wranglerConfigPath } from "@/scripts/wrangler-config";
+import { wrangler, wranglerConfigPath } from "@/scripts/wrangler-config";
 import { installTestEnv } from "@/testing/cloudflare-workers";
 
 export type TestEnv = { DB: D1Database; UPLOADS: R2Bucket };

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { defaultReportingPeriod, getPeriodRange, listLastNMonths } from "./period";
+import { defaultReportingPeriod, getPeriodRange, listLastNMonths, shiftMonth } from "./period";
 
 // 2026-11-30T22:00Z = 1 Des 2026 05:00 WIB: runtime UTC masih November, Jakarta sudah Desember.
 const JAKARTA_DEC_1 = new Date("2026-11-30T22:00:00Z");
@@ -36,4 +36,11 @@ test("bulan berjalan WIB tetap ada di daftar pilihan", () => {
 
 test("rentang periode mengikuti bulan WIB", () => {
   assert.deepEqual(getPeriodRange(3, JAKARTA_DEC_1), { from: "2026-10-01", to: "2026-12-31" });
+});
+
+test("shiftMonth melewati batas tahun dan selalu tanggal 1", () => {
+  assert.equal(shiftMonth("2026-01-01", -1), "2025-12-01");
+  assert.equal(shiftMonth("2026-12-15", 1), "2027-01-01");
+  assert.equal(shiftMonth("2026-03-01", -12), "2025-03-01");
+  assert.equal(shiftMonth("2026-03-01", 0), "2026-03-01");
 });

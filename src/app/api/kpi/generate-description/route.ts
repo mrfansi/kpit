@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   if (authResult.session.user.role !== "admin") {
     return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });
   }
-  const limited = enforceAIRateLimit(authResult.session.user.id, "generate-description");
+  const limited = await enforceAIRateLimit(authResult.session.user.id, "generate-description");
   if (limited) return limited;
 
   let raw: unknown;

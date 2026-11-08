@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDomainBySlug, getKPIsByDomain, getAllKPIs, getAllKPIEntriesBatch } from "@/lib/queries";
+import { getDomainBySlug, getKPIsByDomain, getAllKPIs, getAllKPIEntriesBatch, getTargetResolver } from "@/lib/queries";
 import { formatPeriodDate } from "@/lib/period";
 import { auth } from "@/auth";
-import { inArray } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { kpiTargets } from "@/lib/db/schema";
 
 function csvCell(value: string | number) {
   // Numbers are never formula-injection vectors; keep negatives unquoted and unprefixed.
@@ -48,13 +45,7 @@ export async function GET(req: NextRequest) {
     entriesByKpi.get(e.kpiId)!.push(e);
   }
 
-  // Per-period target overrides, preloaded once (chunked for D1's bound-parameter limit).
-  const overrideTarget = new Map<string, number>();
-  for (let i = 0; i < kpiIds.length; i += 90) {
-    for (const t of await db.select().from(kpiTargets).where(inArray(kpiTargets.kpiId, kpiIds.slice(i, i + 90)))) {
-      overrideTarget.set(`${t.kpiId}:${t.periodDate}`, t.target);
-    }
-  }
+  const resolveTarget = await getTargetResolver(kpiIds);
 
   for (const kpi of kpis) {
     const entries = entriesByKpi.get(kpi.id) ?? [];
@@ -63,7 +54,7 @@ export async function GET(req: NextRequest) {
         csvCell(kpi.name),
         csvCell(formatPeriodDate(entry.periodDate, "MMMM yyyy")),
         csvCell(entry.value),
-        csvCell(overrideTarget.get(`${kpi.id}:${entry.periodDate}`) ?? kpi.target),
+        csvCell(resolveTarget(kpi, entry.periodDate).target),
         csvCell(kpi.unit),
       ].join(","));
     }

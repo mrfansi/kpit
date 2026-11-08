@@ -53,15 +53,9 @@ export async function POST(request: NextRequest) {
   // Kuota dihitung PER KPI, bukan per klik. Satu batch = N panggilan model, jadi
   // menagihnya sebagai satu akan membuat plafon harian di rate-limit.ts tidak
   // ada artinya — 300 batch bisa berarti ribuan panggilan.
-  const allowed: typeof selected = [];
-  const rateLimited: { kpiId: number; kpiName: string }[] = [];
-  for (const row of selected) {
-    if (checkAIRateLimit(userId, "draft-comment").allowed) {
-      allowed.push(row);
-    } else {
-      rateLimited.push({ kpiId: row.kpi.id, kpiName: row.kpi.name });
-    }
-  }
+  const { granted } = await checkAIRateLimit(userId, "draft-comment", selected.length);
+  const allowed = selected.slice(0, granted);
+  const rateLimited = selected.slice(granted).map((row) => ({ kpiId: row.kpi.id, kpiName: row.kpi.name }));
 
   // Paralel: dengan model cepat, sembilan KPI selesai dalam sekali tunggu
   // alih-alih sembilan kali berturut-turut. Kegagalan per KPI dikembalikan

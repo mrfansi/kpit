@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/ai/api-helpers";
 import { isValidCalendarDate } from "@/lib/date-utils";
 import { format, parseISO } from "date-fns";
+import type { KPI } from "@/lib/db/schema";
 import { enUS } from "date-fns/locale";
-import { getAllDomains, getAllKPIEntriesBatch, getBatchPeriodComparison, getKPIsWithLatestEntry, getReportActionPlansWithKPI } from "@/lib/queries";
-import { db } from "@/lib/db";
-import { kpiTargets, type KPI } from "@/lib/db/schema";
+import { getAllDomains, getAllKPIEntriesBatch, getBatchPeriodComparison, getKPIsWithLatestEntry, getReportActionPlansWithKPI, getTargetResolver, type TargetResolver } from "@/lib/queries";
 import { getAllTimelineProjects } from "@/lib/queries/timeline";
 import { getAllStatuses } from "@/lib/queries/timeline-statuses";
 import { getActionFocusItems, getReportActionPlans, isActionPlanOverdue } from "@/lib/action-plan";
@@ -38,17 +37,6 @@ function formatEnglishPeriod(period: string) {
   return format(parseISO(period), "MMMM yyyy", { locale: enUS });
 }
 
-type TargetResolver = (kpi: KPI, periodDate: string) => { target: number; thresholdGreen: number; thresholdYellow: number };
-
-/** One query for every target override; resolves per KPI/period in memory (same fallback as getEffectiveTarget). */
-async function loadTargetResolver(): Promise<TargetResolver> {
-  const overrides = new Map((await db.select().from(kpiTargets)).map((row) => [`${row.kpiId}:${row.periodDate}`, row]));
-  return (kpi, periodDate) => {
-    const { target, thresholdGreen, thresholdYellow } = overrides.get(`${kpi.id}:${periodDate}`) ?? kpi;
-    return { target, thresholdGreen, thresholdYellow };
-  };
-}
-
 async function buildUnifiedMarkdownReportData(period: string, scope: "selected" | "all"): Promise<UnifiedMarkdownReportData> {
   const [domains, allKPIsWithEntries, actionPlanRows, projects, statuses, resolveTarget] = await Promise.all([
     getAllDomains(),
@@ -56,7 +44,7 @@ async function buildUnifiedMarkdownReportData(period: string, scope: "selected" 
     getReportActionPlansWithKPI(),
     getAllTimelineProjects(),
     getAllStatuses(),
-    loadTargetResolver(),
+    getTargetResolver(),
   ]);
 
   const kpiIds = allKPIsWithEntries.map(({ kpi }) => kpi.id);
@@ -148,7 +136,7 @@ async function buildUnifiedMarkdownReportData(period: string, scope: "selected" 
 
   return {
     periodLabel: scope === "all" ? "All Periods" : formatEnglishPeriod(period),
-    generatedDate: new Date().toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }),
+    generatedDate: new Date().toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }),
     summary: {
       healthScore: allKPIsWithEntries.length > 0 ? Math.round((greenCount / allKPIsWithEntries.length) * 100) : 0,
       totalKPIs: allKPIsWithEntries.length,

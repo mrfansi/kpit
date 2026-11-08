@@ -1,10 +1,7 @@
 import { getAllTimelineProjects } from "@/lib/queries/timeline";
 import { getAllStatuses } from "@/lib/queries/timeline-statuses";
 import { requireAdmin } from "@/lib/auth-utils";
-import { createStatus } from "@/lib/actions/timeline-statuses";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -19,6 +16,7 @@ import Link from "next/link";
 import { DeleteStatusButton } from "./statuses/delete-button";
 import { DeleteProjectButton } from "./delete-project-button";
 import { AddProjectButton } from "./add-project-button";
+import { CreateStatusForm } from "./create-status-form";
 
 export const metadata = {
   title: "Kelola Timeline - KPI Dashboard",
@@ -98,31 +96,7 @@ export default async function AdminTimelinePage() {
       {/* Add Status Form */}
       <section aria-labelledby="add-status-heading" className="space-y-3">
         <h2 id="add-status-heading" className="text-lg font-semibold">Tambah status</h2>
-        <form action={createStatus} className="flex flex-wrap items-end gap-3">
-          <div className="min-w-48 flex-1 space-y-2">
-            <Label htmlFor="name">Nama</Label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="Contoh: On Track"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="color">Warna</Label>
-            <Input
-              id="color"
-              name="color"
-              type="color"
-              defaultValue="#6366f1"
-              className="w-16 cursor-pointer p-1"
-            />
-          </div>
-          {/* Outline: primary layar ini adalah Tambah project di kepala. */}
-          <Button type="submit" variant="outline">
-            Tambah
-          </Button>
-        </form>
+        <CreateStatusForm />
       </section>
 
       {/* Statuses Table */}

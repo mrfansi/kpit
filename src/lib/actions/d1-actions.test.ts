@@ -118,8 +118,8 @@ test("server actions persist atomically against local D1", async (t) => {
       eq(auditLogs.entityId, String(status.id)),
       eq(auditLogs.action, "delete"),
     ));
-    await assert.rejects(deleteStatus(status.id), {
-      message: "Status ini masih digunakan oleh 1 project. Ubah status project tersebut terlebih dahulu.",
+    assert.deepEqual(await deleteStatus(status.id), {
+      error: "Status ini masih digunakan oleh 1 project. Ubah status project tersebut terlebih dahulu.",
     });
     assert.ok(await db.select().from(timelineProjectStatuses).where(eq(timelineProjectStatuses.id, status.id)).get());
     assert.equal((await db.select().from(timelineProjects).where(eq(timelineProjects.id, project.id)).get())?.statusId, status.id);

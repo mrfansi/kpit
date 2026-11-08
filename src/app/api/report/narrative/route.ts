@@ -38,7 +38,7 @@ const narrativeSchema = z.object({
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth();
   if (authResult.error) return authResult.error;
-  const limited = enforceAIRateLimit(authResult.session.user.id, "narrative");
+  const limited = await enforceAIRateLimit(authResult.session.user.id, "narrative");
   if (limited) return limited;
 
   let raw: unknown;

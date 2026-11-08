@@ -5,8 +5,8 @@ import { Pencil } from "lucide-react";
 import { auth } from "@/auth";
 import { getMonthlyReportBundle } from "@/lib/monthly-report-store";
 import { REPORT_DIVISIONS, type ComputedReportValue, type ObservationState } from "@/lib/monthly-report-types";
-import { defaultReportingPeriod, listLastNMonths } from "@/lib/period";
-import { isValidCalendarDate } from "@/lib/date-utils";
+import { defaultReportingPeriod, listLastNMonths, shiftMonth } from "@/lib/period";
+import { formatNumber2, isValidCalendarDate } from "@/lib/date-utils";
 import { statusConfig } from "@/lib/kpi-status";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 function value(state: ObservationState, amount: number | null, unit: string) {
   if (amount === null && state === "untracked") return "belum dilacak";
   if (amount === null) return "belum diberikan";
-  return `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(amount)}${unit === "%" ? "%" : unit ? ` ${unit}` : ""}`;
+  return `${formatNumber2(amount)}${unit === "%" ? "%" : unit ? ` ${unit}` : ""}`;
 }
 function ReportValue({ result, unit }: { result: ComputedReportValue; unit: string }) {
   return <span><span className="num text-base font-semibold">{value(result.state, result.value, unit)}</span><small className="mt-0.5 block text-xs text-muted-foreground">Sumber: {result.source || "belum diberikan"}; target: <span className="num">{value(result.state, result.target, unit)}</span> (sumber: {result.targetSource || "belum diberikan"}); perhitungan: {result.calculation || "belum diberikan"}</small></span>;
@@ -49,7 +49,7 @@ export default async function ReportPage({ params, searchParams }: Props) {
   const { content } = bundle;
   const query = `domain=${encodeURIComponent(domain)}&period=${selectedPeriod}`;
   const month = selectedPeriod.slice(0, 7);
-  const previous = new Date(Date.UTC(Number(selectedPeriod.slice(0, 4)), Number(selectedPeriod.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);
+  const previous = shiftMonth(selectedPeriod, -1).slice(0, 7);
   const misses = content.metrics.filter((metric) => bundle.metrics.find((row) => row.kpiId === metric.kpiId)?.missedTarget);
   const allMeasured = content.metrics.length > 0 && content.metrics.every((metric) => {
     const current = bundle.metrics.find((row) => row.kpiId === metric.kpiId)?.current;

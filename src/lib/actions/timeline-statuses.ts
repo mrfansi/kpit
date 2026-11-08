@@ -20,13 +20,19 @@ function revalidateAll() {
   revalidatePath("/admin/timeline");
 }
 
-export async function createStatus(formData: FormData) {
+// Kegagalan validasi dikembalikan, bukan dilempar: produksi menyamarkan error
+// server action yang dilempar menjadi "Minified React error #441".
+export async function createStatus(formData: FormData): Promise<{ error?: string }> {
   const session = await requireAdmin();
   const raw = Object.fromEntries(formData);
   const parsed = statusSchema.safeParse(raw);
-  if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const slug = slugify(parsed.data.name);
+  if (!slug) return { error: "Nama harus memuat huruf atau angka" };
+  const dup = await db.select({ id: timelineProjectStatuses.id }).from(timelineProjectStatuses)
+    .where(eq(timelineProjectStatuses.slug, slug)).get();
+  if (dup) return { error: "Status dengan nama ini sudah ada" };
 
   await db.batch([
     db.insert(timelineProjectStatuses).values({
@@ -45,6 +51,7 @@ export async function createStatus(formData: FormData) {
     }),
   ]);
   revalidateAll();
+  return {};
 }
 
 export async function deleteStatus(id: number) {
@@ -73,9 +80,9 @@ export async function deleteStatus(id: number) {
       .where(eq(timelineProjects.statusId, id)),
   ]);
   if (!deleted.length && (usage[0]?.cnt ?? 0) > 0) {
-    throw new Error(
-      `Status ini masih digunakan oleh ${usage[0].cnt} project. Ubah status project tersebut terlebih dahulu.`
-    );
+    return {
+      error: `Status ini masih digunakan oleh ${usage[0].cnt} project. Ubah status project tersebut terlebih dahulu.`,
+    };
   }
   revalidateAll();
 }

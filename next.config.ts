@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "X-DNS-Prefetch-Control", value: "on" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+        ],
+      },
+      {
+        // The deck routes set their own strict CSP; vinext lets config headers override handler headers.
+        source: "/((?!api/report/presentation$|api/presentation/brand/preview$).*)",
+        headers: [
           {
             key: "Content-Security-Policy",
             value: [

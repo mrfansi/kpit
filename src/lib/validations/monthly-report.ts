@@ -19,7 +19,7 @@ const metricSchema = z.object({
   direction: z.enum(["higher_better", "lower_better"]), definitionConfirmed: z.boolean(),
   aggregation: z.enum(["sum", "average", "latest", "ratio"]).nullable(), aggregationNote: prose,
   observations: z.array(observationSchema).max(240), sharedMetricKey: short, sharingReviewed: z.boolean(), reconciliationNote: prose,
-  deviationCause: prose, deviationEvidence: prose,
+  deviationCause: prose, deviationEvidence: prose, ytdStartMonth: monthSchema.nullable().optional(),
 }).strict().superRefine((m, ctx) => {
   const seen = new Set<string>();
   for (const [i, o] of m.observations.entries()) {
@@ -43,6 +43,7 @@ export const monthlyReportContentSchema = z.object({
   metrics: z.array(metricSchema).max(300), risksReviewed: z.boolean(),
   risks: z.array(z.object({ issue: prose, impact: prose, escalationOwner: short }).strict()).max(100),
   actions: z.array(z.object({ action: prose, pic: short, deadline: calendarDate.or(z.literal("")) }).strict()).max(100),
+  previousActions: z.array(z.object({ action: prose, pic: short, deadline: calendarDate.or(z.literal("")), status: z.enum(["done", "in_progress", "dropped", ""]), note: prose }).strict()).max(100).default([]),
   decisionsReviewed: z.boolean(), decisions: z.array(z.object({ request: prose, options: prose, impact: prose }).strict()).max(100),
   finance: z.object({ incomeStatement: statement, cashFlow: statement, balanceSheet: statement }).strict(),
   channelBreakdowns: z.array(channel), activities: z.array(prose),

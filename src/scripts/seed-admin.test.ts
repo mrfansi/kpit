@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { verifyPassword } from "../lib/password";
-import { queryD1, wrangler } from "./export-to-d1";
+import { queryD1, wrangler } from "./wrangler-config";
 
 test("D1 admin seed requires an explicit target and preserves existing accounts", { timeout: 180_000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), "kpit-admin-test-"));

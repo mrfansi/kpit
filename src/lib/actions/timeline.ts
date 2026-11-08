@@ -19,7 +19,7 @@ export async function createProject(formData: FormData) {
 
   const raw = Object.fromEntries(formData);
   const parsed = projectSchema.safeParse(raw);
-  if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const launchDate = parsed.data.estimatedLaunchDate || null;
 
@@ -56,7 +56,7 @@ export async function updateProject(id: number, formData: FormData) {
 
   const raw = Object.fromEntries(formData);
   const parsed = projectSchema.safeParse(raw);
-  if (!parsed.success) throw new Error(parsed.error.issues[0].message);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const launchDate = parsed.data.estimatedLaunchDate || null;
 
@@ -138,7 +138,7 @@ export async function updateProject(id: number, formData: FormData) {
         action: "update",
         entity: "timeline_project",
         entityId: String(id),
-        detail: parsed.data.name,
+        detail: logParts.length > 0 ? `${parsed.data.name}: ${logParts.join(", ")}` : parsed.data.name,
       },
     ),
   ]);
@@ -152,13 +152,13 @@ export async function updateProjectDates(
 ) {
   const session = await requireAdmin();
 
-  // Reject malformed/non-calendar dates before any write. Throw (rather than
-  // silently return) so the drag-to-reschedule UI can roll back its optimistic move.
+  // Reject malformed/non-calendar dates before any write. Return { error } so the
+  // drag-to-reschedule UI can roll back its optimistic move.
   if (!isValidCalendarDate(startDate) || !isValidCalendarDate(endDate)) {
-    throw new Error("Tanggal tidak valid");
+    return { error: "Tanggal tidak valid" };
   }
   if (endDate < startDate) {
-    throw new Error("Tanggal selesai tidak boleh sebelum tanggal mulai");
+    return { error: "Tanggal selesai tidak boleh sebelum tanggal mulai" };
   }
 
   // Fetch old values for change detection
@@ -166,7 +166,7 @@ export async function updateProjectDates(
     where: eq(timelineProjects.id, id),
     columns: { startDate: true, endDate: true, estimatedLaunchDate: true, progress: true },
   });
-  if (!existing) throw new Error("Project tidak ditemukan");
+  if (!existing) return { error: "Project tidak ditemukan" };
 
   const clearLaunch =
     existing.estimatedLaunchDate && existing.estimatedLaunchDate < endDate;
@@ -224,16 +224,17 @@ export async function createProgressLog(
   const session = await requireAdmin();
 
   // Validate projectId and confirm the project exists (no orphan logs).
-  if (!Number.isInteger(projectId) || projectId <= 0) return;
+  if (!Number.isInteger(projectId) || projectId <= 0) return { error: "Project tidak valid" };
   const project = await db
     .select({ id: timelineProjects.id })
     .from(timelineProjects)
     .where(eq(timelineProjects.id, projectId))
     .get();
-  if (!project) return;
+  if (!project) return { error: "Project tidak ditemukan" };
 
   const clean = content.trim();
-  if (!clean || clean.length > 50000) return;
+  if (!clean) return { error: "Isi log tidak boleh kosong" };
+  if (clean.length > 50000) return { error: "Isi log terlalu panjang" };
 
   const author = session.user.name ?? session.user.email ?? "Admin";
 

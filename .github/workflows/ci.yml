@@ -23,3 +23,6 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - run: npm run build
+      - name: Drizzle drift check
+        run: npx drizzle-kit generate && test -z "$(git status --porcelain drizzle)"

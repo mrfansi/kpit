@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const body = z.object({ revision: z.number().int() }).safeParse(await request.json().catch(() => null));
     if (!body.success) return NextResponse.json({ error: "Request body tidak valid." }, { status: 400 });
     if (body.data.revision !== bundle.revision) return NextResponse.json({ error: "Report has changed. Reload the latest revision.", bundle }, { status: 409 });
-    const limited = enforceAIRateLimit(session.user.id, "monthly-report");
+    const limited = await enforceAIRateLimit(session.user.id, "monthly-report");
     if (limited) return limited;
     const snapshot = {
       domain: bundle.domain.name, period: bundle.period, division: bundle.content.division,

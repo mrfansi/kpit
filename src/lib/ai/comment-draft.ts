@@ -8,7 +8,7 @@ import {
   getKPITargets,
 } from "@/lib/queries";
 import { getAchievementPct, getKPIStatus, statusConfig } from "@/lib/kpi-status";
-import { formatPeriodDate, formatValue } from "@/lib/period";
+import { formatPeriodDate, formatValue, shiftMonth } from "@/lib/period";
 
 /**
  * Penyusunan draf catatan bulanan, dipakai route tunggal maupun batch.
@@ -22,12 +22,6 @@ export type DraftFailureReason = "not_found" | "no_data" | "ai_error";
 export type DraftResult =
   | { ok: true; kpiId: number; kpiName: string; draft: string }
   | { ok: false; kpiId: number; kpiName: string; reason: DraftFailureReason; message: string };
-
-function previousPeriod(periodDate: string): string {
-  const [y, m] = periodDate.split("-").map(Number);
-  const d = new Date(y, m - 2, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-}
 
 /**
  * Menyusun draf untuk satu KPI. Kegagalan dikembalikan sebagai nilai, bukan
@@ -49,7 +43,7 @@ export async function draftCommentForKPI(
     };
   }
 
-  const prevPeriod = previousPeriod(periodDate);
+  const prevPeriod = shiftMonth(periodDate, -1);
   const [entries, targetOverrides, comments, actionPlans] = await Promise.all([
     getKPIEntries(kpiId),
     getKPITargets(kpiId),

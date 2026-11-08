@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Instruksi harus berisi 1–1000 karakter dan gaya dasar harus valid." }, { status: 400 });
   }
-  const limited = enforceAIRateLimit(authResult.session.user.id, "presentation-brand");
+  const limited = await enforceAIRateLimit(authResult.session.user.id, "presentation-brand");
   if (limited) return limited;
   try {
     return NextResponse.json(await generatePresentationBrand(getAIService(), parsed.data));

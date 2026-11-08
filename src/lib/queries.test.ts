@@ -3,6 +3,7 @@ import test from "node:test";
 import { createTestD1 } from "./test-d1";
 import * as queries from "./queries";
 import { getKPIsWithLatestEntry } from "./queries";
+import type { KPI, KPITarget } from "./db/schema";
 
 const month = (index: number) => {
   const date = new Date(Date.UTC(2025, index, 1));
@@ -74,4 +75,13 @@ test("batch queries preserve results and global date order above D1's parameter 
   } finally {
     await dispose();
   }
+});
+
+test("buildTargetResolver prefers the per-period override and falls back to the KPI default", () => {
+  const kpi = { id: 1, target: 100, thresholdGreen: 90, thresholdYellow: 80 } as KPI;
+  const resolve = queries.buildTargetResolver([
+    { id: 1, kpiId: 1, periodDate: "2026-02-01", target: 200, thresholdGreen: 180, thresholdYellow: 160 } as KPITarget,
+  ]);
+  assert.deepEqual(resolve(kpi, "2026-02-01"), { target: 200, thresholdGreen: 180, thresholdYellow: 160, overridden: true });
+  assert.deepEqual(resolve(kpi, "2026-03-01"), { target: 100, thresholdGreen: 90, thresholdYellow: 80, overridden: false });
 });

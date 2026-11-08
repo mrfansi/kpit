@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EmptyState } from "@/components/empty-state";
 import { Trash2, Send, Sparkles, Loader2 } from "lucide-react";
 import { isEmptyHtml, textToHtml } from "@/lib/html-utils";
+import { formatDayShort } from "@/lib/date-utils";
 
 // Tiptap/ProseMirror are heavy and only admins ever see the editor; the editor renders nothing before mount anyway.
 const RichTextEditor = dynamic(() => import("@/components/rich-text-editor").then((m) => m.RichTextEditor), { ssr: false });
@@ -53,7 +54,7 @@ function formatRelative(date: Date) {
   if (mins < 60) return `${mins} menit lalu`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours} jam lalu`;
-  return date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  return formatDayShort(date);
 }
 
 export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, availablePeriods = [], canEdit = false }: KPICommentsProps) {

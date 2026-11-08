@@ -3,6 +3,7 @@ import { and, desc, eq, getTableColumns, gte, inArray, lte, sql } from "drizzle-
 import { db } from "./db";
 import { domains, kpiActionPlans, kpiComments, kpiEntries, kpiTargets, kpis, type KPI, type KPIActionPlan, type KPIComment, type KPIEntry, type KPITarget } from "./db/schema";
 import { activeActionPlanStatuses, getActionPlanSummary } from "./action-plan";
+import { shiftMonth } from "./period";
 
 // Memoized per render pass: the root layout and the page both ask for it. Outside a render it is a plain call.
 export const getAllDomains = cache(async () => db.select().from(domains).orderBy(domains.name));
@@ -67,7 +68,7 @@ export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?:
   const [allKPIs, rows, targetOverrides] = await Promise.all([
     domainId ? getKPIsByDomain(domainId) : getAllKPIs(),
     db
-      .select({ id: ranked.id, kpiId: ranked.kpiId, value: ranked.value, periodDate: ranked.periodDate, note: ranked.note, createdAt: ranked.createdAt })
+      .select({ id: ranked.id, kpiId: ranked.kpiId, value: ranked.value, periodDate: ranked.periodDate, note: ranked.note, numerator: ranked.numerator, denominator: ranked.denominator, createdAt: ranked.createdAt })
       .from(ranked)
       .where(lte(ranked.rn, 12))
       .orderBy(sql`${ranked.rn}`),
@@ -106,21 +107,28 @@ export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?:
   });
 }
 
-/** Ambil target override untuk periode tertentu, fallback ke nilai default KPI */
-export async function getEffectiveTarget(
-  kpi: KPI,
-  periodDate: string
-): Promise<{ target: number; thresholdGreen: number; thresholdYellow: number }> {
-  const rows = await db
-    .select()
-    .from(kpiTargets)
-    .where(and(eq(kpiTargets.kpiId, kpi.id), eq(kpiTargets.periodDate, periodDate)))
-    .limit(1);
+export type EffectiveTarget = { target: number; thresholdGreen: number; thresholdYellow: number; overridden: boolean };
+export type TargetResolver = (kpi: KPI, periodDate: string) => EffectiveTarget;
 
-  if (rows[0]) {
-    return { target: rows[0].target, thresholdGreen: rows[0].thresholdGreen, thresholdYellow: rows[0].thresholdYellow };
+/** Pure: per-period override when present, otherwise the KPI's own default target. */
+export function buildTargetResolver(overrides: KPITarget[]): TargetResolver {
+  const byKey = new Map(overrides.map((row) => [`${row.kpiId}:${row.periodDate}`, row]));
+  return (kpi, periodDate) => {
+    const override = byKey.get(`${kpi.id}:${periodDate}`);
+    const { target, thresholdGreen, thresholdYellow } = override ?? kpi;
+    return { target, thresholdGreen, thresholdYellow, overridden: Boolean(override) };
+  };
+}
+
+/** Load overrides once (all KPIs, or only `kpiIds`, chunked for D1's bound-parameter limit) and resolve in memory. */
+export async function getTargetResolver(kpiIds?: number[]): Promise<TargetResolver> {
+  if (!kpiIds) return buildTargetResolver(await db.select().from(kpiTargets));
+  const rows: KPITarget[] = [];
+  const ids = [...new Set(kpiIds)];
+  for (let offset = 0; offset < ids.length; offset += 90) {
+    rows.push(...await db.select().from(kpiTargets).where(inArray(kpiTargets.kpiId, ids.slice(offset, offset + 90))));
   }
-  return { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
+  return buildTargetResolver(rows);
 }
 
 /** Ambil semua target override untuk satu KPI, diurutkan terbaru dulu */
@@ -143,8 +151,7 @@ export async function getBatchPeriodComparison(
   if (kpiIds.length === 0) return new Map();
 
   const [y, m] = currentPeriodDate.split("-").map(Number);
-  const prevMonthD = new Date(y, m - 2, 1);
-  const prevMonthDate = `${prevMonthD.getFullYear()}-${String(prevMonthD.getMonth() + 1).padStart(2, "0")}-01`;
+  const prevMonthDate = shiftMonth(currentPeriodDate, -1);
   const prevYearDate = `${y - 1}-${String(m).padStart(2, "0")}-01`;
 
   const prevMonthEntries: KPIEntry[] = [];

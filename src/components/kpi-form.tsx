@@ -108,12 +108,11 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
 
   async function onSubmit(values: KPIFormValues) {
     try {
-      if (isEdit) {
-        await updateKPI(defaultValues.id, values);
-      } else {
-        await createKPI(values);
-      }
-      // redirect di server action akan membawa ?success= ke halaman tujuan
+      // Sukses me-redirect (dilempar ulang di bawah); yang kembali hanya error validasi.
+      const result = isEdit
+        ? await updateKPI(defaultValues.id, values)
+        : await createKPI(values);
+      toast.error(result.error);
     } catch (err: unknown) {
       unstable_rethrow(err);
       toast.error("Terjadi kesalahan, coba lagi");

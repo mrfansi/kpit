@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2, ClipboardCheck } from "lucide-react";
 import { actionPlanStatusLabels, getActionPlanSummary, getReportActionPlans, isActionPlanOverdue, type ActionPlanStatus } from "@/lib/action-plan";
 import { statusConfig } from "@/lib/kpi-status";
 import { cn } from "@/lib/utils";
+import { formatDueDate } from "@/lib/date-utils";
 
 type ReportActionRow = {
   action: {
@@ -37,14 +38,6 @@ const statusClass: Record<ActionPlanStatus, string> = {
   done: "bg-secondary text-foreground",
   cancelled: "bg-secondary text-muted-foreground",
 };
-
-function formatDate(date: string) {
-  return new Date(`${date}T00:00:00`).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 const th = "py-2 pr-4 text-left text-sm font-normal whitespace-nowrap text-muted-foreground";
 
@@ -109,7 +102,7 @@ export function ReportActionPlans({ rows, periodDate, showDomain = true }: Repor
                 {showDomain && <td className="hidden py-2.5 pr-4 text-muted-foreground md:table-cell print:table-cell">{domain.name}</td>}
                 <td className="hidden py-2.5 pr-4 sm:table-cell print:table-cell">{action.owner}</td>
                 <td className="py-2.5 pr-4">
-                  <span className="num whitespace-nowrap">{formatDate(action.dueDate)}</span>
+                  <span className="num whitespace-nowrap">{formatDueDate(action.dueDate)}</span>
                   {overdue && (
                     <span className={cn("mt-0.5 flex items-center gap-1 whitespace-nowrap", statusConfig.red.color)}>
                       <AlertTriangle aria-hidden className="size-3.5" />

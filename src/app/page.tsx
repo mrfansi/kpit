@@ -51,10 +51,16 @@ export default async function OverviewPage({ searchParams }: Props) {
     ? allKPIsWithEntries.filter(({ kpi }) => kpi.isPinned)
     : [];
 
-  const byDomain = domains.map((domain) => ({
-    domain,
-    kpisWithEntries: filtered.filter((k) => k.kpi.domainId === domain.id),
-  })).filter(({ kpisWithEntries }) => !isFiltered || kpisWithEntries.length > 0);
+  // Pinned rows already render in the Dipinned section; keep them out of the per-domain tables (counts/badges still include them).
+  const showPinned = pinnedWithEntries.length > 0;
+  const byDomain = domains.map((domain) => {
+    const kpisWithEntries = filtered.filter((k) => k.kpi.domainId === domain.id);
+    return {
+      domain,
+      kpisWithEntries,
+      tableRows: showPinned ? kpisWithEntries.filter(({ kpi }) => !kpi.isPinned) : kpisWithEntries,
+    };
+  }).filter(({ kpisWithEntries }) => !isFiltered || kpisWithEntries.length > 0);
 
   // Build kpiLatestPeriods map for smart period suggestion
   const kpiLatestPeriods: Record<number, string> = {};
@@ -104,7 +110,7 @@ export default async function OverviewPage({ searchParams }: Props) {
             </Button>
             <ExportButtons />
             {canEdit && <BatchCommentDraft periodDate={selectedPeriod ?? ""} />}
-            {canEdit && <QuickEntryModal kpis={allKPIs} kpiLatestPeriods={kpiLatestPeriods} />}
+            {canEdit && <QuickEntryModal kpis={allKPIs.map(({ id, name }) => ({ id, name }))} kpiLatestPeriods={kpiLatestPeriods} />}
           </div>
         </div>
 
@@ -129,7 +135,7 @@ export default async function OverviewPage({ searchParams }: Props) {
         </div>
 
         {/* KPI yang dipinned */}
-        {pinnedWithEntries.length > 0 && !isFiltered && (
+        {showPinned && (
           <section aria-labelledby="pinned-heading" className="space-y-3">
             <h2 id="pinned-heading" className="flex items-center gap-2 text-lg font-semibold">
               <Pin aria-hidden className="size-4 text-muted-foreground" />
@@ -145,7 +151,7 @@ export default async function OverviewPage({ searchParams }: Props) {
           </section>
         )}
 
-        {byDomain.map(({ domain, kpisWithEntries }) => (
+        {byDomain.map(({ domain, kpisWithEntries, tableRows }) => (
           <section key={domain.id} aria-labelledby={`domain-${domain.id}`} className="space-y-3">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               {/* Warna identitas domain (bukan status), sebagai kunci kecil persegi. */}
@@ -157,14 +163,16 @@ export default async function OverviewPage({ searchParams }: Props) {
               <DomainStatusBadges kpisWithEntries={kpisWithEntries} />
             </div>
             <KPITable
-              rows={kpisWithEntries}
+              rows={tableRows}
               actionCounts={actionCounts}
               selectedPeriod={selectedPeriod}
               canEdit={canEdit}
               emptyMessage={
                 isFiltered
                   ? "Tidak ada KPI yang cocok dengan filter."
-                  : "Belum ada KPI untuk domain ini."
+                  : kpisWithEntries.length > 0
+                    ? "Semua KPI domain ini ada di bagian Dipinned."
+                    : "Belum ada KPI untuk domain ini."
               }
             />
           </section>

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { TableSearch } from "@/components/table-search";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
+import { formatDueDate } from "@/lib/date-utils";
 
 interface Props {
   searchParams: Promise<{ status?: string; q?: string }>;
@@ -131,7 +132,7 @@ export default async function AdminActionsPage({ searchParams }: Props) {
                     <TableCell className="hidden sm:table-cell">{action.owner}</TableCell>
                     <TableCell>
                       <span className="num">
-                        {new Date(`${action.dueDate}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                        {formatDueDate(action.dueDate)}
                       </span>
                       {overdue && <Badge variant="destructive" className="ml-2">Overdue</Badge>}
                     </TableCell>
