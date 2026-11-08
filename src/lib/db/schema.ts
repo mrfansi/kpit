@@ -242,6 +242,14 @@ export const verification = sqliteTable("verification", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
 }, (t) => [index("verification_identifier_idx").on(t.identifier)]);
 
+// better-auth's database rate limiter (model `rateLimit`; `lastRequest` is epoch milliseconds).
+export const rateLimit = sqliteTable("rate_limit", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: integer("last_request").notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 

@@ -4,10 +4,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import bcrypt from "bcryptjs";
+import { verifyPassword } from "../lib/password";
 import { queryD1, wrangler } from "./export-to-d1";
 
-test("D1 admin seed requires an explicit target and preserves existing accounts", { timeout: 180_000 }, () => {
+test("D1 admin seed requires an explicit target and preserves existing accounts", { timeout: 180_000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), "kpit-admin-test-"));
   const env = { ...process.env, SEED_ADMIN_EMAIL: "o'brien@example.com", SEED_ADMIN_PASSWORD: "LongPassword123!" };
   const seed = (args: string[], overrides = {}) => spawnSync(process.execPath, ["--import", "tsx", "src/scripts/seed-admin.ts", ...args], { env: { ...env, ...overrides }, encoding: "utf8" });
@@ -26,8 +26,8 @@ test("D1 admin seed requires an explicit target and preserves existing accounts"
     const first = queryD1("SELECT email,password_hash FROM users", target);
     assert.equal(first.length, 1);
     assert.equal(first[0].email, env.SEED_ADMIN_EMAIL);
-    assert.equal(bcrypt.getRounds(String(first[0].password_hash)), 12);
-    assert.ok(bcrypt.compareSync(env.SEED_ADMIN_PASSWORD, String(first[0].password_hash)));
+    assert.match(String(first[0].password_hash), /^pbkdf2-sha256\$100000\$/);
+    assert.ok(await verifyPassword({ hash: String(first[0].password_hash), password: env.SEED_ADMIN_PASSWORD }));
     const accounts = queryD1("SELECT a.provider_id,a.account_id,a.password,u.id FROM account a JOIN users u ON u.id = a.user_id", target);
     assert.equal(accounts.length, 1);
     assert.equal(accounts[0].provider_id, "credential");

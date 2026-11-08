@@ -1,8 +1,8 @@
-import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { hashPassword } from "../lib/password";
 import { parseTarget, queryD1, targetArgs, wrangler } from "./export-to-d1";
 
 const email = process.env.SEED_ADMIN_EMAIL;
@@ -18,7 +18,7 @@ try {
   if (queryD1(`SELECT id FROM users WHERE email = ${emailSql} LIMIT 1`, target).length) {
     console.log(`User ${email} sudah ada, skip.`);
   } else {
-    const hash = bcrypt.hashSync(password, 12);
+    const hash = await hashPassword(password);
     const folder = mkdtempSync(join(tmpdir(), "kpit-admin-"));
     try {
       const file = join(folder, "seed.sql");

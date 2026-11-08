@@ -63,10 +63,11 @@ HTTPS, looks for the `__Secure-` session cookie and bounces every login back to
 `/login`; deployed HTTPS origins are unaffected.
 
 `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are shell environment variables for
-the seed script only, not Worker secrets. Password hashing and login use bcrypt
-cost 12. A Workers Paid plan with a suitable CPU limit is likely needed: bcrypt
-is unlikely to fit the [free plan's 10ms CPU allowance](https://developers.cloudflare.com/workers/platform/limits/#cpu-time);
-measure your deployment.
+the seed script only, not Worker secrets. Password hashing uses native WebCrypto
+PBKDF2-SHA256 (100000 iterations, the workerd maximum) so a login fits the
+[free plan's 10ms CPU allowance](https://developers.cloudflare.com/workers/platform/limits/#cpu-time);
+measure your deployment. Sign-in is also rate limited (5 attempts per 60 s per
+`cf-connecting-ip`, stored in D1 table `rate_limit`).
 
 ### Local development
 
@@ -225,8 +226,10 @@ change or deleted user takes effect within 5 minutes. Sign-up is disabled: users
 are created by admins (`/admin/users`) or `npm run seed:admin`. `users.role`
 (`admin` | `viewer`) is never accepted from client input.
 
-Passwords are bcrypt (cost 12, `bcryptjs`), so hashes created by the old
-next-auth setup keep working. Migration `0017_better_auth.sql` adds
+Passwords are `pbkdf2-sha256$100000$<salt>$<key>` (`src/lib/password.ts`).
+Legacy bcrypt hashes from the old next-auth setup still verify and are rehashed
+on the user's next successful login (so a rollback to the old worker only keeps
+working for users who have not logged in since). Migration `0017_better_auth.sql` adds
 `session`/`account`/`verification` and three columns on `users`, then backfills
 one `credential` account per user (`account.password` = `users.password_hash`)
 and lower-cases stored emails (better-auth looks users up by lower-cased email;

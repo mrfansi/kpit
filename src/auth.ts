@@ -1,9 +1,11 @@
-import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware } from "better-auth/api";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
+import { updateUserPassword } from "@/lib/db/users";
+import { hashPassword, isLegacyHash, verifyPassword } from "@/lib/password";
 
 function createAuth() {
   return betterAuth({
@@ -22,11 +24,28 @@ function createAuth() {
     emailAndPassword: {
       enabled: true,
       disableSignUp: true, // users are created by admins
-      // bcrypt cost 12 keeps the pre-migration hashes (copied into account.password) valid.
-      password: {
-        hash: (password) => bcrypt.hash(password, 12),
-        verify: ({ hash, password }) => bcrypt.compare(password, hash),
-      },
+      // PBKDF2 via WebCrypto fits the Workers free plan's 10 ms CPU; legacy bcrypt hashes still verify and are upgraded after login (hooks.after).
+      password: { hash: hashPassword, verify: verifyPassword },
+    },
+    // Counters live in D1 (isolates share no memory). Sign-in is hashed per attempt, so cap it hard.
+    rateLimit: { enabled: true, storage: "database", customRules: { "/sign-in/email": { window: 60, max: 5 } } },
+    // Only Cloudflare sets cf-connecting-ip; x-forwarded-for would be client-controlled.
+    advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] } },
+    hooks: {
+      after: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-in/email") return;
+        const userId = ctx.context.newSession?.user.id;
+        const password = (ctx.body as { password?: unknown } | undefined)?.password;
+        if (!userId || typeof password !== "string") return;
+        try {
+          const [credential] = await ctx.context.internalAdapter.findAccounts(userId);
+          if (credential?.providerId === "credential" && credential.password && isLegacyHash(credential.password)) {
+            await updateUserPassword(userId, await hashPassword(password));
+          }
+        } catch (error) {
+          ctx.context.logger.error("Password rehash failed", error); // login still succeeds
+        }
+      }),
     },
     session: {
       expiresIn: 60 * 60 * 24 * 30, // next-auth's default JWT lifetime

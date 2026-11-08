@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { createUser, deleteUser, updateUserPassword } from "@/lib/db/users";
 import { z } from "zod";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
@@ -37,7 +37,7 @@ export async function addUserAction(
   });
   if (!parsed.success) return { error: "Data tidak valid. Pastikan semua field terisi dengan benar." };
 
-  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  const passwordHash = await hashPassword(parsed.data.password);
   try {
     await createUser({ id: randomUUID(), ...parsed.data, passwordHash });
     await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "user", detail: parsed.data.email });
@@ -70,7 +70,7 @@ export async function changePasswordAction(
   if (!parsed.success) return { error: "Password minimal 8 karakter." };
   if (parsed.data.password !== parsed.data.confirm) return { error: "Konfirmasi password tidak cocok." };
 
-  const hash = await bcrypt.hash(parsed.data.password, 12);
+  const hash = await hashPassword(parsed.data.password);
   await updateUserPassword(parsed.data.userId, hash);
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "user", entityId: session.user.id, detail: "password changed" });
   return { success: true };
