@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
 function LoginFormInner() {
@@ -40,46 +39,51 @@ function LoginFormInner() {
     }
   }
 
+  // Pesan galat dikaitkan ke kedua field agar dibacakan pembaca layar.
+  const errorProps = error ? { "aria-invalid": true, "aria-describedby": "login-error" } : {};
+
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Masuk</CardTitle>
-        <CardDescription>Login untuk mengakses halaman admin</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@kpit.local"
-              required
-              autoComplete="email"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Masuk
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <section aria-labelledby="login-heading" className="space-y-6">
+      <div>
+        <h2 id="login-heading" className="text-lg font-semibold">Masuk</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Login untuk mengakses halaman admin</p>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            className="h-10"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="admin@kpit.local"
+            required
+            autoComplete="email"
+            {...errorProps}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            className="h-10"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+            autoComplete="current-password"
+            {...errorProps}
+          />
+        </div>
+        {error && <p id="login-error" role="alert" className="text-sm text-destructive">{error}</p>}
+        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          {loading && <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />}
+          Masuk
+        </Button>
+      </form>
+    </section>
   );
 }
 

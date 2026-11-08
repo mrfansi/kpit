@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface TargetSuggestion {
   suggestedTarget: number;
@@ -24,12 +25,6 @@ interface KPITargetSuggestionProps {
   }[];
   onApply?: (target: number) => void;
 }
-
-const confidenceColors = {
-  low: "bg-danger-soft text-danger",
-  medium: "bg-warning-soft text-warning",
-  high: "bg-success-soft text-success",
-};
 
 const confidenceLabels = {
   low: "Rendah",
@@ -87,54 +82,49 @@ export function KPITargetSuggestion({
   }
 
   return (
-    <div className="inline-flex flex-col gap-2">
+    <div className="flex flex-col items-start gap-2">
       <Button
         type="button"
         variant="outline"
         size="sm"
         onClick={handleSuggest}
         disabled={loading || !hasEnoughData}
-        className="text-xs"
       >
         {loading ? (
           <>
-            <span
-              className="inline-block w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin mr-1"
-              aria-hidden="true"
-            />
-            Menganalisis...
+            <LoadingSpinner />
+            Menganalisis…
           </>
         ) : (
-          "Suggest Target"
+          "Suggest target"
         )}
       </Button>
 
       {!hasEnoughData && (
-        <p className="text-xs text-muted-foreground">Minimal 3 periode data.</p>
+        <p className="text-sm text-muted-foreground">Minimal 3 periode data.</p>
       )}
 
-      {error && <p className="text-danger text-xs">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {suggestion && (
-        <div className="max-w-sm rounded border border-info bg-info-soft p-3 text-sm">
-          <div className="flex items-center justify-between mb-1">
-            <span className="font-semibold">
-              <span className="num">{suggestion.suggestedTarget}</span> {unit}
+        // Sumur netral: tingkat keyakinan AI bukan status KPI, jadi tanpa hue status.
+        <div className="w-full max-w-sm space-y-2 rounded-card bg-paper-2 p-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <span>
+              <span className="num text-3xl leading-none font-semibold">{suggestion.suggestedTarget}</span>{" "}
+              <span className="text-muted-foreground">{unit}</span>
             </span>
-            <span
-              className={`text-xs px-1.5 py-0.5 rounded ${confidenceColors[suggestion.confidence]}`}
-            >
+            <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-xs font-semibold">
               Confidence: {confidenceLabels[suggestion.confidence]}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mb-2">{suggestion.reasoning}</p>
+          <p className="text-sm text-muted-foreground">{suggestion.reasoning}</p>
           {onApply && (
             <Button
               type="button"
               variant="default"
               size="sm"
               onClick={() => onApply(suggestion.suggestedTarget)}
-              className="text-xs"
             >
               Terapkan
             </Button>

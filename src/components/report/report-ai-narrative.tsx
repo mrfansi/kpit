@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface KPIDataItem {
@@ -59,41 +61,48 @@ export function ReportAINarrative({ staticSummary, requestData }: ReportAINarrat
   }
 
   return (
-    <div className="mb-6 p-4 bg-muted rounded-lg border border-border">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="font-bold text-sm">Ringkasan</h2>
-        <button
+    // Prosa, bukan kotak: dibaca seperti paragraf pembuka dokumen, lebar baris ~65ch.
+    <section aria-labelledby="report-summary-heading" className="space-y-3 break-inside-avoid-page">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h2 id="report-summary-heading" className="text-lg font-semibold">Ringkasan</h2>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
           onClick={handleGenerate}
           disabled={loading}
-          className="print:hidden text-xs px-3 py-1 rounded border border-border hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+          className="print:hidden"
         >
           {loading ? (
             <>
               <LoadingSpinner />
-              Menganalisis...
+              Menganalisis…
             </>
           ) : narrative ? (
             "Regenerate"
           ) : (
-            "\u2728 Generate Analisis AI"
+            <>
+              <Sparkles aria-hidden />
+              Generate Analisis AI
+            </>
           )}
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <p className="text-destructive text-xs mb-2">{error}</p>
+        <p role="alert" className="text-sm text-destructive">{error}</p>
       )}
 
       {narrative ? (
-        <div className="text-sm text-foreground space-y-2">
+        <div className="max-w-[65ch] space-y-3 text-base text-foreground">
           {narrative.split("\n\n").filter(Boolean).map((paragraph, i) => (
             <p key={i}>{paragraph}</p>
           ))}
-          <p className="text-xs text-muted-foreground mt-2 print:hidden">Dihasilkan oleh AI — verifikasi data sebelum mengambil keputusan</p>
+          <p className="text-sm text-muted-foreground print:hidden">Dihasilkan oleh AI, verifikasi data sebelum mengambil keputusan</p>
         </div>
       ) : (
-        <p className="text-sm text-foreground">{staticSummary}</p>
+        <p className="max-w-[65ch] text-base text-foreground">{staticSummary}</p>
       )}
-    </div>
+    </section>
   );
 }

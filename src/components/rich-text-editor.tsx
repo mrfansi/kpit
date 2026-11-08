@@ -28,7 +28,7 @@ interface RichTextEditorProps {
   disabled?: boolean;
 }
 
-export function RichTextEditor({ content = "", onChange, placeholder = "Tulis catatan...", disabled = false }: RichTextEditorProps) {
+export function RichTextEditor({ content = "", onChange, placeholder = "Tulis catatan…", disabled = false }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -53,7 +53,7 @@ export function RichTextEditor({ content = "", onChange, placeholder = "Tulis ca
     },
     editorProps: {
       attributes: {
-        class: "tiptap-editor outline-none min-h-[120px] px-3 py-2 text-sm prose-comment",
+        class: "tiptap-editor min-h-[120px] px-3 py-2 text-base prose-comment",
       },
     },
   });
@@ -101,98 +101,52 @@ export function RichTextEditor({ content = "", onChange, placeholder = "Tulis ca
     }
   }
 
-  const btnClass = "h-7 w-7 p-0";
+  // Tombol bilah alat: ghost icon-sm; status aktif dibawa aria-pressed + latar secondary.
+  const tools = [
+    { label: "Bold", icon: Bold, active: editor.isActive("bold"), run: () => editor.chain().focus().toggleBold().run() },
+    { label: "Italic", icon: Italic, active: editor.isActive("italic"), run: () => editor.chain().focus().toggleItalic().run() },
+    { label: "Strikethrough", icon: Strikethrough, active: editor.isActive("strike"), run: () => editor.chain().focus().toggleStrike().run() },
+    null,
+    { label: "Heading", icon: Heading2, active: editor.isActive("heading", { level: 2 }), run: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+    { label: "Bullet List", icon: List, active: editor.isActive("bulletList"), run: () => editor.chain().focus().toggleBulletList().run() },
+    { label: "Numbered List", icon: ListOrdered, active: editor.isActive("orderedList"), run: () => editor.chain().focus().toggleOrderedList().run() },
+    null,
+    { label: "Link", icon: LinkIcon, active: editor.isActive("link"), run: handleLink },
+  ];
 
   return (
-    <div className="rounded-md border border-input bg-transparent shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 transition-[color,box-shadow]">
+    // Permukaan field: tepi 3:1 tetap, fokus berupa outline sisipan, bukan perubahan tepi.
+    <div className="rounded-md border border-input bg-card outline-2 outline-offset-[-3px] outline-transparent focus-within:outline-ring">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b bg-muted/30">
-        <Button
-          type="button"
-          variant={editor.isActive("bold") ? "secondary" : "ghost"}
-          size="icon"
-          className={btnClass}
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          title="Bold"
-        >
-          <Bold className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant={editor.isActive("italic") ? "secondary" : "ghost"}
-          size="icon"
-          className={btnClass}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          title="Italic"
-        >
-          <Italic className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant={editor.isActive("strike") ? "secondary" : "ghost"}
-          size="icon"
-          className={btnClass}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          title="Strikethrough"
-        >
-          <Strikethrough className="w-3.5 h-3.5" />
-        </Button>
-
-        <div className="w-px h-4 bg-border mx-1" />
-
-        <Button
-          type="button"
-          variant={editor.isActive("heading", { level: 2 }) ? "secondary" : "ghost"}
-          size="icon"
-          className={btnClass}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          title="Heading"
-        >
-          <Heading2 className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant={editor.isActive("bulletList") ? "secondary" : "ghost"}
-          size="icon"
-          className={btnClass}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          title="Bullet List"
-        >
-          <List className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant={editor.isActive("orderedList") ? "secondary" : "ghost"}
-          size="icon"
-          className={btnClass}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          title="Numbered List"
-        >
-          <ListOrdered className="w-3.5 h-3.5" />
-        </Button>
-
-        <div className="w-px h-4 bg-border mx-1" />
-
-        <Button
-          type="button"
-          variant={editor.isActive("link") ? "secondary" : "ghost"}
-          size="icon"
-          className={btnClass}
-          onClick={handleLink}
-          title="Link"
-        >
-          <LinkIcon className="w-3.5 h-3.5" />
-        </Button>
+      <div className="flex flex-wrap items-center gap-0.5 border-b px-1.5 py-1">
+        {tools.map((tool, i) =>
+          tool ? (
+            <Button
+              key={tool.label}
+              type="button"
+              variant={tool.active ? "secondary" : "ghost"}
+              size="icon-sm"
+              onClick={tool.run}
+              title={tool.label}
+              aria-label={tool.label}
+              aria-pressed={tool.active}
+            >
+              <tool.icon aria-hidden />
+            </Button>
+          ) : (
+            <div key={`sep-${i}`} aria-hidden className="mx-1 h-4 w-px bg-border" />
+          )
+        )}
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          className={btnClass}
+          size="icon-sm"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
           title="Upload Gambar"
+          aria-label="Upload gambar"
         >
-          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
+          {uploading ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : <ImagePlus aria-hidden />}
         </Button>
         <input
           ref={fileInputRef}

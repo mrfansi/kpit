@@ -1,0 +1,30 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "brand",
+  "axes": "light/grotesk-sans/neutral",
+  "hero": "none (app scope)",
+  "nav": "kept sidebar (fixed) + sheet under lg",
+  "footer": "none (app shell)",
+  "imagery": "none (data product)",
+  "photos": [],
+  "entry": "screen head, then the readout band (on-track % as the readout), then the KPI ledger",
+  "fingerprint": "app/readout-ledger/bare-tables/hairline-band/tinted-well/segmented-filter",
+  "sections": [
+   "head",
+   "readout band",
+   "attention well",
+   "filter row",
+   "KPI ledger per domain"
+  ],
+  "signature": "the KPI readout ledger: value as readout, square 0-125% gauge with a 100% tick, status by fill and percent",
+  "waived": [
+   "72"
+  ],
+  "prompt": "redesign the KPI dashboard (kpit): too generic, should feel technical and precise like a measuring instrument",
+  "date": "2026-11-08"
+ }
+]

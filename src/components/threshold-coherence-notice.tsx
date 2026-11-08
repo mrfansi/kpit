@@ -49,16 +49,18 @@ export function ThresholdCoherenceNotice({
   return (
     <div className="space-y-2" role="status">
       {issues.map((issue, i) => (
+        // Sumur berwarna tanpa tepi: hue status di latar dan ikon, teks tetap tinta.
         <p
           key={i}
           className={cn(
-            "flex items-start gap-2 rounded-md border p-3 text-xs",
-            issue.level === "error"
-              ? "border-danger bg-danger-soft text-danger"
-              : "border-warning bg-warning-soft text-warning"
+            "flex items-start gap-2 rounded-card p-3 text-sm text-foreground",
+            issue.level === "error" ? "bg-danger-soft" : "bg-warning-soft"
           )}
         >
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <AlertTriangle
+            aria-hidden
+            className={cn("mt-0.5 size-3.5 shrink-0", issue.level === "error" ? "text-danger" : "text-warning")}
+          />
           <span>{issue.message}</span>
         </p>
       ))}

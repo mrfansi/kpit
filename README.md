@@ -184,6 +184,15 @@ users back; export never modifies its source. After Workers accepts new writes,
 the old DB is no longer current: freeze writes and reconcile/export those new
 records first. Redeploying Worker code does not roll back D1/R2 data.
 
+## Design System
+
+The UI follows the locked system in [`DESIGN.md`](DESIGN.md): the neutral "panel
+instrumen" palette (hue only for KPI status and domain identity), one typeface
+(Archivo, with a semi-condensed `num` cut for figures), bare tables, and one filled
+primary action per screen. Values live in `src/app/tokens.css`; `src/app/globals.css`
+maps the shadcn variable names onto them, so components keep using `bg-background`,
+`text-muted-foreground`, `bg-success-soft` and friends.
+
 ## Dependency Notes
 
 **next-auth**: Currently pinned to `^5.0.0-beta.30` (beta). Stable `4.24.13` uses a different API (v4 vs v5). Do **not** upgrade to stable without a migration — the session/auth API differs significantly. Monitor https://authjs.dev for v5 stable release.

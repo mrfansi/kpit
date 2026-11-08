@@ -71,15 +71,16 @@ export function TrendChart({
   return (
     <ChartContainer config={chartConfig} className="h-60 w-full">
       <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        {/* Garis bantu: satu garis rambut horizontal, warna rule; angka sumbu tabular. */}
+        <CartesianGrid vertical={false} stroke="var(--border)" strokeWidth={1} />
         <XAxis
           dataKey="period"
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 12, className: "num fill-muted-foreground" }}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 12, className: "num fill-muted-foreground" }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => formatValue(v, unit).split(" ")[0]}
@@ -98,16 +99,17 @@ export function TrendChart({
         <ReferenceLine
           y={target}
           stroke="var(--chart-2)"
+          strokeWidth={1}
           strokeDasharray="4 2"
-          label={{ value: "Target", position: "insideTopRight", fontSize: 11 }}
+          label={{ value: "Target", position: "insideTopRight", fontSize: 12, fill: "var(--muted-foreground)" }}
         />
         <Line
           type="monotone"
           dataKey="value"
           stroke={color}
           strokeWidth={2}
-          dot={{ r: 4, fill: color }}
-          activeDot={{ r: 6 }}
+          dot={{ r: 3, fill: color, strokeWidth: 0 }}
+          activeDot={{ r: 5, strokeWidth: 0 }}
           connectNulls={false}
         />
         {forecastPoints.length > 0 && (
@@ -117,8 +119,8 @@ export function TrendChart({
             stroke="var(--chart-3)"
             strokeWidth={2}
             strokeDasharray="5 3"
-            dot={{ r: 4, fill: "var(--chart-3)", strokeDasharray: "0" }}
-            activeDot={{ r: 6 }}
+            dot={{ r: 3, fill: "var(--chart-3)", strokeWidth: 0 }}
+            activeDot={{ r: 5, strokeWidth: 0 }}
             connectNulls={false}
           />
         )}

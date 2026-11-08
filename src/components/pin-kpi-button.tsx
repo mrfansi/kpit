@@ -23,20 +23,21 @@ export function PinKPIButton({ id, isPinned }: PinKPIButtonProps) {
 
   return (
     <button
+      type="button"
       onClick={handleToggle}
       disabled={isPending}
       title={isPinned ? "Lepas pin" : "Pin KPI ini"}
+      aria-label={isPinned ? "Lepas pin" : "Pin KPI ini"}
+      aria-pressed={isPinned}
       className={cn(
         // ::before memperluas area sentuh ke 36px tanpa mengubah ukuran ikon
-        // atau tinggi baris tabel — target ikon-saja 22px terlalu kecil untuk disentuh.
-        "relative p-1 rounded transition-colors before:absolute before:inset-1/2 before:size-9 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']",
-        isPinned
-          ? "text-primary hover:text-primary/70"
-          : "text-muted-foreground/40 hover:text-muted-foreground",
-        isPending && "opacity-50 cursor-wait"
+        // atau tinggi baris tabel; target ikon-saja 22px terlalu kecil untuk disentuh.
+        "relative rounded-sm p-1 transition-colors duration-[var(--dur-micro)] before:absolute before:inset-1/2 before:size-9 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']",
+        isPinned ? "text-foreground hover:text-muted-foreground" : "text-muted-foreground hover:text-foreground",
+        isPending && "cursor-wait opacity-55"
       )}
     >
-      <Icon className="w-3.5 h-3.5" />
+      <Icon aria-hidden className="size-3.5" />
     </button>
   );
 }

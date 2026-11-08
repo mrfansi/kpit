@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle } from "lucide-react";
 
 export default function Error({
   error,
@@ -16,16 +15,15 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center">
-      <AlertTriangle className="w-10 h-10 text-destructive" />
-      <div>
-        <h2 className="text-lg font-semibold">Terjadi Kesalahan</h2>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+    <div role="alert" className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+      <div className="space-y-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight">Terjadi kesalahan</h1>
+        <p className="max-w-prose text-base text-muted-foreground">
           Gagal memuat halaman. Silakan coba lagi.
         </p>
       </div>
-      <Button variant="outline" size="sm" onClick={reset}>
-        Coba Lagi
+      <Button type="button" onClick={reset}>
+        Coba lagi
       </Button>
     </div>
   );

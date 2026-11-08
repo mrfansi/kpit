@@ -5,11 +5,10 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { resolveCSVRows, importCSVRows, type ImportRow } from "@/lib/actions/import-csv";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
-import { Upload, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { ArrowRight, Upload, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 
 type PreviewRow = ImportRow & { rowIndex: number };
 
@@ -50,151 +49,152 @@ export default function ImportPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <PageHeader
         title="Import Data CSV"
         description="Upload file CSV untuk memasukkan data KPI secara massal"
         actions={
-          <Link href="/admin/import/targets" className="text-sm text-primary underline underline-offset-2 shrink-0">
-            Import Target →
-          </Link>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/import/targets">
+              Import target
+              <ArrowRight aria-hidden />
+            </Link>
+          </Button>
         }
       />
 
-      {/* Format panduan */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm">Format CSV yang Diharapkan</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-sm text-muted-foreground">Header wajib (pilih salah satu untuk identifikasi KPI):</p>
-          <pre className="text-xs bg-muted rounded p-3 overflow-x-auto">
+      {/* Langkah 1: apa yang harus ada di file */}
+      <section aria-labelledby="step-format" className="space-y-3">
+        <h2 id="step-format" className="flex items-baseline gap-2.5 text-lg font-semibold">
+          <span className="num text-muted-foreground">1</span>
+          Format CSV yang diharapkan
+        </h2>
+        <p className="max-w-prose text-muted-foreground">Header wajib (pilih salah satu untuk identifikasi KPI):</p>
+        <pre className="max-w-prose overflow-x-auto rounded-card bg-paper-2 p-4 font-outlier text-sm">
 {`kpi_name,period_date,value,note
 Revenue Bulanan,2026-01-01,850000000,Target tercapai
 Win Rate,2026-01-01,72.5,
 Tingkat Keterlambatan,2026-01-01,3.2,`}
-          </pre>
-          <p className="text-xs text-muted-foreground">
-            Atau gunakan <code className="bg-muted px-1 rounded">kpi_id</code> sebagai pengganti <code className="bg-muted px-1 rounded">kpi_name</code>.
-            Kolom <code className="bg-muted px-1 rounded">note</code> opsional.
-            Format <code className="bg-muted px-1 rounded">period_date</code>: YYYY-MM-DD (awal bulan).
-          </p>
-        </CardContent>
-      </Card>
+        </pre>
+        <p className="max-w-prose text-muted-foreground">
+          Atau gunakan <code>kpi_id</code> sebagai pengganti <code>kpi_name</code>.
+          Kolom <code>note</code> opsional.
+          Format <code>period_date</code>: YYYY-MM-DD (awal bulan).
+        </p>
+      </section>
 
-      {/* Upload */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm">Upload File</CardTitle></CardHeader>
-        <CardContent>
-          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-            <span className="text-sm text-muted-foreground">Klik untuk pilih file CSV</span>
-            <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleFile} disabled={isPending} />
-          </label>
-        </CardContent>
-      </Card>
+      {/* Langkah 2: berkas */}
+      <section aria-labelledby="step-upload" className="space-y-3">
+        <h2 id="step-upload" className="flex items-baseline gap-2.5 text-lg font-semibold">
+          <span className="num text-muted-foreground">2</span>
+          Upload file
+        </h2>
+        {/* Input asli tetap bisa difokus (sr-only); bingkai label menampilkan fokusnya. */}
+        <label className="flex h-32 w-full max-w-prose cursor-pointer flex-col items-center justify-center gap-2 rounded-card border border-dashed border-edge bg-card transition-colors duration-[var(--dur-micro)] hover:bg-accent has-[input:disabled]:cursor-not-allowed has-[input:disabled]:opacity-55 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-ring">
+          <Upload aria-hidden className="size-5 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Klik untuk pilih file CSV</span>
+          <input type="file" accept=".csv,text/csv" className="sr-only" onChange={handleFile} disabled={isPending} />
+        </label>
 
-      {/* Parse errors */}
-      {parseErrors.length > 0 && (
-        <Card className="border-destructive">
-          <CardHeader><CardTitle className="text-sm text-destructive flex items-center gap-2"><XCircle className="w-4 h-4" />{parseErrors.length} Error Validasi</CardTitle></CardHeader>
-          <CardContent>
+        {parseErrors.length > 0 && (
+          <div role="alert" className="max-w-prose space-y-2 rounded-card bg-danger-soft px-4 py-3">
+            <p className="flex items-center gap-2 text-sm font-semibold text-danger">
+              <XCircle aria-hidden className="size-4 shrink-0" />
+              <span><span className="num">{parseErrors.length}</span> error validasi</span>
+            </p>
             <ul className="space-y-1">
               {parseErrors.map((e, i) => (
-                <li key={i} className="text-sm text-destructive">Baris {e.row}: {e.message}</li>
+                <li key={i} className="text-sm text-danger">Baris <span className="num">{e.row}</span>: {e.message}</li>
               ))}
             </ul>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
+      </section>
 
-      {/* Preview */}
+      {/* Langkah 3: pratinjau dan konfirmasi */}
       {preview && preview.length > 0 && (
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-warning" />
-              Preview — {preview.length} baris siap diimport
-            </CardTitle>
-            <Button onClick={handleImport} disabled={isPending}>
-              {isPending ? "Mengimport..." : "Konfirmasi Import"}
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {overwriteCount > 0 && (
-              <div className="flex items-center gap-2 text-sm text-warning bg-warning-soft rounded-md px-3 py-2">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span className="num font-medium">{overwriteCount}</span> entri akan <span className="font-semibold">DITIMPA</span> — data lama pada baris ini akan hilang.
-              </div>
-            )}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Baris</TableHead>
-                  <TableHead>KPI</TableHead>
-                  <TableHead>Periode</TableHead>
-                  <TableHead className="text-right">Nilai</TableHead>
-                  <TableHead>Catatan</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {preview.slice(0, 50).map((row) => {
-                  const willOverwrite = row.existingValue !== undefined;
-                  return (
-                    <TableRow key={`${row.kpiId}-${row.periodDate}`} className={willOverwrite ? "bg-warning-soft" : undefined}>
-                      <TableCell className="text-muted-foreground text-xs">{row.rowIndex}</TableCell>
-                      <TableCell className="font-medium">{row.kpiName}</TableCell>
-                      <TableCell>{row.periodDate}</TableCell>
-                      <TableCell className="text-right num">
-                        {willOverwrite ? (
-                          <span className="text-warning">
-                            {row.existingValue} → {row.value}
-                          </span>
-                        ) : (
-                          row.value
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{row.note ?? "—"}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+        <section aria-labelledby="step-preview" className="space-y-4">
+          <h2 id="step-preview" className="flex items-baseline gap-2.5 text-lg font-semibold">
+            <span className="num text-muted-foreground">3</span>
+            <span>Preview: <span className="num">{preview.length}</span> baris siap diimport</span>
+          </h2>
+          {overwriteCount > 0 && (
+            <p className="flex max-w-prose items-center gap-2 rounded-card bg-warning-soft px-3 py-2 text-sm text-warning">
+              <AlertTriangle aria-hidden className="size-4 shrink-0" />
+              <span>
+                <span className="num font-semibold">{overwriteCount}</span> entri akan <span className="font-semibold">DITIMPA</span>: data lama pada baris ini akan hilang.
+              </span>
+            </p>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-0">Baris</TableHead>
+                <TableHead>KPI</TableHead>
+                <TableHead>Periode</TableHead>
+                <TableHead className="text-right">Nilai</TableHead>
+                <TableHead className="hidden pr-0 sm:table-cell">Catatan</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {preview.slice(0, 50).map((row) => {
+                const willOverwrite = row.existingValue !== undefined;
+                return (
+                  <TableRow key={`${row.kpiId}-${row.periodDate}`} className={willOverwrite ? "bg-warning-soft" : undefined}>
+                    <TableCell className="num pl-0 text-muted-foreground">{row.rowIndex}</TableCell>
+                    <TableCell className="font-semibold">{row.kpiName}</TableCell>
+                    <TableCell className="num">{row.periodDate}</TableCell>
+                    <TableCell className="num text-right">
+                      {willOverwrite ? (
+                        <span className="text-warning">
+                          {row.existingValue} → {row.value}
+                        </span>
+                      ) : (
+                        row.value
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden pr-0 text-muted-foreground sm:table-cell">{row.note ?? "-"}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          <div className="flex flex-wrap items-center gap-3">
             {preview.length > 50 && (
-              <p className="text-xs text-muted-foreground mt-2">...dan {preview.length - 50} baris lainnya</p>
+              <p className="text-sm text-muted-foreground">…dan <span className="num">{preview.length - 50}</span> baris lainnya</p>
             )}
-          </CardContent>
-        </Card>
+            <Button type="button" className="ml-auto" onClick={handleImport} disabled={isPending}>
+              {isPending ? "Mengimport…" : "Konfirmasi import"}
+            </Button>
+          </div>
+        </section>
       )}
 
-      {/* Result */}
+      {/* Hasil */}
       {result && (
-        <div className="space-y-3">
-          <Card className="border-success">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-6 h-6 text-success" />
-                <div>
-                  <p className="font-semibold">Import Selesai</p>
-                  <p className="text-sm text-muted-foreground">
-                    <Badge variant="secondary" className="mr-1">{result.imported} berhasil</Badge>
-                    {result.skipped > 0 && <Badge variant="outline">{result.skipped} dilewati</Badge>}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <section aria-labelledby="import-result" className="space-y-3">
+          <h2 id="import-result" className="flex items-center gap-2 text-lg font-semibold">
+            <CheckCircle2 aria-hidden className="size-4 text-success" />
+            Import selesai
+          </h2>
+          <p className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="secondary"><span className="num">{result.imported}</span> berhasil</Badge>
+            {result.skipped > 0 && <Badge variant="outline"><span className="num">{result.skipped}</span> dilewati</Badge>}
+          </p>
           {result.errors.length > 0 && (
-            <Card className="border-destructive">
-              <CardHeader><CardTitle className="text-sm text-destructive flex items-center gap-2"><XCircle className="w-4 h-4" />{result.errors.length} Baris Gagal Diimport</CardTitle></CardHeader>
-              <CardContent>
-                <ul className="space-y-1">
-                  {result.errors.map((e, i) => (
-                    <li key={i} className="text-sm text-destructive">Baris {e.row}: {e.message}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+            <div role="alert" className="max-w-prose space-y-2 rounded-card bg-danger-soft px-4 py-3">
+              <p className="flex items-center gap-2 text-sm font-semibold text-danger">
+                <XCircle aria-hidden className="size-4 shrink-0" />
+                <span><span className="num">{result.errors.length}</span> baris gagal diimport</span>
+              </p>
+              <ul className="space-y-1">
+                {result.errors.map((e, i) => (
+                  <li key={i} className="text-sm text-danger">Baris <span className="num">{e.row}</span>: {e.message}</li>
+                ))}
+              </ul>
+            </div>
           )}
-        </div>
+        </section>
       )}
     </div>
   );

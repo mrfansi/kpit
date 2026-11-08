@@ -17,23 +17,24 @@ export function DomainStatusBadges({ kpisWithEntries }: DomainStatusBadgesProps)
   }
 
   return (
-    <div className="flex items-center gap-1.5 text-xs">
+    // Jumlah per status ditulis seperti legenda readout: angka berwarna status + label, bukan titik atau kotak tanpa nama.
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
       {green > 0 && (
-        <span className={`flex items-center gap-0.5 font-medium ${statusConfig.green.color}`}>
-          <span className={`w-1.5 h-1.5 rounded-full inline-block ${statusConfig.green.solid}`} />
-          <span className="num">{green}</span>
+        <span>
+          <span className={`num font-semibold ${statusConfig.green.color}`}>{green}</span>{" "}
+          <span className="text-muted-foreground">{statusConfig.green.label}</span>
         </span>
       )}
       {yellow > 0 && (
-        <span className={`flex items-center gap-0.5 font-medium ${statusConfig.yellow.color}`}>
-          <span className={`w-1.5 h-1.5 rounded-full inline-block ${statusConfig.yellow.solid}`} />
-          <span className="num">{yellow}</span>
+        <span>
+          <span className={`num font-semibold ${statusConfig.yellow.color}`}>{yellow}</span>{" "}
+          <span className="text-muted-foreground">{statusConfig.yellow.label}</span>
         </span>
       )}
       {red > 0 && (
-        <span className={`flex items-center gap-0.5 font-medium ${statusConfig.red.color}`}>
-          <span className={`w-1.5 h-1.5 rounded-full inline-block ${statusConfig.red.solid}`} />
-          <span className="num">{red}</span>
+        <span>
+          <span className={`num font-semibold ${statusConfig.red.color}`}>{red}</span>{" "}
+          <span className="text-muted-foreground">{statusConfig.red.label}</span>
         </span>
       )}
     </div>

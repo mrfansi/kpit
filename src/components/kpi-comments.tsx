@@ -19,7 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { EmptyState } from "@/components/empty-state";
-import { MessageCircle, Trash2, Send, Sparkles, Loader2 } from "lucide-react";
+import { Trash2, Send, Sparkles, Loader2 } from "lucide-react";
 import { isEmptyHtml, textToHtml } from "@/lib/html-utils";
 
 // Ringkasan teks polos dari HTML komentar, untuk ditampilkan di dialog konfirmasi hapus.
@@ -78,7 +78,7 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
       }
       setHtml(textToHtml(data.draft));
       setEditorKey((k) => k + 1); // remount editor supaya `content` terbaca
-      toast.success("Draf dimuat — periksa dan sunting sebelum mengirim");
+      toast.success("Draf dimuat. Periksa dan sunting sebelum mengirim");
     } catch {
       toast.error("Gagal menghubungi layanan AI");
     } finally {
@@ -124,23 +124,22 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <MessageCircle className="w-4 h-4" />
-          <span>
-            Komentar periode <strong className="text-foreground">{currentPeriodLabel}</strong>
-          </span>
-          {visibleComments.length > 0 && <span className="text-xs">({visibleComments.length})</span>}
-        </div>
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">
+          Komentar periode {currentPeriodLabel}
+          {visibleComments.length > 0 && (
+            <span className="num ml-2 text-sm font-normal text-muted-foreground">({visibleComments.length})</span>
+          )}
+        </h2>
         {availablePeriods.length > 1 && (
           <Select value={selectedPeriod} onValueChange={(v) => { setSelectedPeriod(v); setHtml(""); setEditorKey((k) => k + 1); }}>
-            <SelectTrigger className="h-7 w-40 text-xs">
+            <SelectTrigger size="sm" className="w-40" aria-label="Periode komentar">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {availablePeriods.map((p) => (
-                <SelectItem key={p.value} value={p.value} className="text-xs">
+                <SelectItem key={p.value} value={p.value}>
                   {p.label}
                 </SelectItem>
               ))}
@@ -151,12 +150,12 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
 
       {/* Editor Form */}
       {canEdit && (
-      <form onSubmit={handleSubmit} className="space-y-2 print:hidden">
+      <form onSubmit={handleSubmit} className="space-y-3 print:hidden">
         <RichTextEditor
           key={editorKey}
           content={html}
           onChange={setHtml}
-          placeholder={`Tulis catatan untuk ${currentPeriodLabel}...`}
+          placeholder={`Tulis catatan untuk ${currentPeriodLabel}…`}
           disabled={isPending}
         />
         <div className="flex items-center justify-between gap-2">
@@ -171,14 +170,15 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
             disabled={isPending || isDrafting}
           >
             {isDrafting ? (
-              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" />
             ) : (
-              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              <Sparkles aria-hidden />
             )}
-            {isDrafting ? "Menyusun draf..." : "Draf dengan AI"}
+            {isDrafting ? "Menyusun draf…" : "Draf dengan AI"}
           </Button>
-          <Button type="submit" size="sm" disabled={isPending || isEmptyHtml(html)}>
-            <Send className="w-3.5 h-3.5 mr-1.5" />
+          {/* Outline: primary terisi layar ini milik form action plan. */}
+          <Button type="submit" variant="outline" size="sm" disabled={isPending || isEmptyHtml(html)}>
+            <Send aria-hidden />
             Kirim
           </Button>
         </div>
@@ -189,30 +189,32 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
       {visibleComments.length === 0 ? (
         <EmptyState compact title="Belum ada komentar untuk periode ini." />
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y border-y">
           {visibleComments.map((c) => (
-            <li key={c.id} className="group">
-              <div className="rounded-lg border bg-card px-4 py-3">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold">{c.author}</span>
-                    <span className="text-xs text-muted-foreground">{formatRelative(new Date(c.createdAt))}</span>
+            <li key={c.id} className="group py-4">
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold">{c.author}</span>
+                    <span className="text-sm text-muted-foreground">{formatRelative(new Date(c.createdAt))}</span>
                   </div>
                   {canEdit && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
+                        type="button"
                         variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0 print:hidden"
+                        size="icon-xs"
+                        className="shrink-0 text-muted-foreground opacity-0 transition-opacity duration-[var(--dur-micro)] group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100 print:hidden"
                         disabled={isPending}
+                        aria-label="Hapus komentar"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 aria-hidden />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Hapus Komentar Ini?</AlertDialogTitle>
+                        <AlertDialogTitle>Hapus komentar ini?</AlertDialogTitle>
                         <AlertDialogDescription>
                           Komentar &quot;{excerptFromHtml(c.content) || "(kosong)"}&quot; akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
                         </AlertDialogDescription>
@@ -223,7 +225,7 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
                           onClick={() => handleDelete(c.id)}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                          Ya, Hapus
+                          Ya, hapus
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -231,7 +233,7 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
                   )}
                 </div>
                 <div
-                  className="prose-comment text-sm"
+                  className="prose-comment text-base"
                   dangerouslySetInnerHTML={{ __html: c.content }}
                 />
               </div>
@@ -239,6 +241,6 @@ export function KPIComments({ kpiId, periodDate, periodLabel, initialComments, a
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

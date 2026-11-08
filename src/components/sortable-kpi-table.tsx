@@ -23,7 +23,6 @@ import type { KPI } from "@/lib/db/schema";
 import { bulkReorderKPIs } from "@/lib/actions/kpi";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ArchiveKPIButton } from "@/components/archive-kpi-button";
 import { GripVertical, Pencil, Target } from "lucide-react";
 import Link from "next/link";
@@ -52,37 +51,38 @@ function SortableRow({ kpi, domainName }: { kpi: KPI; domainName: string }) {
     <TableRow
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "opacity-50 bg-muted" : undefined}
+      className={isDragging ? "bg-paper-2 opacity-60" : undefined}
     >
-      <TableCell className="w-10">
-        <button
-          className="cursor-grab active:cursor-grabbing touch-none p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+      <TableCell className="w-10 pl-0">
+        {/* Tampak 32px, area klik 44px lewat ::after milik Button. */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Seret untuk mengubah urutan ${kpi.name}`}
+          className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
-          <GripVertical className="w-4 h-4" />
-        </button>
+          <GripVertical aria-hidden />
+        </Button>
       </TableCell>
-      <TableCell className="font-medium">{kpi.name}</TableCell>
-      <TableCell>
-        <span className="text-sm">{domainName}</span>
-      </TableCell>
-      <TableCell>{kpi.unit}</TableCell>
-      <TableCell className="text-right">{kpi.target}</TableCell>
-      <TableCell className="capitalize">{kpi.period}</TableCell>
-      <TableCell>
-        <Badge variant="outline" className="text-xs capitalize">{kpi.refreshType}</Badge>
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex gap-1 justify-end">
-          <Button variant="ghost" size="icon" asChild title="Atur target per periode">
-            <Link href={`/admin/kpi/${kpi.id}/targets`}>
-              <Target className="w-4 h-4" />
+      <TableCell className="min-w-32 font-semibold whitespace-normal">{kpi.name}</TableCell>
+      <TableCell className="hidden text-muted-foreground md:table-cell">{domainName}</TableCell>
+      <TableCell className="hidden sm:table-cell">{kpi.unit}</TableCell>
+      <TableCell className="num hidden text-right sm:table-cell">{kpi.target}</TableCell>
+      <TableCell className="hidden capitalize lg:table-cell">{kpi.period}</TableCell>
+      <TableCell className="hidden capitalize text-muted-foreground lg:table-cell">{kpi.refreshType}</TableCell>
+      <TableCell className="pr-0 text-right">
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon-sm" asChild>
+            <Link href={`/admin/kpi/${kpi.id}/targets`} aria-label="Atur target per periode" title="Atur target per periode">
+              <Target aria-hidden />
             </Link>
           </Button>
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/admin/kpi/${kpi.id}/edit`}>
-              <Pencil className="w-4 h-4" />
+          <Button variant="ghost" size="icon-sm" asChild>
+            <Link href={`/admin/kpi/${kpi.id}/edit`} aria-label="Edit KPI" title="Edit KPI">
+              <Pencil aria-hidden />
             </Link>
           </Button>
           <ArchiveKPIButton id={kpi.id} name={kpi.name} />
@@ -168,17 +168,17 @@ export function SortableKPITable({ kpis: initialKpis, domainMap }: SortableKPITa
       modifiers={[restrictToVerticalAxis]}
       onDragEnd={handleDragEnd}
     >
-      <Table className={isPending ? "opacity-70 pointer-events-none" : undefined}>
+      <Table className={isPending ? "pointer-events-none opacity-70" : undefined}>
         <TableHeader>
-          <TableRow>
-            <TableHead className="w-10"></TableHead>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-10 pl-0"><span className="sr-only">Urutan</span></TableHead>
             <TableHead>Nama KPI</TableHead>
-            <TableHead>Domain</TableHead>
-            <TableHead>Unit</TableHead>
-            <TableHead className="text-right">Target</TableHead>
-            <TableHead>Periode</TableHead>
-            <TableHead>Tipe</TableHead>
-            <TableHead className="text-right">Aksi</TableHead>
+            <TableHead className="hidden md:table-cell">Domain</TableHead>
+            <TableHead className="hidden sm:table-cell">Unit</TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Target</TableHead>
+            <TableHead className="hidden lg:table-cell">Periode</TableHead>
+            <TableHead className="hidden lg:table-cell">Tipe</TableHead>
+            <TableHead className="pr-0 text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
         {[...domainGroups.entries()].map(([domainId, domainKpis]) => (
@@ -187,12 +187,12 @@ export function SortableKPITable({ kpis: initialKpis, domainMap }: SortableKPITa
             items={domainKpis.map((k) => k.id)}
             strategy={verticalListSortingStrategy}
           >
-            <TableBody>
+            <TableBody className="border-b last:border-b-0">
               {domainKpis.map((kpi) => (
                 <SortableRow
                   key={kpi.id}
                   kpi={kpi}
-                  domainName={domainMap[kpi.domainId] ?? "—"}
+                  domainName={domainMap[kpi.domainId] ?? "-"}
                 />
               ))}
             </TableBody>

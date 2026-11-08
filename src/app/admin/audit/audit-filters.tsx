@@ -37,7 +37,7 @@ export function AuditFilters({ actions, entities }: AuditFiltersProps) {
         aria-label="Filter aksi"
         value={currentAction}
         onChange={(e) => updateParam("action", e.target.value)}
-        className="h-8 rounded-md border bg-background px-2 text-sm text-foreground"
+        className="h-8 rounded-md border border-input bg-card px-2 text-sm text-foreground outline-2 outline-offset-[-3px] outline-transparent transition-colors duration-[var(--dur-micro)] hover:bg-accent focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-55"
       >
         <option value="">Semua Aksi</option>
         {actions.map((a) => (
@@ -48,7 +48,7 @@ export function AuditFilters({ actions, entities }: AuditFiltersProps) {
         aria-label="Filter entitas"
         value={currentEntity}
         onChange={(e) => updateParam("entity", e.target.value)}
-        className="h-8 rounded-md border bg-background px-2 text-sm text-foreground capitalize"
+        className="h-8 rounded-md border border-input bg-card px-2 text-sm text-foreground capitalize outline-2 outline-offset-[-3px] outline-transparent transition-colors duration-[var(--dur-micro)] hover:bg-accent focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-55"
       >
         <option value="">Semua Entitas</option>
         {entities.map((en) => (

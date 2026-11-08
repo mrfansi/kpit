@@ -17,11 +17,11 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center">
-      <AlertTriangle className="w-10 h-10 text-destructive" />
+    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+      <AlertTriangle aria-hidden className="size-6 text-destructive" />
       <div>
-        <h2 className="text-lg font-semibold">Gagal Memuat KPI</h2>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+        <h1 className="text-lg font-semibold">Gagal memuat KPI</h1>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
           Terjadi kesalahan saat memuat data KPI. Silakan coba lagi.
         </p>
       </div>
@@ -29,7 +29,7 @@ export default function Error({
         <Button variant="outline" size="sm" asChild>
           <Link href="/">Kembali ke Overview</Link>
         </Button>
-        <Button size="sm" onClick={reset}>Coba Lagi</Button>
+        <Button type="button" size="sm" onClick={reset}>Coba lagi</Button>
       </div>
     </div>
   );

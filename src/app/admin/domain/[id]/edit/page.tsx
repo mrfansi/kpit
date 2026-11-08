@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { domains } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { DomainForm } from "@/components/domain-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 
 interface Props {
@@ -19,14 +18,9 @@ export default async function EditDomainPage({ params }: Props) {
   if (!domain) notFound();
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl space-y-8">
       <PageHeader title="Edit Domain" description={`Ubah informasi domain "${domain.name}"`} />
-      <Card>
-        <CardHeader><CardTitle className="text-base">Informasi Domain</CardTitle></CardHeader>
-        <CardContent>
-          <DomainForm domain={domain} />
-        </CardContent>
-      </Card>
+      <DomainForm domain={domain} />
     </div>
   );
 }

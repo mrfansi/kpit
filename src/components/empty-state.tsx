@@ -1,5 +1,3 @@
-import { BarChart2 } from "lucide-react";
-
 interface EmptyStateProps {
   title?: string;
   description?: string;
@@ -15,23 +13,19 @@ export function EmptyState({
   if (compact) {
     return (
       <div className="py-6 text-center">
-        <p className="text-sm text-muted-foreground italic">{title ?? "Belum ada data"}</p>
-        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+        <p className="text-sm text-muted-foreground">{title ?? "Belum ada data"}</p>
+        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
     );
   }
 
+  // Tanpa ikon-dalam-ubin: kosong dinyatakan dengan kata, bukan dekorasi.
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-        <BarChart2 className="w-6 h-6 text-muted-foreground" />
-      </div>
-      <div>
-        <p className="font-medium text-sm">{title ?? "Belum ada data"}</p>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          {description ?? "Data akan muncul setelah diisi melalui halaman Admin."}
-        </p>
-      </div>
+    <div className="flex flex-col items-center justify-center gap-1.5 py-14 text-center">
+      <p className="text-base font-semibold">{title ?? "Belum ada data"}</p>
+      <p className="max-w-prose text-sm text-muted-foreground">
+        {description ?? "Data akan muncul setelah diisi melalui halaman Admin."}
+      </p>
     </div>
   );
 }

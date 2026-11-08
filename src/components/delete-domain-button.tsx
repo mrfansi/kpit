@@ -43,17 +43,20 @@ export function DeleteDomainButton({ id, name }: DeleteDomainButtonProps) {
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
+          type="button"
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           className="text-destructive hover:text-destructive"
+          aria-label="Hapus domain"
+          title="Hapus domain"
           disabled={isPending}
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 aria-hidden />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Hapus Domain?</AlertDialogTitle>
+          <AlertDialogTitle>Hapus domain?</AlertDialogTitle>
           <AlertDialogDescription>
             Domain <span className="font-semibold text-foreground">&ldquo;{name}&rdquo;</span> dan semua
             KPI di dalamnya akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
@@ -61,11 +64,8 @@ export function DeleteDomainButton({ id, name }: DeleteDomainButtonProps) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Batal</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleDelete}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            Ya, Hapus
+          <AlertDialogAction onClick={handleDelete} variant="destructive">
+            Ya, hapus
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

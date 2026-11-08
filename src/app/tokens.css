@@ -1,0 +1,194 @@
+/*
+ * Satu-satunya sumber nilai warna, huruf, ukuran, gerak dan lapisan.
+ * globals.css hanya memetakan nama shadcn (--background, --primary, ...) ke peran di sini.
+ *
+ * Palet "panel instrumen" dipertahankan apa adanya: chrome sepenuhnya netral (chroma 0).
+ * Hue hanya masuk lewat dua pintu yang membawa makna:
+ * 1. SINYAL STATUS (--success / --warning / --danger), selalu lewat `statusConfig`
+ *    di src/lib/kpi-status.ts.
+ * 2. IDENTITAS KATEGORI, warna domain/project dari DB (`generateSoftColor()`).
+ * Di luar dua itu, hue apa pun (apalagi hex atau kelas Tailwind mentah) adalah bug.
+ */
+@theme static {
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.2rem;
+  --text-xl: 1.44rem;
+  --text-2xl: 1.728rem;
+  --text-3xl: 2.074rem;
+  --text-display-s: 1.44rem;
+  --text-display: 1.728rem;
+  --text-section: 1.2rem;
+  --text-title: 1rem;
+  --text-lead: 1rem;
+  /* Angka baca utama (readout): satu tingkat di atas display, hanya untuk angka. */
+  --text-readout: 2.488rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* Satu keluarga, Archivo variabel (wght + wdth). Display memakai potongan yang sama;
+     angka memakai lebar semi-condensed (lihat utilitas `num` di globals.css). */
+  --font-display: var(--font-archivo), "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-archivo), "Archivo", ui-sans-serif, system-ui, sans-serif;
+  /* Outlier dengan satu peran: kode (blok kode di komentar dan pratinjau Markdown). */
+  --font-outlier: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace;
+  --radius-card: 6px;
+  --radius-pill: 999px;
+  --shadow-card: none;
+  --tracking-display: -0.02em;
+}
+
+:root {
+  color-scheme: light;
+
+  /* Kertas dan tinta */
+  --color-paper: oklch(99% 0 0);
+  --color-paper-2: oklch(97.5% 0 0);
+  --color-paper-3: oklch(96% 0 0);
+  --color-surface: oklch(100% 0 0);
+  --color-ink: oklch(18% 0 0);
+  --color-ink-2: oklch(25% 0 0);
+  --color-muted: oklch(51% 0 0);
+  --color-rule: oklch(90% 0 0);
+  --color-rule-2: oklch(94% 0 0);
+  /* Tepi field: 3:1 terhadap kertas dan permukaan (gate 40). */
+  --color-edge: oklch(64% 0 0);
+  /* Aksen = tinta. Elemen interaktif dibedakan oleh kontras dan bobot, bukan hue. */
+  --color-accent: oklch(20% 0 0);
+  --color-accent-ink: oklch(99% 0 0);
+  --color-hover: oklch(94% 0 0);
+  --color-focus: oklch(40% 0 0);
+  --color-error: oklch(53% 0.2 25);
+  /* Tirai di bawah dialog: alpha di sini sah karena ini overlay. */
+  --color-scrim: oklch(18% 0 0 / 0.5);
+
+  /*
+   * Sinyal status KPI, tiga peran karena syarat kontrasnya beda:
+   * warna utama = TEKS (4.5:1), `-fill` = isian grafis (3:1), `-soft` = latar chip.
+   */
+  --success: oklch(50% 0.13 155);
+  --success-soft: oklch(94% 0.045 155);
+  --success-fill: oklch(63% 0.15 155);
+  --warning: oklch(52% 0.11 78);
+  --warning-soft: oklch(95% 0.06 85);
+  --warning-fill: oklch(78% 0.16 82);
+  --danger: oklch(53% 0.2 25);
+  --danger-soft: oklch(95% 0.035 25);
+  --danger-fill: oklch(60% 0.21 25);
+  /* "Info" = netral, bukan penilaian. */
+  --info: oklch(45% 0 0);
+  --info-soft: oklch(95% 0 0);
+
+  /* Chart netral: garis tren tidak boleh mengaku sebagai sinyal status. */
+  --chart-1: oklch(28% 0 0);
+  --chart-2: oklch(44% 0 0);
+  --chart-3: oklch(58% 0 0);
+  --chart-4: oklch(70% 0 0);
+  --chart-5: oklch(82% 0 0);
+
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+  --space-4xl: 144px;
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+  --container: 1440px;
+  --gutter: 64px;
+  --gap-columns: 32px;
+  --section-gap-s: 120px;
+  --section-gap: 144px;
+  --section-gap-l: 176px;
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sticky-nav: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+  --rule-hair: 1px;
+}
+
+/* Mode gelap: diturunkan per token, bukan dibalik. Hue tidak pernah bergeser. */
+.dark {
+  color-scheme: dark;
+
+  --color-paper: oklch(16% 0 0);
+  --color-paper-2: oklch(19% 0 0);
+  --color-paper-3: oklch(24% 0 0);
+  --color-surface: oklch(21% 0 0);
+  --color-ink: oklch(96% 0 0);
+  --color-ink-2: oklch(88% 0 0);
+  --color-muted: oklch(70% 0 0);
+  --color-rule: oklch(29% 0 0);
+  --color-rule-2: oklch(24% 0 0);
+  --color-edge: oklch(54% 0 0);
+  --color-accent: oklch(95% 0 0);
+  --color-accent-ink: oklch(18% 0 0);
+  --color-hover: oklch(28% 0 0);
+  --color-focus: oklch(75% 0 0);
+  --color-error: oklch(70% 0.18 25);
+  --color-scrim: oklch(8% 0 0 / 0.6);
+
+  --success: oklch(76% 0.15 155);
+  --success-soft: oklch(30% 0.06 155);
+  --success-fill: oklch(70% 0.16 155);
+  --warning: oklch(81% 0.13 82);
+  --warning-soft: oklch(32% 0.06 80);
+  --warning-fill: oklch(79% 0.15 82);
+  --danger: oklch(72% 0.17 25);
+  --danger-soft: oklch(32% 0.08 25);
+  --danger-fill: oklch(66% 0.2 25);
+  --info: oklch(72% 0 0);
+  --info-soft: oklch(30% 0 0);
+
+  --chart-1: oklch(90% 0 0);
+  --chart-2: oklch(78% 0 0);
+  --chart-3: oklch(66% 0 0);
+  --chart-4: oklch(54% 0 0);
+  --chart-5: oklch(44% 0 0);
+}
+
+@media (max-width: 60rem) { :root { --gutter: 24px; --section-gap-s: 80px; --section-gap: 96px; --section-gap-l: 120px; } }
+@media (max-width: 40rem) { :root { --gutter: 16px; --section-gap-s: 56px; --section-gap: 72px; --section-gap-l: 96px; --gap-columns: 16px; } }
+
+/* Cetak selalu di kertas terang, apa pun mode layar: laporan dibawa ke rapat sebagai kertas. */
+@media print {
+  :root, .dark {
+    color-scheme: light;
+    --color-paper: oklch(100% 0 0);
+    --color-paper-2: oklch(97.5% 0 0);
+    --color-paper-3: oklch(96% 0 0);
+    --color-surface: oklch(100% 0 0);
+    --color-ink: oklch(18% 0 0);
+    --color-ink-2: oklch(25% 0 0);
+    --color-muted: oklch(45% 0 0);
+    --color-rule: oklch(85% 0 0);
+    --color-rule-2: oklch(92% 0 0);
+    --color-edge: oklch(64% 0 0);
+    --color-accent: oklch(20% 0 0);
+    --color-accent-ink: oklch(99% 0 0);
+    --success: oklch(50% 0.13 155);
+    --success-soft: oklch(94% 0.045 155);
+    --success-fill: oklch(63% 0.15 155);
+    --warning: oklch(52% 0.11 78);
+    --warning-soft: oklch(95% 0.06 85);
+    --warning-fill: oklch(78% 0.16 82);
+    --danger: oklch(53% 0.2 25);
+    --danger-soft: oklch(95% 0.035 25);
+    --danger-fill: oklch(60% 0.21 25);
+    --chart-1: oklch(28% 0 0);
+    --chart-2: oklch(44% 0 0);
+    --chart-3: oklch(58% 0 0);
+    --chart-4: oklch(70% 0 0);
+    --chart-5: oklch(82% 0 0);
+  }
+}

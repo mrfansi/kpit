@@ -54,7 +54,7 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
   function checkExisting(kpiId: string, periodDate: string) {
     if (!kpiId || !periodDate) { setExistingHint(null); return; }
     getExistingEntry(Number(kpiId), periodDate).then((existing) => {
-      setExistingHint(existing ? `Sudah ada data: ${existing.value} — akan ditimpa` : null);
+      setExistingHint(existing ? `Sudah ada data: ${existing.value}, akan ditimpa` : null);
     });
   }
 
@@ -69,14 +69,14 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
       if (exists) {
         form.setValue("periodDate", nextMonth);
         periodDate = nextMonth;
-        setSmartPeriodHint(`Terakhir diisi: ${format(parseISO(latestPeriod), "MMMM yyyy")} → disarankan ${exists.label}`);
+        setSmartPeriodHint(`Terakhir diisi: ${format(parseISO(latestPeriod), "MMMM yyyy")}, disarankan ${exists.label}`);
       } else {
         setSmartPeriodHint(null);
       }
     } else {
       // No entries yet — suggest current month
       form.setValue("periodDate", periodDate);
-      setSmartPeriodHint("Belum ada data — disarankan periode terkini");
+      setSmartPeriodHint("Belum ada data, disarankan periode terkini");
     }
     checkExisting(kpiId, periodDate);
   }
@@ -104,8 +104,8 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setSmartPeriodHint(null); setExistingHint(null); } }}>
       <DialogTrigger asChild>
-        <Button size="sm" className="h-8 text-xs">
-          <PlusCircle className="w-3.5 h-3.5 mr-1.5" />
+        <Button type="button" size="sm">
+          <PlusCircle aria-hidden />
           Input Data
         </Button>
       </DialogTrigger>
@@ -123,8 +123,8 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
                   <FormLabel>KPI</FormLabel>
                   <Select onValueChange={handleKPIChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih KPI..." />
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Pilih KPI…" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -147,8 +147,8 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
                   <FormLabel>Periode</FormLabel>
                   <Select onValueChange={(v) => { field.onChange(v); setSmartPeriodHint(null); checkExisting(form.getValues("kpiId"), v); }} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih periode..." />
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Pilih periode…" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -160,8 +160,8 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
                     </SelectContent>
                   </Select>
                   {smartPeriodHint && (
-                    <p className="flex items-center gap-1 mt-1 text-xs text-info">
-                      <Lightbulb className="w-3 h-3" />
+                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Lightbulb aria-hidden className="size-3.5 shrink-0" />
                       {smartPeriodHint}
                     </p>
                   )}
@@ -179,15 +179,16 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
                     <Input
                       type="number"
                       step="any"
-                      placeholder="Masukkan nilai..."
+                      placeholder="Masukkan nilai…"
+                      className="num"
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.valueAsNumber)}
                     />
                   </FormControl>
                   {existingHint && (
-                    <p className="flex items-center gap-1 mt-1 text-xs text-warning">
-                      <AlertTriangle className="w-3 h-3" />
+                    <p className="flex items-center gap-1.5 text-sm text-foreground">
+                      <AlertTriangle aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
                       {existingHint}
                     </p>
                   )}
@@ -200,20 +201,20 @@ export function QuickEntryModal({ kpis, kpiLatestPeriods = {} }: QuickEntryModal
               name="note"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Catatan <span className="text-muted-foreground">(opsional)</span></FormLabel>
+                  <FormLabel>Catatan <span className="font-normal text-muted-foreground">(opsional)</span></FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Catatan tambahan..." rows={2} {...field} />
+                    <Textarea placeholder="Catatan tambahan…" rows={2} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="flex justify-end gap-2 pt-1">
+            <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Batal
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Menyimpan..." : "Simpan"}
+                {isPending ? "Menyimpan…" : "Simpan"}
               </Button>
             </div>
           </form>

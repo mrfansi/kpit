@@ -9,7 +9,7 @@ interface ReportSparklineProps {
 }
 
 export function ReportSparkline({ entries, status, width = 100, height = 28 }: ReportSparklineProps) {
-  if (entries.length < 2) return <span className="text-muted-foreground text-xs">—</span>;
+  if (entries.length < 2) return <span className="text-muted-foreground">-</span>;
 
   const values = entries.map((e) => e.value);
   const min = Math.min(...values);
@@ -28,7 +28,7 @@ export function ReportSparkline({ entries, status, width = 100, height = 28 }: R
   const color = statusConfig[status].cssVar;
 
   return (
-    <svg width={width} height={height} className="inline-block align-middle">
+    <svg aria-hidden width={width} height={height} className="inline-block align-middle">
       <polyline
         points={points}
         fill="none"

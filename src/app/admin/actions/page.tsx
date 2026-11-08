@@ -1,15 +1,12 @@
 import Link from "next/link";
-import type { ElementType } from "react";
-import { AlertTriangle, CheckCircle2, ClipboardCheck, ListChecks } from "lucide-react";
 import { getActionPlanDashboardSummary, getAllActionPlansWithKPI } from "@/lib/queries";
 import { actionPlanStatusLabels, isActionPlanOverdue, type ActionPlanStatus } from "@/lib/action-plan";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { TableSearch } from "@/components/table-search";
 import { EmptyState } from "@/components/empty-state";
+import { cn } from "@/lib/utils";
 
 interface Props {
   searchParams: Promise<{ status?: string; q?: string }>;
@@ -51,117 +48,112 @@ export default async function AdminActionsPage({ searchParams }: Props) {
     : byStatus;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={<><ClipboardCheck className="h-6 w-6" /> Action Plan</>}
-        description="Ringkasan tindak lanjut KPI dan deadline yang perlu dipantau."
-      />
+    <div className="space-y-10">
+      <div className="space-y-6">
+        <PageHeader
+          title="Action Plan"
+          description="Ringkasan tindak lanjut KPI dan deadline yang perlu dipantau."
+        />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Total Action" value={summary.total} icon={ListChecks} />
-        <SummaryCard label="Masih Aktif" value={summary.active} icon={ClipboardCheck} />
-        <SummaryCard label="Overdue" value={summary.overdue} icon={AlertTriangle} tone="danger" />
-        <SummaryCard label="Done Bulan Ini" value={summary.doneThisMonth} icon={CheckCircle2} tone="success" />
+        {/* Readout layar: empat hitungan dalam satu pita, dipisah garis rambut. */}
+        <dl className="grid grid-cols-2 gap-x-8 gap-y-5 border-y py-5 sm:grid-cols-4">
+          <SummaryReadout label="Total action" value={summary.total} />
+          <SummaryReadout label="Masih aktif" value={summary.active} />
+          <SummaryReadout label="Overdue" value={summary.overdue} tone={summary.overdue > 0 ? "text-danger" : undefined} />
+          <SummaryReadout label="Done bulan ini" value={summary.doneThisMonth} />
+        </dl>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          {filterOptions.map((option) => (
-            <Button key={option.value} variant={selectedStatus === option.value ? "default" : "outline"} size="sm" asChild>
-              <Link href={option.value === "all" ? "/admin/actions" : `/admin/actions?status=${option.value}`}>
-                {option.label}
-              </Link>
-            </Button>
-          ))}
+      <section aria-label="Daftar action plan" className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Kontrol bersegmen: satu bingkai, pilihan aktif diangkat ke permukaan. */}
+          <nav aria-label="Filter status" className="inline-flex w-fit max-w-full shrink-0 gap-0.5 overflow-x-auto rounded-md border bg-card p-0.5">
+            {filterOptions.map((option) => {
+              const active = selectedStatus === option.value;
+              return (
+                <Link
+                  key={option.value}
+                  href={option.value === "all" ? "/admin/actions" : `/admin/actions?status=${option.value}`}
+                  aria-current={active ? "page" : undefined}
+                  className={
+                    active
+                      ? "inline-flex h-8 shrink-0 items-center rounded-sm bg-secondary px-2.5 text-sm font-semibold whitespace-nowrap text-foreground"
+                      : "inline-flex h-8 shrink-0 items-center rounded-sm px-2.5 text-sm whitespace-nowrap text-muted-foreground transition-colors duration-[var(--dur-micro)] hover:bg-accent hover:text-foreground"
+                  }
+                >
+                  {option.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <TableSearch placeholder="Cari judul action…" />
         </div>
-        <TableSearch placeholder="Cari judul action..." />
-      </div>
 
-      <Card>
-        <CardContent className="pt-4">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Action</TableHead>
-                  <TableHead>KPI</TableHead>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>PIC</TableHead>
-                  <TableHead>Deadline</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6}>
-                      <EmptyState
-                        compact
-                        title={rows.length === 0 ? "Belum ada action plan." : "Tidak ada action plan yang cocok dengan filter."}
-                        description={rows.length === 0 ? undefined : "Coba ubah pencarian atau status."}
-                      />
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="pl-0">Action</TableHead>
+              <TableHead className="hidden md:table-cell">KPI</TableHead>
+              <TableHead className="hidden lg:table-cell">Domain</TableHead>
+              <TableHead className="hidden sm:table-cell">PIC</TableHead>
+              <TableHead>Deadline</TableHead>
+              <TableHead className="pr-0">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="px-0">
+                  <EmptyState
+                    compact
+                    title={rows.length === 0 ? "Belum ada action plan." : "Tidak ada action plan yang cocok dengan filter."}
+                    description={rows.length === 0 ? undefined : "Coba ubah pencarian atau status."}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map(({ action, kpi, domain }) => {
+                const overdue = isActionPlanOverdue(action);
+                return (
+                  <TableRow key={action.id}>
+                    <TableCell className="min-w-56 py-3 pl-0 whitespace-normal">
+                      <Link href={`/kpi/${kpi.id}`} className="font-semibold underline-offset-4 hover:underline">
+                        {action.title}
+                      </Link>
+                      {action.description && <p className="mt-1 max-w-prose text-sm text-muted-foreground">{action.description}</p>}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{kpi.name}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Link href={`/domain/${domain.slug}`} className="text-muted-foreground underline-offset-4 transition-colors duration-[var(--dur-micro)] hover:text-foreground hover:underline">
+                        {domain.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{action.owner}</TableCell>
+                    <TableCell>
+                      <span className="num">
+                        {new Date(`${action.dueDate}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                      </span>
+                      {overdue && <Badge variant="destructive" className="ml-2">Overdue</Badge>}
+                    </TableCell>
+                    <TableCell className="pr-0">
+                      <Badge className={statusClass[action.status]}>{actionPlanStatusLabels[action.status]}</Badge>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filtered.map(({ action, kpi, domain }) => {
-                    const overdue = isActionPlanOverdue(action);
-                    return (
-                      <TableRow key={action.id}>
-                        <TableCell>
-                          <Link href={`/kpi/${kpi.id}`} className="font-medium hover:underline">
-                            {action.title}
-                          </Link>
-                          {action.description && <p className="mt-1 max-w-md text-xs text-muted-foreground">{action.description}</p>}
-                        </TableCell>
-                        <TableCell className="text-sm">{kpi.name}</TableCell>
-                        <TableCell>
-                          <Link href={`/domain/${domain.slug}`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-                            {domain.name}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="text-sm">{action.owner}</TableCell>
-                        <TableCell className="text-sm">
-                          {new Date(`${action.dueDate}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                          {overdue && <Badge variant="destructive" className="ml-2 text-xs">Overdue</Badge>}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`border-0 text-xs ${statusClass[action.status]}`}>{actionPlanStatusLabels[action.status]}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </section>
     </div>
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-  icon: Icon,
-  tone = "default",
-}: {
-  label: string;
-  value: number;
-  icon: ElementType;
-  tone?: "default" | "danger" | "success";
-}) {
-  const toneClass = tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : "text-primary";
-
+function SummaryReadout({ label, value, tone }: { label: string; value: number; tone?: string }) {
   return (
-    <Card>
-      <CardContent className="flex items-center justify-between pt-4">
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="num mt-1 text-2xl font-bold">{value}</p>
-        </div>
-        <Icon className={`h-5 w-5 ${toneClass}`} />
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-1.5">
+      <dt className="order-2 text-sm text-muted-foreground">{label}</dt>
+      <dd className={cn("num order-1 text-3xl leading-none font-semibold tracking-tight", tone)}>{value}</dd>
+    </div>
   );
 }

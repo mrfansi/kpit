@@ -22,9 +22,9 @@ export function RestoreKPIButton({ id, name }: RestoreKPIButtonProps) {
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={handleRestore} disabled={isPending}>
-      <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-      {isPending ? "Memulihkan..." : "Restore"}
+    <Button type="button" variant="ghost" size="sm" onClick={handleRestore} disabled={isPending}>
+      <RotateCcw aria-hidden />
+      {isPending ? "Memulihkan…" : "Restore"}
     </Button>
   );
 }

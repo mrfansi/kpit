@@ -17,19 +17,19 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center">
-      <AlertTriangle className="w-10 h-10 text-destructive" />
-      <div>
-        <h2 className="text-lg font-semibold">Terjadi Kesalahan</h2>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-          Gagal memuat halaman admin. Silakan coba lagi.
-        </p>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" asChild>
+    <div role="alert" className="max-w-xl space-y-4 py-10">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+        <AlertTriangle aria-hidden className="size-5 text-destructive" />
+        Terjadi kesalahan
+      </h1>
+      <p className="text-muted-foreground">
+        Gagal memuat halaman admin. Silakan coba lagi.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" onClick={reset}>Coba lagi</Button>
+        <Button variant="ghost" asChild>
           <Link href="/">Kembali ke Overview</Link>
         </Button>
-        <Button size="sm" onClick={reset}>Coba Lagi</Button>
       </div>
     </div>
   );

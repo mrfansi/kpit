@@ -24,7 +24,7 @@ export default async function TimelineReportPage() {
       : 0;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 lg:p-10">
+    <div className="max-w-7xl mx-auto p-6 lg:p-10">
       <ReportHeader
         projectCount={projects.length}
         averageProgress={averageProgress}

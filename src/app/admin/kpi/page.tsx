@@ -16,41 +16,41 @@ export default async function AdminKPIPage({ searchParams }: { searchParams: Pro
   const pagedKpis = kpis.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Kelola KPI"
-        description={`${kpis.length} KPI aktif`}
+        description={<span className="num">{kpis.length} KPI aktif</span>}
         actions={
           <>
-            <Button variant="outline" asChild>
+            <Button variant="outline" size="sm" asChild>
               <Link href="/admin/kpi/archived">
-                <Archive className="w-4 h-4 mr-1" /> Arsip
+                <Archive aria-hidden /> Arsip
               </Link>
             </Button>
-            <Button asChild>
+            <Button size="sm" asChild>
               <Link href="/admin/kpi/new">
-                <Plus className="w-4 h-4 mr-1" /> Tambah KPI
+                <Plus aria-hidden /> Tambah KPI
               </Link>
             </Button>
           </>
         }
       />
 
-      <div className="overflow-x-auto">
+      <div className="space-y-3">
         <SortableKPITable kpis={pagedKpis} domainMap={domainMap} />
         {totalPages > 1 && (
-          <nav aria-label="Navigasi halaman" className="flex items-center justify-between pt-3 border-t text-sm text-muted-foreground">
+          <nav aria-label="Navigasi halaman" className="flex items-center justify-between border-t pt-3 text-sm text-muted-foreground">
             <span className="num">{kpis.length} KPI total</span>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage <= 1}>
+              <Button variant="outline" size="icon-sm" asChild disabled={currentPage <= 1}>
                 <Link href={`?page=${currentPage - 1}`} aria-label="Halaman sebelumnya">
-                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <ChevronLeft aria-hidden />
                 </Link>
               </Button>
               <span className="num px-2" aria-current="page">Hal {currentPage}/{totalPages}</span>
-              <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage >= totalPages}>
+              <Button variant="outline" size="icon-sm" asChild disabled={currentPage >= totalPages}>
                 <Link href={`?page=${currentPage + 1}`} aria-label="Halaman berikutnya">
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ChevronRight aria-hidden />
                 </Link>
               </Button>
             </div>

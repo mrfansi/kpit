@@ -1,5 +1,4 @@
 import { auth } from "@/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { PageHeader } from "@/components/page-header";
@@ -10,31 +9,29 @@ export default async function AdminAccountPage() {
   const user = session?.user;
 
   return (
-    <div className="space-y-6 max-w-lg">
+    <div className="max-w-md space-y-10">
       <PageHeader
-        title={<><User className="w-6 h-6" /> Akun Saya</>}
+        title={<><User aria-hidden className="size-5 text-muted-foreground" /> Akun Saya</>}
         description="Kelola informasi akun Anda"
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Informasi Akun</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between py-2 border-b">
-            <span className="text-sm text-muted-foreground">Nama</span>
-            <span className="text-sm font-medium">{user?.name ?? "—"}</span>
+      <section aria-labelledby="account-info-heading" className="space-y-3">
+        <h2 id="account-info-heading" className="text-lg font-semibold">Informasi akun</h2>
+        <dl className="text-sm">
+          <div className="flex items-center justify-between gap-4 border-b py-2.5">
+            <dt className="text-muted-foreground">Nama</dt>
+            <dd className="min-w-0 truncate font-semibold">{user?.name ?? <span className="font-normal text-muted-foreground">-</span>}</dd>
           </div>
-          <div className="flex items-center justify-between py-2 border-b">
-            <span className="text-sm text-muted-foreground">Email</span>
-            <span className="text-sm font-medium">{user?.email ?? "—"}</span>
+          <div className="flex items-center justify-between gap-4 border-b py-2.5">
+            <dt className="text-muted-foreground">Email</dt>
+            <dd className="min-w-0 truncate font-semibold">{user?.email ?? <span className="font-normal text-muted-foreground">-</span>}</dd>
           </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-muted-foreground">Role</span>
-            <Badge variant="default">{user?.role ?? "admin"}</Badge>
+          <div className="flex items-center justify-between gap-4 py-2.5">
+            <dt className="text-muted-foreground">Role</dt>
+            <dd><Badge variant="default">{user?.role ?? "admin"}</Badge></dd>
           </div>
-        </CardContent>
-      </Card>
+        </dl>
+      </section>
 
       <ChangePasswordForm />
     </div>

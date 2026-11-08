@@ -29,7 +29,7 @@ export function ManualInputForm({ kpis, domains }: Props) {
   function checkExisting(nextKpiId: string, nextPeriodDate: string) {
     if (!nextKpiId || !nextPeriodDate) { setExistingHint(null); return; }
     getExistingEntry(Number(nextKpiId), nextPeriodDate).then((existing) => {
-      setExistingHint(existing ? `Sudah ada data: ${existing.value} — akan ditimpa` : null);
+      setExistingHint(existing ? `Sudah ada data: ${existing.value}, akan ditimpa` : null);
     });
   }
 
@@ -61,12 +61,12 @@ export function ManualInputForm({ kpis, domains }: Props) {
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 max-w-md">
+    <form ref={formRef} onSubmit={handleSubmit} className="max-w-md space-y-5">
       <div className="space-y-1.5">
         <Label htmlFor="kpiId">KPI</Label>
         <Select name="kpiId" required value={kpiId} onValueChange={(v) => { setKpiId(v); checkExisting(v, periodDate); }}>
-          <SelectTrigger id="kpiId">
-            <SelectValue placeholder="Pilih KPI..." />
+          <SelectTrigger id="kpiId" className="w-full">
+            <SelectValue placeholder="Pilih KPI…" />
           </SelectTrigger>
           <SelectContent>
             {domains.map((domain) => (
@@ -87,8 +87,8 @@ export function ManualInputForm({ kpis, domains }: Props) {
       <div className="space-y-1.5">
         <Label htmlFor="periodDate">Periode</Label>
         <Select name="periodDate" required value={periodDate} onValueChange={(v) => { setPeriodDate(v); checkExisting(kpiId, v); }}>
-          <SelectTrigger id="periodDate">
-            <SelectValue placeholder="Pilih periode..." />
+          <SelectTrigger id="periodDate" className="w-full">
+            <SelectValue placeholder="Pilih periode…" />
           </SelectTrigger>
           <SelectContent>
             {months.map((m) => (
@@ -99,11 +99,11 @@ export function ManualInputForm({ kpis, domains }: Props) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="value">Nilai Aktual</Label>
-        <Input id="value" name="value" type="number" step="any" placeholder="Masukkan nilai..." required />
+        <Label htmlFor="value">Nilai aktual</Label>
+        <Input id="value" name="value" type="number" step="any" placeholder="Masukkan nilai…" className="num" required />
         {existingHint && (
-          <p className="flex items-center gap-1 text-xs text-warning">
-            <AlertTriangle className="w-3 h-3" />
+          <p className="flex items-center gap-1.5 text-sm text-warning">
+            <AlertTriangle aria-hidden className="size-3.5 shrink-0" />
             {existingHint}
           </p>
         )}
@@ -111,11 +111,11 @@ export function ManualInputForm({ kpis, domains }: Props) {
 
       <div className="space-y-1.5">
         <Label htmlFor="note">Catatan (opsional)</Label>
-        <Input id="note" name="note" placeholder="Catatan tambahan..." />
+        <Input id="note" name="note" placeholder="Catatan tambahan…" />
       </div>
 
-      <Button type="submit" className="w-full" disabled={isPending}>
-        {isPending ? "Menyimpan..." : "Simpan Data"}
+      <Button type="submit" disabled={isPending}>
+        {isPending ? "Menyimpan…" : "Simpan data"}
       </Button>
     </form>
   );

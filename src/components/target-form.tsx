@@ -106,7 +106,7 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
           menaikkan tinggi baris dan menggeser turun label/input kolom
           tetangganya. Top-align mengunci semua baseline di tempatnya.
         */}
-        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="periodDate"
@@ -123,8 +123,10 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription className="text-xs">Berlaku untuk bulan ini saja</FormDescription>
-                <FormMessage />
+                <div className="min-h-[1lh] space-y-1 text-sm">
+                  <FormDescription>Berlaku untuk bulan ini saja</FormDescription>
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -135,10 +137,12 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
               <FormItem className="content-start">
                 <FormLabel>Target ({kpi.unit})</FormLabel>
                 <FormControl>
-                  <Input type="number" step="any" {...field} value={numberFieldValue(field.value)} onChange={(e) => field.onChange(parseNumberInput(e.target.value))} />
+                  <Input type="number" step="any" className="num" {...field} value={numberFieldValue(field.value)} onChange={(e) => field.onChange(parseNumberInput(e.target.value))} />
                 </FormControl>
-                <FormDescription className="text-xs">Dasar hitung % pencapaian</FormDescription>
-                <FormMessage />
+                <div className="min-h-[1lh] space-y-1 text-sm">
+                  <FormDescription>Dasar hitung % pencapaian</FormDescription>
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -147,17 +151,16 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
             name="thresholdGreen"
             render={({ field }) => (
               <FormItem className="content-start">
-                <FormLabel className="gap-1.5">
-                  <span className="size-2 shrink-0 rounded-full bg-success-fill" aria-hidden />
-                  Threshold Hijau
-                </FormLabel>
+                <FormLabel>Threshold hijau</FormLabel>
                 <FormControl>
-                  <Input type="number" step="any" {...field} value={numberFieldValue(field.value)} onChange={(e) => field.onChange(parseNumberInput(e.target.value))} />
+                  <Input type="number" step="any" className="num" {...field} value={numberFieldValue(field.value)} onChange={(e) => field.onChange(parseNumberInput(e.target.value))} />
                 </FormControl>
-                <FormDescription className="text-xs">
-                  {lowerBetter ? "Nilai ≤ ini = On Track" : "Nilai ≥ ini = On Track"}
-                </FormDescription>
-                <FormMessage />
+                <div className="min-h-[1lh] space-y-1 text-sm">
+                  <FormDescription>
+                    {lowerBetter ? "Nilai ≤ ini = On Track" : "Nilai ≥ ini = On Track"}
+                  </FormDescription>
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -166,19 +169,18 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
             name="thresholdYellow"
             render={({ field }) => (
               <FormItem className="content-start">
-                <FormLabel className="gap-1.5">
-                  <span className="size-2 shrink-0 rounded-full bg-warning-fill" aria-hidden />
-                  Threshold Kuning
-                </FormLabel>
+                <FormLabel>Threshold kuning</FormLabel>
                 <FormControl>
-                  <Input type="number" step="any" {...field} value={numberFieldValue(field.value)} onChange={(e) => field.onChange(parseNumberInput(e.target.value))} />
+                  <Input type="number" step="any" className="num" {...field} value={numberFieldValue(field.value)} onChange={(e) => field.onChange(parseNumberInput(e.target.value))} />
                 </FormControl>
-                <FormDescription className="text-xs">
-                  {lowerBetter
-                    ? "Nilai ≤ ini (tapi > hijau) = At Risk"
-                    : "Nilai ≥ ini (tapi < hijau) = At Risk"}
-                </FormDescription>
-                <FormMessage />
+                <div className="min-h-[1lh] space-y-1 text-sm">
+                  <FormDescription>
+                    {lowerBetter
+                      ? "Nilai ≤ ini (tapi > hijau) = At Risk"
+                      : "Nilai ≥ ini (tapi < hijau) = At Risk"}
+                  </FormDescription>
+                  <FormMessage />
+                </div>
               </FormItem>
             )}
           />
@@ -198,15 +200,15 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
         />
 
         {rootError && (
-          <p role="alert" className="flex items-start gap-2 rounded-md border border-danger bg-danger-soft p-3 text-xs text-danger">
-            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+          <p role="alert" className="flex items-start gap-2 rounded-card bg-danger-soft p-3 text-sm text-foreground">
+            <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-danger" />
             <span>{rootError}</span>
           </p>
         )}
 
-        <div className="flex gap-3 border-t pt-4">
+        <div className="flex flex-wrap gap-3 border-t pt-6">
           <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Menyimpan..." : "Simpan Target"}
+            {form.formState.isSubmitting ? "Menyimpan…" : "Simpan Target"}
           </Button>
           <Button type="button" variant="outline" asChild>
             <Link href="/admin/kpi">Batal</Link>
@@ -220,7 +222,7 @@ export function TargetForm({ kpi, defaultPeriodDate, defaultValues }: TargetForm
 /*
  * `valueAsNumber` mengembalikan NaN untuk input kosong. Kalau NaN itu masuk ke
  * state form, React memantulkannya balik sebagai `value={NaN}` dan memicu
- * warning "Received NaN for the `value` attribute". Kosong dipetakan ke
+ * warning React Received NaN for the `value` attribute. Kosong dipetakan ke
  * `undefined` supaya Zod melaporkannya sebagai "Wajib diisi", bukan NaN.
  */
 function parseNumberInput(raw: string): number | undefined {

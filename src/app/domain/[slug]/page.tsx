@@ -110,61 +110,64 @@ export default async function DomainPage({ params, searchParams }: Props) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">{domain.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Posisi per{" "}
-            <span className="num font-medium text-foreground">
-              {selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "—"}
-            </span>
-          </p>
+    <div className="space-y-10">
+      {/* Kepala layar + readout domain: satu blok, readout langsung di bawah judul. */}
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">{domain.name}</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Posisi per{" "}
+              <span className="num font-semibold text-foreground">
+                {selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "-"}
+              </span>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <Suspense>
+              <PeriodSelector defaultValue={selectedPeriod} />
+            </Suspense>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/report/${slug}${selectedPeriod ? `?period=${selectedPeriod}` : ""}`}>
+                <FileText aria-hidden />
+                Scorecard PDF
+              </Link>
+            </Button>
+            <ExportButtons domainSlug={slug} />
+            {canEdit && (
+              <BatchCommentDraft domainId={domain.id} periodDate={selectedPeriod ?? ""} />
+            )}
+            {canEdit && (
+              <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => kpi)} kpiLatestPeriods={kpiLatestPeriods} />
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap print:hidden">
+
+        <SummaryStrip kpisWithEntries={kpisWithEntries} />
+
+        <DomainAISummary requestData={domainSummaryData} />
+
+        {!isFiltered && (
+          <AttentionBar
+            redKPIs={redKPIs}
+            missingKPIs={missingKPIs}
+            period={selectedPeriod ?? ""}
+            canEdit={canEdit}
+          />
+        )}
+      </div>
+
+      <div className="space-y-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Suspense>
-            <PeriodSelector defaultValue={selectedPeriod} />
+            <KPIFilterBar defaultQ={q} defaultStatus={status} />
           </Suspense>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/report/${slug}${selectedPeriod ? `?period=${selectedPeriod}` : ""}`}>
-              <FileText className="w-3.5 h-3.5 mr-1.5" />
-              Scorecard PDF
-            </Link>
-          </Button>
-          <ExportButtons domainSlug={slug} />
-          {canEdit && (
-            <BatchCommentDraft domainId={domain.id} periodDate={selectedPeriod ?? ""} />
-          )}
-          {canEdit && (
-            <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => kpi)} kpiLatestPeriods={kpiLatestPeriods} />
-          )}
+          <DomainTabs domains={domains} activeSlug={slug} />
         </div>
-      </div>
 
-      <DomainAISummary requestData={domainSummaryData} />
-
-      <SummaryStrip kpisWithEntries={kpisWithEntries} />
-
-      {!isFiltered && (
-        <AttentionBar
-          redKPIs={redKPIs}
-          missingKPIs={missingKPIs}
-          period={selectedPeriod ?? ""}
-          canEdit={canEdit}
-        />
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Suspense>
-          <KPIFilterBar defaultQ={q} defaultStatus={status} />
-        </Suspense>
-        <DomainTabs domains={domains} activeSlug={slug} />
-      </div>
-
-      {filtered.length === 0 && !isFiltered ? (
-        <EmptyState />
-      ) : (
-        <div className="overflow-hidden rounded-lg border">
+        {filtered.length === 0 && !isFiltered ? (
+          <EmptyState />
+        ) : (
           <KPITable
             rows={filtered}
             actionCounts={actionCounts}
@@ -172,8 +175,8 @@ export default async function DomainPage({ params, searchParams }: Props) {
             canEdit={canEdit}
             emptyMessage="Tidak ada KPI yang cocok dengan filter."
           />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

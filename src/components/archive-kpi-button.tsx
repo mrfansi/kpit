@@ -25,8 +25,8 @@ export function ArchiveKPIButton({ id, name }: ArchiveKPIButtonProps) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" title="Arsipkan KPI" disabled={isPending}>
-          <Archive className="w-4 h-4" />
+        <Button type="button" variant="ghost" size="icon-sm" title="Arsipkan KPI" aria-label="Arsipkan KPI" disabled={isPending}>
+          <Archive aria-hidden />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

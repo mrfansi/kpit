@@ -119,13 +119,13 @@ export function BatchCommentDraft({ domainId, periodDate }: BatchCommentDraftPro
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={handleDraft} disabled={isDrafting}>
+      <Button type="button" variant="outline" size="sm" onClick={handleDraft} disabled={isDrafting}>
         {isDrafting ? (
-          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+          <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" />
         ) : (
-          <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+          <Sparkles aria-hidden />
         )}
-        {isDrafting ? "Menyusun draf..." : "Draf catatan"}
+        {isDrafting ? "Menyusun draf…" : "Draf catatan"}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -139,15 +139,15 @@ export function BatchCommentDraft({ domainId, periodDate }: BatchCommentDraftPro
           </p>
 
           {(skipped.length > 0 || skippedForCap > 0) && (
-            <div className="rounded-md border border-warning bg-warning-soft p-3 text-xs text-warning">
-              <div className="mb-1 flex items-center gap-1.5 font-medium">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <div className="rounded-card bg-paper-2 p-4 text-sm">
+              <div className="mb-1.5 flex items-center gap-1.5 font-semibold">
+                <AlertTriangle aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
                 Tidak semua KPI diproses
               </div>
-              <ul className="space-y-0.5">
+              <ul className="space-y-1 text-muted-foreground">
                 {skipped.map((s) => (
                   <li key={s.kpiId}>
-                    {s.kpiName} — {s.message}
+                    {s.kpiName}: {s.message}
                   </li>
                 ))}
                 {skippedForCap > 0 && (
@@ -163,7 +163,7 @@ export function BatchCommentDraft({ domainId, periodDate }: BatchCommentDraftPro
           <div className="space-y-4">
             {drafts.map((d, i) => (
               <div key={d.kpiId} className="space-y-1.5">
-                <label htmlFor={`draft-${d.kpiId}`} className="text-sm font-medium">
+                <label htmlFor={`draft-${d.kpiId}`} className="block text-sm font-semibold">
                   {d.kpiName}
                 </label>
                 <Textarea
@@ -178,19 +178,19 @@ export function BatchCommentDraft({ domainId, periodDate }: BatchCommentDraftPro
                       return next;
                     })
                   }
-                  className="text-sm"
+                  className="text-base md:text-sm"
                 />
               </div>
             ))}
           </div>
 
           {drafts.length > 0 && (
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>
                 Batal
               </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              <Button type="button" onClick={handleSave} disabled={isSaving}>
+                {isSaving && <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" />}
                 Simpan semua
               </Button>
             </div>

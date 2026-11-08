@@ -12,7 +12,11 @@ interface PeriodComparisonProps {
 
 function Delta({ current, compare, unit, lowerBetter }: { current: number | null; compare: KPIEntry | null; unit: string; lowerBetter?: boolean }) {
   if (current === null || compare === null) {
-    return <span className="text-muted-foreground text-sm">—</span>;
+    return (
+      <span className="text-sm text-muted-foreground" aria-label="Tidak ada data">
+        -
+      </span>
+    );
   }
   const rawAbs = current - compare.value;
   const abs = Math.round(rawAbs * 10000) / 10000;
@@ -25,11 +29,11 @@ function Delta({ current, compare, unit, lowerBetter }: { current: number | null
   const color = trendColor(trend, lowerBetter ? "lower_better" : "higher_better");
 
   return (
-    <span className={`flex items-center gap-1 text-sm font-medium ${color}`}>
-      <Icon className="w-3.5 h-3.5 shrink-0" />
+    <span className={`flex items-center gap-1 text-sm font-semibold ${color}`}>
+      <Icon aria-hidden className="size-3.5 shrink-0" />
       <span className="num">
         {abs > 0 ? "+" : ""}{formatValue(abs, unit)}
-        {pct !== null && <span className="font-normal text-xs"> ({abs > 0 ? "+" : ""}{pct}%)</span>}
+        {pct !== null && <span className="text-xs font-normal"> ({abs > 0 ? "+" : ""}{pct}%)</span>}
       </span>
     </span>
   );
@@ -38,25 +42,26 @@ function Delta({ current, compare, unit, lowerBetter }: { current: number | null
 export function PeriodComparison({ kpi, current, prevMonth, prevYear }: PeriodComparisonProps) {
   if (!current) return null;
 
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {/* MoM */}
-      <div className="rounded-lg border bg-card p-3 space-y-1">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Bulan Lalu (MoM)</p>
-        <p className="num text-sm text-muted-foreground">
-          {prevMonth ? formatValue(prevMonth.value, kpi.unit) : "—"}
-        </p>
-        <Delta current={current.value} compare={prevMonth} unit={kpi.unit} lowerBetter={kpi.direction === "lower_better"} />
-      </div>
+  const lowerBetter = kpi.direction === "lower_better";
+  const rows = [
+    { label: "Bulan lalu (MoM)", entry: prevMonth },
+    { label: "Tahun lalu (YoY)", entry: prevYear },
+  ];
 
-      {/* YoY */}
-      <div className="rounded-lg border bg-card p-3 space-y-1">
-        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Tahun Lalu (YoY)</p>
-        <p className="num text-sm text-muted-foreground">
-          {prevYear ? formatValue(prevYear.value, kpi.unit) : "—"}
-        </p>
-        <Delta current={current.value} compare={prevYear} unit={kpi.unit} lowerBetter={kpi.direction === "lower_better"} />
-      </div>
-    </div>
+  // Baris stat dipisah garis rambut vertikal, bukan kartu.
+  return (
+    <dl className="grid grid-cols-2 divide-x border-t pt-4">
+      {rows.map(({ label, entry }) => (
+        <div key={label} className="space-y-1 px-5 first:pl-0">
+          <dt className="text-sm text-muted-foreground">{label}</dt>
+          <dd className="num text-base">
+            {entry ? formatValue(entry.value, kpi.unit) : <span className="text-muted-foreground" aria-label="Tidak ada data">-</span>}
+          </dd>
+          <dd>
+            <Delta current={current.value} compare={entry} unit={kpi.unit} lowerBetter={lowerBetter} />
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }

@@ -6,7 +6,7 @@ export default async function NewKPIPage() {
   const domains = await getAllDomains();
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl space-y-8">
       <PageHeader title="Tambah KPI Baru" description="Isi form di bawah untuk menambahkan KPI baru" />
       <KPIForm domains={domains} />
     </div>

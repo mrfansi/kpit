@@ -1,3 +1,4 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full · scope: app · print rules for /timeline/report; the system stamp is in src/app/globals.css */
 @media print {
   /* Force background colors to print */
   * {
@@ -25,11 +26,6 @@
   /* Ensure Gantt chart starts on new page if needed */
   .print-break-before {
     break-before: page;
-  }
-
-  /* Hide hover tooltips in print */
-  .group-hover\:opacity-100 {
-    opacity: 0 !important;
   }
 
   /* Adjust body padding */

@@ -10,9 +10,12 @@ import { ReportActionPlans } from "@/components/report/report-action-plans";
 import { MarkdownExportDialog } from "@/components/report/markdown-export-dialog";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { isAdminUser } from "@/lib/auth-utils";
 
-export const metadata: Metadata = { title: "Executive Report — Semua Domain" };
+export const metadata: Metadata = { title: "Executive Report: Semua Domain" };
 
 interface Props {
   searchParams: Promise<{ period?: string }>;
@@ -22,7 +25,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
   const { period } = await searchParams;
   const months = listLastNMonths(24);
   const selectedPeriod = period ?? defaultReportingPeriod();
-  const periodLabel = selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "—";
+  const periodLabel = selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "-";
 
   // Previous month label for display
   const prevMonthLabel = selectedPeriod
@@ -158,93 +161,139 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
     kpis: allKPIsWithEntries.filter((k) => k.kpi.domainId === domain.id),
   })).filter(({ kpis }) => kpis.length > 0);
 
+  const counts = [
+    { key: "green", n: totalGreen },
+    { key: "yellow", n: totalYellow },
+    { key: "red", n: totalRed },
+  ] as const;
+  const healthStatus = healthPct >= 80 ? "green" : healthPct >= 50 ? "yellow" : "red";
+  const th = "py-2 pr-4 text-sm font-normal whitespace-nowrap text-muted-foreground";
+
   return (
-    <div className="min-h-screen bg-background text-foreground p-8 max-w-5xl mx-auto print:p-4 print:max-w-full print:bg-white print:text-black text-sm">
-      {/* Header */}
-      <header className="border-b-2 border-foreground pb-4 mb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Executive KPI Report</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">Laporan performa seluruh KPI organisasi</p>
+    // Kolom dokumen: dibaca dan dicetak untuk rapat CEO. Cetak memakai lebar penuh, tanpa latar.
+    <div className="mx-auto max-w-5xl space-y-10 print:max-w-full">
+      {/* Kepala dokumen + readout utama */}
+      <header className="space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">Executive KPI Report</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">Laporan performa seluruh KPI organisasi</p>
+            <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <span>Periode: <strong className="num font-semibold text-foreground">{periodLabel}</strong></span>
+              <span>Dicetak: <span className="num">{printDate}</span></span>
+            </p>
           </div>
-          <div className="text-right text-sm text-muted-foreground">
-            <p>Periode: <strong className="text-foreground">{periodLabel}</strong></p>
-            <p>Dicetak: {printDate}</p>
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <ReportPeriodSelector months={months} selectedPeriod={selectedPeriod ?? ""} />
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/">
+                <ArrowLeft aria-hidden />
+                Overview
+              </Link>
+            </Button>
+            <PrintButton />
+            {selectedPeriod && <MarkdownExportDialog period={selectedPeriod} domains={domains.map((domain) => ({ slug: domain.slug, name: domain.name }))} />}
+            {isAdmin && (
+              <Button size="sm" asChild>
+                <Link href={`/admin/reports/monthly?period=${selectedPeriod}`}>Susun laporan bulanan</Link>
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Global summary */}
-        <div className="mt-4 flex flex-wrap gap-6 items-center">
-          <div className="flex gap-4 text-sm">
-            <span className="flex items-center gap-1.5"><span className={`w-3 h-3 rounded-full inline-block ${statusConfig.green.solid}`} /><span className="num">{totalGreen}</span> On Track</span>
-            <span className="flex items-center gap-1.5"><span className={`w-3 h-3 rounded-full inline-block ${statusConfig.yellow.solid}`} /><span className="num">{totalYellow}</span> At Risk</span>
-            <span className="flex items-center gap-1.5"><span className={`w-3 h-3 rounded-full inline-block ${statusConfig.red.solid}`} /><span className="num">{totalRed}</span> Off Track</span>
-            {totalNoData > 0 && <span className="flex items-center gap-1.5 text-muted-foreground"><span className="w-3 h-3 rounded-full bg-muted-foreground/30 inline-block" /><span className="num">{totalNoData}</span> No Data</span>}
-            <span className="text-muted-foreground"><span className="num">{total}</span> KPI total</span>
-          </div>
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-muted-foreground">Health Score</span>
-            <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
-              <div className={`h-full ${statusConfig.green.solid}`} style={{ width: `${healthPct}%` }} />
+        {/* Readout: health score terbesar, sebaran status sebagai angka berwarna status, total di ujung. */}
+        <div className="grid gap-x-8 gap-y-5 border-y py-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+          <div className="space-y-2">
+            <div className="flex items-baseline gap-2.5">
+              <span className={cn("num text-readout leading-none font-semibold tracking-tight", statusConfig[healthStatus].color)}>
+                {healthPct}%
+              </span>
+              <span className="text-sm text-muted-foreground">Health score</span>
             </div>
-            <span className={`num text-sm font-bold ${healthPct >= 80 ? "text-success" : healthPct >= 50 ? "text-warning" : "text-danger"}`}>
-              {healthPct}%
-            </span>
+            {/* Gauge persegi: isi = porsi KPI on track. */}
+            <div aria-hidden className="h-2 w-40 overflow-hidden bg-secondary">
+              <div className={cn("h-full", statusConfig.green.solid)} style={{ width: `${healthPct}%` }} />
+            </div>
+          </div>
+
+          <ul className="flex flex-wrap items-baseline gap-x-5 gap-y-1.5 text-sm sm:border-l sm:pl-8">
+            {counts.map(({ key, n }) => (
+              <li key={key} className="flex items-baseline gap-1.5">
+                <span className={cn("num font-semibold", statusConfig[key].color)}>{n}</span>
+                <span className="text-muted-foreground">{statusConfig[key].label}</span>
+              </li>
+            ))}
+            {totalNoData > 0 && (
+              <li className="flex items-baseline gap-1.5">
+                <span className="num font-semibold text-muted-foreground">{totalNoData}</span>
+                <span className="text-muted-foreground">No Data</span>
+              </li>
+            )}
+          </ul>
+
+          <div className="flex items-baseline gap-2 sm:border-l sm:pl-8">
+            <span className="num text-3xl leading-none font-semibold tracking-tight">{total}</span>
+            <span className="text-sm text-muted-foreground">KPI total</span>
           </div>
         </div>
 
-        {/* Period comparison overview */}
+        {/* Perbandingan periode: tiga angka berdampingan dipisah garis rambut, bukan kartu. */}
         {(healthDelta !== null || prevTotal > 0) && (
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Health Score Change */}
-            <div className="border border-border rounded-lg p-3">
-              <p className="text-xs text-muted-foreground mb-1">Dibanding {prevMonthLabel}</p>
-              {healthDelta !== null ? (
-                <p className={`num text-lg font-bold ${healthDelta > 0 ? trendColor("up") : healthDelta < 0 ? trendColor("down") : "text-muted-foreground"}`}>
-                  {healthDelta > 0 ? "+" : ""}{healthDelta}%
-                  <span className="text-xs font-normal text-muted-foreground ml-1">health score</span>
-                </p>
-              ) : (
-                <p className="text-lg font-bold text-muted-foreground">—</p>
-              )}
-            </div>
-
-            {/* Status Movement */}
-            <div className="border border-border rounded-lg p-3">
-              <p className="text-xs text-muted-foreground mb-1">Pergerakan Status</p>
-              {prevTotal > 0 ? (
-                <div className="flex items-baseline gap-2">
-                  {improved > 0 && <span className={`num text-lg font-bold ${trendColor("up")}`}>{improved} <span className="text-xs font-normal">naik</span></span>}
-                  {declined > 0 && <span className={`num text-lg font-bold ${trendColor("down")}`}>{declined} <span className="text-xs font-normal">turun</span></span>}
-                  {improved === 0 && declined === 0 && <span className="num text-lg font-bold text-muted-foreground">{stable} <span className="text-xs font-normal">tetap</span></span>}
-                  {(improved > 0 || declined > 0) && stable > 0 && <span className="num text-xs text-muted-foreground">{stable} tetap</span>}
-                </div>
-              ) : (
-                <p className="text-lg font-bold text-muted-foreground">—</p>
-              )}
-            </div>
-
-            {/* Avg Achievement */}
-            <div className="border border-border rounded-lg p-3">
-              <p className="text-xs text-muted-foreground mb-1">Rata-rata Pencapaian</p>
-              {avgAchievement !== null ? (
-                <p className="num text-lg font-bold">
-                  {avgAchievement}%
-                  {achievementDelta !== null && achievementDelta !== 0 && (
-                    <span className={`text-xs font-normal ml-1 ${achievementDelta > 0 ? trendColor("up") : trendColor("down")}`}>
-                      ({achievementDelta > 0 ? "+" : ""}{achievementDelta}%)
+          <dl className="grid gap-y-4 sm:grid-cols-3 sm:divide-x">
+            <div className="space-y-1 sm:pr-6">
+              <dt className="text-sm text-muted-foreground">Dibanding <span className="num">{prevMonthLabel}</span></dt>
+              <dd className="flex items-baseline gap-1.5">
+                {healthDelta !== null ? (
+                  <>
+                    <span className={cn("num text-xl font-semibold", healthDelta > 0 ? trendColor("up") : healthDelta < 0 ? trendColor("down") : "text-muted-foreground")}>
+                      {healthDelta > 0 ? "+" : healthDelta < 0 ? "\u2212" : ""}{Math.abs(healthDelta)}%
                     </span>
-                  )}
-                </p>
-              ) : (
-                <p className="text-lg font-bold text-muted-foreground">—</p>
-              )}
+                    <span className="text-sm text-muted-foreground">health score</span>
+                  </>
+                ) : (
+                  <Empty />
+                )}
+              </dd>
             </div>
-          </div>
+
+            <div className="space-y-1 sm:px-6">
+              <dt className="text-sm text-muted-foreground">Pergerakan status</dt>
+              <dd className="flex flex-wrap items-baseline gap-x-3">
+                {prevTotal > 0 ? (
+                  <>
+                    {improved > 0 && <span className="flex items-baseline gap-1"><span className={cn("num text-xl font-semibold", trendColor("up"))}>{improved}</span><span className="text-sm text-muted-foreground">naik</span></span>}
+                    {declined > 0 && <span className="flex items-baseline gap-1"><span className={cn("num text-xl font-semibold", trendColor("down"))}>{declined}</span><span className="text-sm text-muted-foreground">turun</span></span>}
+                    {improved === 0 && declined === 0 && <span className="flex items-baseline gap-1"><span className="num text-xl font-semibold text-muted-foreground">{stable}</span><span className="text-sm text-muted-foreground">tetap</span></span>}
+                    {(improved > 0 || declined > 0) && stable > 0 && <span className="text-sm text-muted-foreground"><span className="num">{stable}</span> tetap</span>}
+                  </>
+                ) : (
+                  <Empty />
+                )}
+              </dd>
+            </div>
+
+            <div className="space-y-1 sm:pl-6">
+              <dt className="text-sm text-muted-foreground">Rata-rata pencapaian</dt>
+              <dd className="flex items-baseline gap-1.5">
+                {avgAchievement !== null ? (
+                  <>
+                    <span className="num text-xl font-semibold">{avgAchievement}%</span>
+                    {achievementDelta !== null && achievementDelta !== 0 && (
+                      <span className={cn("num text-sm font-semibold", achievementDelta > 0 ? trendColor("up") : trendColor("down"))}>
+                        ({achievementDelta > 0 ? "+" : "\u2212"}{Math.abs(achievementDelta)}%)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <Empty />
+                )}
+              </dd>
+            </div>
+          </dl>
         )}
       </header>
 
-      {/* Executive Summary — AI Narrative or static fallback */}
+      {/* Executive Summary: AI Narrative or static fallback */}
       <ReportAINarrative staticSummary={executiveSummary} requestData={aiRequestData} />
 
       {selectedPeriod && (
@@ -253,74 +302,83 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
 
       {/* KPIs that need attention */}
       {attentionKpis.length > 0 && (
-        <div className={`mb-6 p-4 rounded-lg border ${statusConfig.red.bg} ${statusConfig.red.border}`}>
-          <h2 className={`font-bold text-sm mb-2 ${statusConfig.red.color}`}>Perlu Perhatian</h2>
-          <div className="space-y-2">
+        <section aria-labelledby="report-attention-heading" className="space-y-3 break-inside-avoid-page">
+          <h2 id="report-attention-heading" className="flex items-center gap-2 text-lg font-semibold">
+            <AlertTriangle aria-hidden className={cn("size-4", statusConfig.red.color)} />
+            Perlu perhatian
+          </h2>
+          <ul className="divide-y border-y">
             {attentionKpis.map(({ kpi, latestEntry, prevEntry, status, effectiveTarget }) => {
               const tgt = effectiveTarget ?? { target: kpi.target, thresholdGreen: kpi.thresholdGreen, thresholdYellow: kpi.thresholdYellow };
               return (
-                <div key={kpi.id} className="flex items-start gap-2 text-sm">
-                  <span className={`inline-block w-2 h-2 rounded-full mt-1.5 shrink-0 ${status === "red" ? statusConfig.red.solid : statusConfig.yellow.solid}`} />
-                  <div>
-                    <span className="font-medium">{kpi.name}</span>
-                    <span className="num text-muted-foreground">
-                      {" — "}aktual {latestEntry ? formatValue(latestEntry.value, kpi.unit) : "—"}
-                      {" "}dari target {formatValue(tgt.target, kpi.unit)}
-                      {prevEntry && (
-                        <span> (bulan lalu: {formatValue(prevEntry.value, kpi.unit)})</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
+                <li key={kpi.id} className="flex flex-col gap-x-4 gap-y-0.5 py-2.5 text-sm sm:flex-row sm:items-baseline">
+                  <span className="flex items-baseline gap-2 sm:w-72 sm:shrink-0">
+                    <span className="font-semibold">{kpi.name}</span>
+                    <span className={cn("text-sm whitespace-nowrap", statusConfig[status].color)}>{statusConfig[status].label}</span>
+                  </span>
+                  <span className="num text-muted-foreground">
+                    aktual {latestEntry ? formatValue(latestEntry.value, kpi.unit) : "-"}
+                    {" "}dari target {formatValue(tgt.target, kpi.unit)}
+                    {prevEntry && (
+                      <span> (bulan lalu: {formatValue(prevEntry.value, kpi.unit)})</span>
+                    )}
+                  </span>
+                </li>
               );
             })}
-          </div>
-        </div>
+          </ul>
+        </section>
       )}
 
-      <section className="mb-8 rounded-md border p-4 print:hidden" aria-label="Laporan bulanan per domain">
-        <h2 className="font-semibold">Laporan bulanan per divisi</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Pilih domain untuk melihat laporan tersimpan dan menetapkan divisinya secara eksplisit.</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {domains.map((domain) => <div key={domain.id} className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
-            <span className="font-medium">{domain.name}</span>
-            <span className="flex gap-3">
-              <Link className="underline underline-offset-2" href={`/report/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Lihat</Link>
-              {isAdmin && <Link className="underline underline-offset-2" href={`/admin/reports/monthly/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Sunting</Link>}
-            </span>
-          </div>)}
+      <section className="space-y-3 print:hidden" aria-label="Laporan bulanan per domain">
+        <div>
+          <h2 className="text-lg font-semibold">Laporan bulanan per divisi</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Pilih domain untuk melihat laporan tersimpan dan menetapkan divisinya secara eksplisit.</p>
         </div>
+        <ul className="divide-y border-y">
+          {domains.map((domain) => <li key={domain.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+            <span className="font-semibold">{domain.name}</span>
+            <span className="flex gap-4">
+              <Link className="underline underline-offset-4" href={`/report/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Lihat</Link>
+              {isAdmin && <Link className="underline underline-offset-4" href={`/admin/reports/monthly/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Sunting</Link>}
+            </span>
+          </li>)}
+        </ul>
       </section>
+
       {/* Per-domain sections */}
       {byDomain.map(({ domain, kpis }) => {
         const dGreen = kpis.filter(({ kpi, latestEntry, effectiveTarget }) => getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget }) === "green").length;
         const dRed = kpis.filter(({ kpi, latestEntry, effectiveTarget }) => getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget }) === "red").length;
 
         return (
-          <section key={domain.id} className="mb-8 break-inside-avoid-page">
+          <section key={domain.id} aria-labelledby={`report-domain-${domain.id}`} className="space-y-3 break-inside-avoid-page">
             {/* Domain header */}
-            <div className="flex items-center justify-between mb-2 pb-1 border-b border-border">
-              <div className="flex items-center gap-2">
-                <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: domain.color }} />
-                <h2 className="font-bold text-base">{domain.name}</h2>
-                {domain.description && <span className="text-muted-foreground text-xs">— {domain.description}</span>}
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  {/* Warna identitas domain (bukan status), kunci persegi kecil. */}
+                  <span aria-hidden className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: domain.color }} />
+                  <h2 id={`report-domain-${domain.id}`} className="text-lg font-semibold">{domain.name}</h2>
+                </div>
+                {domain.description && <p className="mt-1 text-sm text-muted-foreground">{domain.description}</p>}
               </div>
-              <span className="num text-xs text-muted-foreground">{kpis.length} KPI · {dGreen} on track{dRed > 0 ? ` · ${dRed} off track` : ""}</span>
+              <span className="num text-sm text-muted-foreground">{kpis.length} KPI, {dGreen} on track{dRed > 0 ? `, ${dRed} off track` : ""}</span>
             </div>
 
-            {/* Lihat catatan pembungkus overflow di report/[domain]. */}
+            {/* Tanpa pembungkus ini tabel lebar menggeser seluruh halaman di ponsel. */}
             <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
+            <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left py-1.5 pr-3 font-medium">KPI</th>
-                  <th className="text-right py-1.5 px-2 font-medium">Aktual</th>
-                  <th className="text-right py-1.5 px-2 font-medium">Target</th>
-                  <th className="text-right py-1.5 px-2 font-medium">%</th>
-                  <th className="text-center py-1.5 pl-2 font-medium">Status</th>
-                  <th className="text-center py-1.5 px-2 font-medium">vs {prevMonthLabel}</th>
-                  {hasAnyYoY && <th className="text-center py-1.5 px-2 font-medium">YoY</th>}
-                  <th className="text-center py-1.5 pl-2 font-medium">Trend</th>
+                <tr className="border-b">
+                  <th className={cn(th, "text-left")}>KPI</th>
+                  <th className={cn(th, "text-right")}>Aktual</th>
+                  <th className={cn(th, "hidden text-right sm:table-cell print:table-cell")}>Target</th>
+                  <th className={cn(th, "hidden text-right sm:table-cell print:table-cell")}>%</th>
+                  <th className={cn(th, "text-left")}>Status</th>
+                  <th className={cn(th, "hidden text-right md:table-cell print:table-cell")}>vs <span className="num">{prevMonthLabel}</span></th>
+                  {hasAnyYoY && <th className={cn(th, "hidden text-right md:table-cell print:table-cell")}>YoY</th>}
+                  <th className={cn(th, "hidden pr-0 text-left lg:table-cell print:table-cell")}>Trend</th>
                 </tr>
               </thead>
               <tbody>
@@ -329,25 +387,17 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                   const status = getKPIStatus(latestEntry?.value, { ...kpi, ...tgt });
                   const pct = getAchievementPct(latestEntry?.value, tgt.target, kpi.direction);
                   const cfg = statusConfig[status];
-                  const dot = statusConfig[status].solid;
 
                   return (
-                    <tr key={kpi.id} className="border-b border-border/50 hover:bg-muted/50">
-                      <td className="py-1.5 pr-3">
-                        <span className="font-medium">{kpi.name}</span>
+                    <tr key={kpi.id} className="border-b transition-colors duration-[var(--dur-micro)] last:border-b-0 hover:bg-paper-2 print:hover:bg-transparent">
+                      <td className="py-2.5 pr-4 font-semibold">{kpi.name}</td>
+                      <td className="num py-2.5 pr-4 text-right font-semibold whitespace-nowrap">
+                        {latestEntry ? formatValue(latestEntry.value, kpi.unit) : <Empty />}
                       </td>
-                      <td className="num text-right py-1.5 px-2 font-semibold">
-                        {latestEntry ? formatValue(latestEntry.value, kpi.unit) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="num text-right py-1.5 px-2 text-muted-foreground">{formatValue(tgt.target, kpi.unit)}</td>
-                      <td className="num text-right py-1.5 px-2">{pct !== null ? `${pct}%` : "—"}</td>
-                      <td className="py-1.5 pl-2">
-                        <span className="flex items-center justify-center gap-1">
-                          <span className={`inline-block w-2 h-2 rounded-full ${dot}`} />
-                          <span className="text-xs">{cfg.label}</span>
-                        </span>
-                      </td>
-                      <td className="py-1.5 px-2 text-center">
+                      <td className="num hidden py-2.5 pr-4 text-right whitespace-nowrap text-muted-foreground sm:table-cell print:table-cell">{formatValue(tgt.target, kpi.unit)}</td>
+                      <td className="num hidden py-2.5 pr-4 text-right whitespace-nowrap sm:table-cell print:table-cell">{pct !== null ? `${pct}%` : <Empty />}</td>
+                      <td className={cn("py-2.5 pr-4 whitespace-nowrap", cfg.color)}>{cfg.label}</td>
+                      <td className="hidden py-2.5 pr-4 text-right md:table-cell print:table-cell">
                         <ReportDelta
                           currentValue={latestEntry?.value ?? null}
                           compareEntry={comparisonMap.get(kpi.id)?.prevMonth ?? null}
@@ -357,7 +407,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                         />
                       </td>
                       {hasAnyYoY && (
-                        <td className="py-1.5 px-2 text-center">
+                        <td className="hidden py-2.5 pr-4 text-right md:table-cell print:table-cell">
                           <ReportDelta
                             currentValue={latestEntry?.value ?? null}
                             compareEntry={comparisonMap.get(kpi.id)?.prevYear ?? null}
@@ -366,7 +416,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
                           />
                         </td>
                       )}
-                      <td className="py-1.5 pl-2 text-center">
+                      <td className="hidden py-1.5 lg:table-cell print:table-cell">
                         <ReportSparkline entries={sparklineEntries} status={status} />
                       </td>
                     </tr>
@@ -380,19 +430,15 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       })}
 
       {/* Footer */}
-      <footer className="mt-8 pt-4 border-t border-border text-xs text-muted-foreground flex justify-between">
+      <footer className="flex flex-wrap justify-between gap-2 border-t pt-4 text-xs text-muted-foreground">
         <span>Executive KPI Report</span>
-        <span>Generated {printDate}</span>
+        <span>Generated <span className="num">{printDate}</span></span>
       </footer>
-
-      {/* Controls (screen only) */}
-      <div className="mt-8 flex gap-3 items-center print:hidden">
-        <PrintButton />
-        {selectedPeriod && <MarkdownExportDialog period={selectedPeriod} domains={domains.map((domain) => ({ slug: domain.slug, name: domain.name }))} />}
-        {isAdmin && <Link href={`/admin/reports/monthly?period=${selectedPeriod}`} className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90">Susun laporan bulanan</Link>}
-        <ReportPeriodSelector months={months} selectedPeriod={selectedPeriod ?? ""} />
-        <Link href="/" className="px-4 py-2 border text-sm rounded hover:bg-muted transition-colors">&larr; Overview</Link>
-      </div>
     </div>
   );
+}
+
+/** Nilai kosong: tanda hubung biasa, redup. */
+function Empty() {
+  return <span className="text-muted-foreground">-</span>;
 }

@@ -21,11 +21,11 @@ export function ExportButtons({ domainSlug }: ExportButtonsProps) {
   return (
     <div className="flex gap-2 print:hidden">
       <Button variant="outline" size="sm" onClick={handleCSV}>
-        <Download className="w-4 h-4 mr-1.5" />
+        <Download aria-hidden />
         Export CSV
       </Button>
       <Button variant="outline" size="sm" onClick={handlePrint}>
-        <Printer className="w-4 h-4 mr-1.5" />
+        <Printer aria-hidden />
         Print / PDF
       </Button>
     </div>

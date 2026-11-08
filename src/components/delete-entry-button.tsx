@@ -44,17 +44,19 @@ export function DeleteEntryButton({ id, kpiId, period }: DeleteEntryButtonProps)
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
+          type="button"
           variant="ghost"
-          size="icon"
-          className="text-destructive hover:text-destructive h-7 w-7"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-destructive"
           disabled={isPending}
+          aria-label={`Hapus data ${period}`}
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 aria-hidden />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Hapus Data Ini?</AlertDialogTitle>
+          <AlertDialogTitle>Hapus data ini?</AlertDialogTitle>
           <AlertDialogDescription>
             Data periode <span className="font-semibold text-foreground">{period}</span> akan dihapus permanen.
             Tindakan ini tidak dapat dibatalkan.
@@ -66,7 +68,7 @@ export function DeleteEntryButton({ id, kpiId, period }: DeleteEntryButtonProps)
             onClick={handleDelete}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            Ya, Hapus
+            Ya, hapus
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

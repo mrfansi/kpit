@@ -30,10 +30,12 @@ export function AttentionBar({ redKPIs, missingKPIs, period, canEdit = false }: 
   if (redKPIs.length === 0 && missingKPIs.length === 0) return null;
 
   return (
-    <div className="divide-y rounded-lg border">
+    // Sumur bertinta tanpa border: rung yang berbeda dari garis readout di atasnya
+    // dan dari tabel di bawahnya.
+    <div className="divide-y divide-border rounded-card bg-paper-2 px-4">
       {redKPIs.length > 0 && (
         <Row
-          icon={<AlertTriangle className={cn("h-4 w-4 shrink-0", statusConfig.red.color)} />}
+          icon={<AlertTriangle aria-hidden className={cn("size-4 shrink-0", statusConfig.red.color)} />}
           label={
             <span className={statusConfig.red.color}>
               <span className="num font-semibold">{redKPIs.length}</span> off track
@@ -44,11 +46,11 @@ export function AttentionBar({ redKPIs, missingKPIs, period, canEdit = false }: 
             <Link
               key={kpi.id}
               href={`/kpi/${kpi.id}`}
-              className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs underline-offset-2 hover:bg-accent hover:underline"
+              className="inline-flex items-baseline gap-1.5 rounded-sm px-1.5 py-0.5 text-sm underline-offset-4 transition-colors duration-[var(--dur-micro)] hover:bg-accent hover:underline"
             >
-              <span className="font-medium">{kpi.name}</span>
+              <span className="font-semibold">{kpi.name}</span>
               <span className="num text-muted-foreground">
-                {latestEntry ? formatValue(latestEntry.value, kpi.unit) : "—"}
+                {latestEntry ? formatValue(latestEntry.value, kpi.unit) : "-"}
                 {" / "}
                 {formatValue((effectiveTarget ?? kpi).target, kpi.unit)}
               </span>
@@ -57,7 +59,7 @@ export function AttentionBar({ redKPIs, missingKPIs, period, canEdit = false }: 
           {redKPIs.length > MAX_NAMED && (
             <Link
               href="/?status=red"
-              className="px-1.5 py-0.5 text-xs text-muted-foreground underline underline-offset-2"
+              className="px-1.5 py-0.5 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
             >
               +{redKPIs.length - MAX_NAMED} lainnya
             </Link>
@@ -67,7 +69,7 @@ export function AttentionBar({ redKPIs, missingKPIs, period, canEdit = false }: 
 
       {missingKPIs.length > 0 && (
         <Row
-          icon={<CircleDashed className="h-4 w-4 shrink-0 text-muted-foreground" />}
+          icon={<CircleDashed aria-hidden className="size-4 shrink-0 text-muted-foreground" />}
           label={
             <span className="text-muted-foreground">
               <span className="num font-semibold text-foreground">{missingKPIs.length}</span> belum
@@ -79,20 +81,20 @@ export function AttentionBar({ redKPIs, missingKPIs, period, canEdit = false }: 
             <Link
               key={kpi.id}
               href={`/kpi/${kpi.id}`}
-              className="rounded-md px-1.5 py-0.5 text-xs underline-offset-2 hover:bg-accent hover:underline"
+              className="rounded-sm px-1.5 py-0.5 text-sm underline-offset-4 transition-colors duration-[var(--dur-micro)] hover:bg-accent hover:underline"
             >
               {kpi.name}
             </Link>
           ))}
           {missingKPIs.length > MAX_NAMED && (
-            <span className="px-1.5 text-xs text-muted-foreground">
+            <span className="px-1.5 text-sm text-muted-foreground">
               +{missingKPIs.length - MAX_NAMED} lainnya
             </span>
           )}
           {canEdit && (
             <Link
               href={`/admin/input?period=${period}`}
-              className="ml-auto shrink-0 px-1.5 py-0.5 text-xs font-medium underline underline-offset-2"
+              className="ml-auto shrink-0 px-1.5 py-0.5 text-sm font-semibold underline underline-offset-4"
             >
               Isi sekaligus
             </Link>
@@ -113,12 +115,12 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
-      <span className="flex shrink-0 items-center gap-1.5">
-        {icon}
+    <div className="flex flex-col gap-x-4 gap-y-1.5 py-3 text-sm sm:flex-row sm:items-baseline">
+      <span className="flex shrink-0 items-center gap-2 sm:w-36">
+        <span className="self-center">{icon}</span>
         {label}
       </span>
-      <span className="flex flex-1 flex-wrap items-center gap-1">{children}</span>
+      <span className="flex flex-1 flex-wrap items-baseline gap-x-1 gap-y-1">{children}</span>
     </div>
   );
 }

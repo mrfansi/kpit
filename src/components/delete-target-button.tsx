@@ -30,13 +30,21 @@ export function DeleteTargetButton({ id, kpiId, period }: { id: number; kpiId: n
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" disabled={isPending}>
-          <Trash2 className="w-4 h-4" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="text-destructive hover:text-destructive"
+          aria-label="Hapus target"
+          title="Hapus target"
+          disabled={isPending}
+        >
+          <Trash2 aria-hidden />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Hapus Target?</AlertDialogTitle>
+          <AlertDialogTitle>Hapus target?</AlertDialogTitle>
           <AlertDialogDescription>
             Target override untuk periode <span className="font-semibold text-foreground">{period}</span> akan dihapus.
             KPI akan kembali menggunakan target default.
@@ -44,8 +52,8 @@ export function DeleteTargetButton({ id, kpiId, period }: { id: number; kpiId: n
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Batal</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Ya, Hapus
+          <AlertDialogAction onClick={handleDelete} variant="destructive">
+            Ya, hapus
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

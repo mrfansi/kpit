@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { CheckCircle2, Save } from "lucide-react";
 import { formatValue, listLastNMonths } from "@/lib/period";
@@ -71,12 +70,12 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
   const filledCount = kpis.filter((k) => values[k.id] !== undefined && values[k.id] !== "").length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3 flex-wrap">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Periode:</span>
+          <label htmlFor="bulk-period" className="text-sm text-muted-foreground">Periode</label>
           <Select value={initialPeriod} onValueChange={handlePeriodChange}>
-            <SelectTrigger className="w-44 h-8 text-sm">
+            <SelectTrigger id="bulk-period" className="w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -86,101 +85,122 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2 ml-auto">
+        <p className="text-sm text-muted-foreground">
+          <span className="num font-semibold text-foreground">{filledCount}/{kpis.length}</span> diisi
+        </p>
+      </div>
+
+      {/* Buku besar: tabel polos, satu KPI per baris, sel isian di kolom angka. */}
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="pl-0">KPI</TableHead>
+            <TableHead className="hidden md:table-cell">Domain</TableHead>
+            <TableHead className="hidden md:table-cell">Unit</TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Target</TableHead>
+            <TableHead className="w-36 text-right">Nilai aktual</TableHead>
+            <TableHead className="hidden w-56 pr-0 sm:table-cell">Catatan</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {kpis.map((kpi) => {
+            const domain = domainMap[kpi.domainId];
+            const isEmpty = values[kpi.id] === undefined || values[kpi.id] === "";
+            return (
+              <TableRow key={kpi.id}>
+                <TableCell className="py-2 pl-0 whitespace-normal">
+                  <span className="font-semibold">{kpi.name}</span>
+                  {/* Penanda netral per baris: mana yang masih kosong, tanpa hue. */}
+                  {isEmpty && <span className="mt-0.5 block text-xs text-muted-foreground">belum diisi</span>}
+                  {/* Di ponsel kolom Catatan disembunyikan; isiannya pindah ke bawah nama. */}
+                  <Input
+                    type="text"
+                    placeholder="catatan…"
+                    aria-label={`Catatan ${kpi.name}`}
+                    className="mt-2 w-full sm:hidden"
+                    value={notes[kpi.id] ?? ""}
+                    onChange={(e) => setNotes((prev) => ({ ...prev, [kpi.id]: e.target.value }))}
+                  />
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    {/* Warna identitas domain (bukan status), sebagai kunci kecil persegi. */}
+                    <span aria-hidden className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: domain?.color }} />
+                    {domain?.name}
+                  </span>
+                </TableCell>
+                <TableCell className="hidden text-muted-foreground md:table-cell">{kpi.unit}</TableCell>
+                <TableCell className="num hidden text-right text-muted-foreground sm:table-cell">
+                  {formatValue(kpi.target, kpi.unit)}
+                </TableCell>
+                <TableCell className="align-top sm:align-middle">
+                  <Input
+                    type="number"
+                    step="any"
+                    placeholder="-"
+                    aria-label={`Nilai aktual ${kpi.name}`}
+                    /* .num + rata kanan supaya digit yang diketik sejajar dengan
+                       kolom Target di sebelahnya. */
+                    className="num w-full min-w-20 text-right"
+                    value={values[kpi.id] ?? ""}
+                    onChange={(e) => setValues((prev) => ({ ...prev, [kpi.id]: e.target.value }))}
+                  />
+                </TableCell>
+                <TableCell className="hidden pr-0 sm:table-cell">
+                  <Input
+                    type="text"
+                    placeholder="catatan…"
+                    aria-label={`Catatan ${kpi.name}`}
+                    className="w-full min-w-40"
+                    value={notes[kpi.id] ?? ""}
+                    onChange={(e) => setNotes((prev) => ({ ...prev, [kpi.id]: e.target.value }))}
+                  />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+
+      {/* Ujung tabel: validasi (sekunder) di kiri, satu aksi utama di kanan. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4 border-t pt-4">
+        <div className="min-w-0 flex-1">
+          <DataEntryValidator
+            period={initialPeriod}
+            getEntries={() =>
+              kpis
+                .filter((kpi) => values[kpi.id] !== undefined && values[kpi.id] !== "")
+                .map((kpi) => {
+                  const recentValues = existingEntries
+                    .filter((e) => e.kpiId === kpi.id)
+                    .map((e) => e.value);
+                  return {
+                    kpiId: String(kpi.id),
+                    kpiName: kpi.name,
+                    unit: kpi.unit,
+                    inputValue: parseFloat(values[kpi.id]),
+                    recentValues,
+                    target: kpi.target,
+                    direction: kpi.direction,
+                  };
+                })
+                .filter((e) => !isNaN(e.inputValue))
+            }
+          />
+        </div>
+        <div className="flex items-center gap-3">
           {savedAt && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-              Disimpan {savedAt}
+            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <CheckCircle2 aria-hidden className="size-3.5 text-success" />
+              Disimpan <span className="num">{savedAt}</span>
             </span>
           )}
-          <Badge variant="secondary" className="num">{filledCount}/{kpis.length} diisi</Badge>
-          <Button size="sm" onClick={handleSave} disabled={isPending}>
-            <Save className="w-3.5 h-3.5 mr-1.5" />
-            {isPending ? "Menyimpan..." : "Simpan Semua"}
+          <Button type="button" onClick={handleSave} disabled={isPending}>
+            <Save aria-hidden />
+            {isPending ? "Menyimpan…" : "Simpan semua"}
           </Button>
         </div>
       </div>
-
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>KPI</TableHead>
-              <TableHead>Domain</TableHead>
-              <TableHead>Unit</TableHead>
-              <TableHead className="text-right">Target</TableHead>
-              <TableHead className="w-36">Nilai Aktual</TableHead>
-              <TableHead className="w-48">Catatan</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {kpis.map((kpi) => {
-              const domain = domainMap[kpi.domainId];
-              const isFilled = values[kpi.id] !== undefined && values[kpi.id] !== "";
-              return (
-                <TableRow key={kpi.id} className={isFilled ? "bg-success-soft/50" : ""}>
-                  <TableCell className="font-medium">{kpi.name}</TableCell>
-                  <TableCell>
-                    <span className="text-xs flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: domain?.color }} />
-                      {domain?.name}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">{kpi.unit}</TableCell>
-                  <TableCell className="num text-right text-sm text-muted-foreground">
-                    {formatValue(kpi.target, kpi.unit)}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="—"
-                      /* .num supaya digit yang diketik sejajar dengan kolom
-                         Target di sebelahnya — tanpa itu, dua kolom angka
-                         bersebelahan pakai metrik font yang berbeda. */
-                      className="num h-7 text-sm w-full"
-                      value={values[kpi.id] ?? ""}
-                      onChange={(e) => setValues((prev) => ({ ...prev, [kpi.id]: e.target.value }))}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="text"
-                      placeholder="catatan..."
-                      className="h-7 text-sm w-full"
-                      value={notes[kpi.id] ?? ""}
-                      onChange={(e) => setNotes((prev) => ({ ...prev, [kpi.id]: e.target.value }))}
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-
-      <DataEntryValidator
-        period={initialPeriod}
-        getEntries={() =>
-          kpis
-            .filter((kpi) => values[kpi.id] !== undefined && values[kpi.id] !== "")
-            .map((kpi) => {
-              const recentValues = existingEntries
-                .filter((e) => e.kpiId === kpi.id)
-                .map((e) => e.value);
-              return {
-                kpiId: String(kpi.id),
-                kpiName: kpi.name,
-                unit: kpi.unit,
-                inputValue: parseFloat(values[kpi.id]),
-                recentValues,
-                target: kpi.target,
-                direction: kpi.direction,
-              };
-            })
-            .filter((e) => !isNaN(e.inputValue))
-        }
-      />
     </div>
   );
 }

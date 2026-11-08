@@ -21,15 +21,19 @@ interface MarkdownExportDialogProps {
 
 type MarkdownExportScope = "selected" | "all";
 
+// Daftar radio: baris setinggi kontrol (36px), pilihan ditandai radio, bukan blok terisi.
+const optionRow = "flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-2 text-sm transition-colors duration-[var(--dur-micro)] hover:bg-accent";
+const radio = "size-4 shrink-0 accent-foreground";
+
 const formatOptions: { value: MarkdownExportFormat; label: string }[] = [
-  { value: "full", label: "Full AI Report" },
-  { value: "brief", label: "Executive Brief" },
-  { value: "presentation", label: "Presentation Prompt" },
+  { value: "full", label: "Full AI report" },
+  { value: "brief", label: "Executive brief" },
+  { value: "presentation", label: "Presentation prompt" },
 ];
 
 const scopeOptions: { value: MarkdownExportScope; label: string; description: string }[] = [
-  { value: "selected", label: "Selected Period", description: "Export the report for the current period only." },
-  { value: "all", label: "All Periods", description: "Export all KPI historical entries plus timeline projects." },
+  { value: "selected", label: "Selected period", description: "Export the report for the current period only." },
+  { value: "all", label: "All periods", description: "Export all KPI historical entries plus timeline projects." },
 ];
 
 export function MarkdownExportDialog({ period, domains = [], selectedDomain = "" }: MarkdownExportDialogProps) {
@@ -75,14 +79,14 @@ export function MarkdownExportDialog({ period, domains = [], selectedDomain = ""
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <FileText className="w-4 h-4 mr-1.5" />
+        <Button type="button" variant="outline" size="sm">
+          <FileText aria-hidden />
           Export Markdown
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Export Markdown Report</DialogTitle>
+          <DialogTitle>Export Markdown report</DialogTitle>
           <DialogDescription>
             {format === "presentation"
               ? "Pilih satu divisi untuk prompt presentasi dari laporan bulanan tersimpan."
@@ -90,58 +94,60 @@ export function MarkdownExportDialog({ period, domains = [], selectedDomain = ""
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Format</p>
+        <fieldset className="grid gap-1">
+          <legend className="mb-1.5 text-sm text-muted-foreground">Format</legend>
           {formatOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setFormat(option.value)}
-              className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                format === option.value
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border hover:bg-muted"
-              }`}
-            >
+            <label key={option.value} className={optionRow}>
+              <input
+                type="radio"
+                name="markdown-export-format"
+                value={option.value}
+                checked={format === option.value}
+                onChange={() => setFormat(option.value)}
+                className={radio}
+              />
               {option.label}
-            </button>
+            </label>
           ))}
-        </div>
+        </fieldset>
 
         {format === "presentation" ? (
-          <label className="grid gap-2 text-sm font-medium">Domain presentasi
-            <select className="rounded-md border border-input bg-background px-3 py-2" value={domain} onChange={(event) => setDomain(event.target.value)}>
+          <label className="grid gap-1.5 text-sm text-muted-foreground">Domain presentasi
+            <select className="h-9 rounded-md border border-input bg-card px-3 text-sm text-foreground outline-2 outline-offset-[-3px] outline-transparent focus-visible:outline-ring" value={domain} onChange={(event) => setDomain(event.target.value)}>
               <option value="">Pilih domain</option>
               {domains.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
             </select>
           </label>
         ) : !selectedDomain && (
-          <div className="grid gap-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Scope</p>
+          <fieldset className="grid gap-1">
+            <legend className="mb-1.5 text-sm text-muted-foreground">Scope</legend>
             {scopeOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setScope(option.value)}
-                className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                  scope === option.value ? "border-foreground bg-foreground text-background" : "border-border hover:bg-muted"
-                }`}
-              >
-                <span className="block font-medium">{option.label}</span>
-                <span className={`block text-xs ${scope === option.value ? "text-background/70" : "text-muted-foreground"}`}>{option.description}</span>
-              </button>
+              <label key={option.value} className="flex min-h-9 cursor-pointer items-start gap-2.5 rounded-md px-2 py-2 text-sm transition-colors duration-[var(--dur-micro)] hover:bg-accent">
+                <input
+                  type="radio"
+                  name="markdown-export-scope"
+                  value={option.value}
+                  checked={scope === option.value}
+                  onChange={() => setScope(option.value)}
+                  className={`${radio} mt-0.5`}
+                />
+                <span>
+                  <span className="block">{option.label}</span>
+                  <span className="block text-sm text-muted-foreground">{option.description}</span>
+                </span>
+              </label>
             ))}
-          </div>
+          </fieldset>
         )}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={copyMarkdown} disabled={isCopying || (format === "presentation" && !domain)}>
-            {copied ? <Check className="w-4 h-4 mr-1.5" /> : <Clipboard className="w-4 h-4 mr-1.5" />}
-            {copied ? "Copied" : format === "presentation" ? "Copy Prompt" : "Copy Markdown"}
+          <Button type="button" variant="outline" onClick={copyMarkdown} disabled={isCopying || (format === "presentation" && !domain)}>
+            {copied ? <Check aria-hidden /> : <Clipboard aria-hidden />}
+            {copied ? "Copied" : format === "presentation" ? "Copy prompt" : "Copy Markdown"}
           </Button>
-          <Button onClick={downloadMarkdown} disabled={format === "presentation" && !domain}>
-            <Download className="w-4 h-4 mr-1.5" />
+          <Button type="button" onClick={downloadMarkdown} disabled={format === "presentation" && !domain}>
+            <Download aria-hidden />
             Download .md
           </Button>
         </div>

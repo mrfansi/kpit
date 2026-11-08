@@ -8,7 +8,7 @@ export function LoadingSpinner({ className }: LoadingSpinnerProps) {
   return (
     <span
       className={cn(
-        "inline-block w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin",
+        "keep-motion inline-block size-3 rounded-full border-2 border-border border-t-muted-foreground animate-spin",
         className
       )}
       aria-hidden="true"

@@ -22,7 +22,7 @@ export function PeriodSelector({ defaultValue }: PeriodSelectorProps) {
 
   return (
     <Select value={current} onValueChange={handleChange}>
-      <SelectTrigger className="w-[180px]">
+      <SelectTrigger size="sm" className="num w-44" aria-label="Periode">
         <SelectValue placeholder="Pilih periode" />
       </SelectTrigger>
       <SelectContent>

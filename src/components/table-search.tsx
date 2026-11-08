@@ -3,6 +3,7 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,21 +43,25 @@ export function TableSearch({ placeholder, paramName = "q", className }: TableSe
 
   return (
     <div className={cn("relative max-w-xs flex-1", className)}>
-      <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
+        aria-label={placeholder}
         placeholder={placeholder}
         defaultValue={currentValue}
         onChange={(e) => updateParam(e.target.value)}
-        className="h-8 pl-8 text-sm"
+        className="pl-9"
       />
       {currentValue && (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={() => updateParam("")}
           aria-label="Hapus pencarian"
-          className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground"
         >
-          <X className="h-3.5 w-3.5" />
-        </button>
+          <X aria-hidden className="size-3.5" />
+        </Button>
       )}
     </div>
   );

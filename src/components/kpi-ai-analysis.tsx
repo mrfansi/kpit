@@ -65,18 +65,21 @@ export function KPIAIAnalysis({ requestData }: KPIAIAnalysisProps) {
   }
 
   return (
-    <div className="mt-6 p-4 bg-muted rounded-lg border border-border">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-bold text-sm">Analisis AI</h3>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Analisis AI</h2>
         <div className="flex items-center gap-2">
           {analysis && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setExpanded(!expanded)}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              aria-expanded={expanded}
+              className="text-muted-foreground"
             >
               {expanded ? "Tutup" : "Buka"}
-            </button>
+            </Button>
           )}
           <Button
             type="button"
@@ -84,12 +87,12 @@ export function KPIAIAnalysis({ requestData }: KPIAIAnalysisProps) {
             size="sm"
             onClick={handleGenerate}
             disabled={loading || !hasEnoughData}
-            className="print:hidden text-xs"
+            className="print:hidden"
           >
             {loading ? (
               <>
-                <LoadingSpinner className="mr-1" />
-                Menganalisis...
+                <LoadingSpinner />
+                Menganalisis…
               </>
             ) : analysis ? (
               "Regenerate"
@@ -101,23 +104,23 @@ export function KPIAIAnalysis({ requestData }: KPIAIAnalysisProps) {
       </div>
 
       {!hasEnoughData && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Minimal 2 periode data diperlukan untuk analisis.
         </p>
       )}
 
-      {error && <p className="text-destructive text-xs mb-2">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {analysis && expanded && (
-        <div className="text-sm text-foreground space-y-2">
+        <div className="max-w-prose space-y-3 text-base">
           {analysis
             .split("\n\n")
             .filter(Boolean)
             .map((paragraph, i) => (
               <p key={i}>{paragraph}</p>
             ))}
-          <p className="text-xs text-muted-foreground mt-2 print:hidden">
-            Dihasilkan oleh AI — verifikasi data sebelum mengambil keputusan
+          <p className="text-xs text-muted-foreground print:hidden">
+            Dihasilkan oleh AI. Verifikasi data sebelum mengambil keputusan
           </p>
         </div>
       )}

@@ -41,37 +41,49 @@ export function KPIFilterBar({ defaultQ = "", defaultStatus = "" }: KPIFilterBar
   const currentStatus = searchParams.get("status") ?? defaultStatus;
 
   return (
-    <div className="flex flex-col sm:flex-row gap-2 print:hidden">
-      <div className="relative flex-1 max-w-xs">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center print:hidden">
+      <div className="relative w-full sm:w-64 sm:shrink-0">
+        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Cari KPI..."
+          aria-label="Cari KPI"
+          placeholder="Cari KPI…"
           defaultValue={currentQ}
           onChange={(e) => updateParams("q", e.target.value)}
-          className="pl-8 h-8 text-sm"
+          className="pl-9"
         />
         {currentQ && (
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
             onClick={() => updateParams("q", "")}
             aria-label="Hapus pencarian"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground"
           >
-            <X className="w-3.5 h-3.5" />
-          </button>
+            <X aria-hidden className="size-3.5" />
+          </Button>
         )}
       </div>
-      <div className="flex gap-1">
-        {STATUS_OPTIONS.map((opt) => (
-          <Button
-            key={opt.value}
-            size="sm"
-            variant={currentStatus === opt.value ? "default" : "outline"}
-            className="text-xs h-8 px-2.5"
-            onClick={() => updateParams("status", opt.value)}
-          >
-            {opt.label}
-          </Button>
-        ))}
+      {/* Kontrol bersegmen: satu bingkai, pilihan aktif diangkat ke permukaan. */}
+      <div role="group" aria-label="Filter status" className="inline-flex w-fit max-w-full shrink-0 flex-wrap gap-0.5 rounded-md border bg-card p-0.5">
+        {STATUS_OPTIONS.map((opt) => {
+          const active = currentStatus === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={active}
+              className={
+                active
+                  ? "h-8 shrink-0 rounded-sm bg-secondary px-2.5 text-sm font-semibold whitespace-nowrap text-foreground"
+                  : "h-8 shrink-0 rounded-sm px-2.5 text-sm whitespace-nowrap text-muted-foreground transition-colors duration-[var(--dur-micro)] hover:bg-accent hover:text-foreground"
+              }
+              onClick={() => updateParams("status", opt.value)}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

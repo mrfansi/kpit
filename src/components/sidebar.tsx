@@ -35,14 +35,17 @@ export function Sidebar({ domains, user }: SidebarProps) {
   const isAdmin = canAccessAdminRoute(user?.role ?? undefined);
 
   return (
-    <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col border-r bg-sidebar print:hidden">
-      {/* Logo */}
-      <div className="flex items-center gap-2 border-b px-4 py-4">
-        <BarChart2 className="h-5 w-5 text-primary" />
-        <span className="text-sm font-semibold">KPI Dashboard</span>
+    // fixed, bukan sticky: kepala Gantt memakai sticky top-0 di dalam scroller-nya sendiri,
+    // dan dua sticky top-0 di satu layar saling menimpa (gate 56). Ruangnya dipesan wrapper di layout.
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r bg-sidebar print:hidden">
+      {/* Wordmark: keluarga yang sama, potongan terlebar dan terberat. */}
+      <div className="px-5 pt-5 pb-4">
+        <span className="font-display text-lg leading-none font-extrabold tracking-tight [font-stretch:125%]">
+          KPI Dashboard
+        </span>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
+      <nav aria-label="Navigasi utama" className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
         <NavItem href="/" icon={Home} label="Overview" active={isOverviewActive(pathname)} />
         <NavItem href="/timeline" icon={GanttChart} label="Timeline" active={pathname.startsWith("/timeline")} />
 
@@ -68,7 +71,7 @@ export function Sidebar({ domains, user }: SidebarProps) {
             terdorong masuk, dan satu-satunya section yang dikotaki jadi terbaca
             seperti popover yang nyasar alih-alih bagian dari navigasi. */}
         {isAdmin && (
-          <div className="mt-3 space-y-1 border-t pt-1">
+          <div className="mt-4 space-y-0.5 border-t pt-1">
             <SectionLabel icon={ShieldCheck}>Admin</SectionLabel>
             <NavItem href="/admin/kpi" icon={Settings} label="Kelola KPI" active={pathname.startsWith("/admin/kpi")} />
             <NavItem href="/admin/domain" icon={Globe} label="Kelola Domain" active={pathname.startsWith("/admin/domain")} />
@@ -84,28 +87,29 @@ export function Sidebar({ domains, user }: SidebarProps) {
         )}
       </nav>
 
-      {/* Footer: theme toggle + user info */}
-      <div className="shrink-0 px-3 py-3 border-t space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Tema</span>
-          <ThemeToggle />
-        </div>
+      {/* Kaki sidebar: identitas, asisten, akun, tema, keluar. */}
+      <div className="shrink-0 space-y-0.5 border-t px-3 py-3">
         {user && (
-          <div className="space-y-1.5 pt-2 border-t">
-            <div className="flex items-center gap-2 px-1 py-1.5">
-              <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground truncate">{user.name ?? user.email}</span>
+          <>
+            <div className="flex items-center gap-2.5 px-2.5 pt-1 pb-2">
+              <User aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+              <span className="truncate text-sm font-semibold">{user.name ?? user.email}</span>
             </div>
             <AIChat />
             <Link
               href="/admin/account"
-              className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+              aria-current={pathname === "/admin/account" ? "page" : undefined}
+              className="flex h-9 items-center rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-[var(--dur-micro)] hover:bg-sidebar-accent hover:text-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-foreground"
             >
               Akun Saya
             </Link>
-            <LogoutButton />
-          </div>
+          </>
         )}
+        <div className="flex h-9 items-center justify-between px-2.5">
+          <span className="text-sm text-muted-foreground">Tema</span>
+          <ThemeToggle />
+        </div>
+        {user && <LogoutButton />}
       </div>
     </aside>
   );
@@ -113,11 +117,9 @@ export function Sidebar({ domains, user }: SidebarProps) {
 
 function SectionLabel({ children, icon: Icon }: { children: React.ReactNode; icon?: React.ElementType }) {
   return (
-    <div className="flex items-center gap-1.5 px-2 pt-3 pb-1">
-      {Icon && <Icon className="size-3 shrink-0 text-muted-foreground" />}
-      <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-        {children}
-      </span>
+    <div className="flex items-center gap-1.5 px-2.5 pt-5 pb-1.5 text-xs text-muted-foreground">
+      {Icon && <Icon aria-hidden className="size-3.5 shrink-0" />}
+      <span>{children}</span>
     </div>
   );
 }
@@ -140,17 +142,16 @@ function NavItem({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        // Item aktif ditandai rail kiri, bukan blok primary solid — konsisten
-        // dengan rail status di kartu KPI, dan tidak berebut perhatian dengan
-        // warna status yang justru harus menonjol.
-        "relative flex items-center gap-2.5 rounded-md py-2 pr-2 pl-3 text-sm transition-colors",
-        "before:absolute before:top-1.5 before:bottom-1.5 before:left-0 before:w-0.5 before:rounded-full before:content-['']",
+        // Item aktif ditandai rail kiri bertinta + permukaan, bukan blok primary solid,
+        // supaya tidak berebut perhatian dengan warna status yang justru harus menonjol.
+        "relative flex h-9 items-center gap-2.5 rounded-md pr-2 pl-2.5 text-sm transition-colors duration-[var(--dur-micro)]",
+        "before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-full before:content-['']",
         active
-          ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground before:bg-primary"
-          : "text-muted-foreground before:bg-transparent hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+          ? "bg-sidebar-accent font-semibold text-foreground before:bg-foreground"
+          : "text-muted-foreground before:bg-transparent hover:bg-sidebar-accent hover:text-foreground"
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" style={color && !active ? { color } : undefined} />
+      <Icon aria-hidden className="size-4 shrink-0" style={color && !active ? { color } : undefined} />
       <span className="truncate">{label}</span>
     </Link>
   );

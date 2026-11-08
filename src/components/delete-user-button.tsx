@@ -37,23 +37,25 @@ export function DeleteUserButton({ id, name, isCurrentUser }: {
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
         <Button
+          type="button"
           variant="ghost"
-          size="icon"
-          className="text-destructive hover:text-destructive"
+          size="icon-sm"
+          className="text-destructive"
+          aria-label={`Hapus user ${name}`}
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 aria-hidden />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Hapus User</AlertDialogTitle>
+          <AlertDialogTitle>Hapus user</AlertDialogTitle>
           <AlertDialogDescription>
             Apakah Anda yakin ingin menghapus user &quot;{name}&quot;? Tindakan ini tidak dapat dibatalkan.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Batal</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <AlertDialogAction variant="destructive" onClick={handleDelete}>
             Hapus
           </AlertDialogAction>
         </AlertDialogFooter>

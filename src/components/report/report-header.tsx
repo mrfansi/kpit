@@ -11,24 +11,26 @@ export function ReportHeader({ projectCount, averageProgress }: ReportHeaderProp
   const generatedAt = format(new Date(), "dd MMMM yyyy, HH:mm", { locale: idLocale });
 
   return (
-    <div className="flex items-start justify-between mb-8">
-      <div>
-        <h1 className="text-2xl font-bold">Timeline Report</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Dibuat: {generatedAt}
-        </p>
-        <div className="flex gap-4 mt-3 text-sm">
-          <div>
-            <span className="text-muted-foreground">Total Project:</span>{" "}
-            <span className="font-medium">{projectCount}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Rata-rata Progress:</span>{" "}
-            <span className="font-medium">{averageProgress}%</span>
-          </div>
+    <div className="mb-10 space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">Timeline Report</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Dibuat: <span className="num">{generatedAt}</span>
+          </p>
         </div>
+        <ReportPrintButton />
       </div>
-      <ReportPrintButton />
+      <dl className="flex flex-wrap gap-x-10 gap-y-4">
+        <div>
+          <dt className="text-sm text-muted-foreground">Total Project:</dt>
+          <dd className="num mt-1 text-3xl font-semibold leading-none">{projectCount}</dd>
+        </div>
+        <div>
+          <dt className="text-sm text-muted-foreground">Rata-rata Progress:</dt>
+          <dd className="num mt-1 text-3xl font-semibold leading-none">{averageProgress}%</dd>
+        </div>
+      </dl>
     </div>
   );
 }

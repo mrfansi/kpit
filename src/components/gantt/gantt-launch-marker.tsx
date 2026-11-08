@@ -2,6 +2,7 @@
 
 import { format, parseISO } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { Pencil, Rocket } from "lucide-react";
 
 interface GanttLaunchMarkerProps {
   x: number;
@@ -31,23 +32,19 @@ export function GanttLaunchMarker({
           --success adalah token TEKS yang sengaja digelapkan untuk kontras 4.5:1
           dan terlihat kusam sebagai garis. */}
       <div
-        className="absolute top-0 w-0.5 h-full"
+        className="absolute top-0 w-px h-full"
         style={{
           background:
             "repeating-linear-gradient(to bottom, var(--success-fill) 0px, var(--success-fill) 4px, transparent 4px, transparent 8px)",
         }}
       />
       {/* Badge label. Pola chip baku: latar -soft + teks token penuh, sama
-          seperti statusConfig.green. Sebelumnya bg-success + text-white — putih
-          di atas token teks, dan di dark mode --success naik ke oklch 0.76
-          sehingga labelnya nyaris hilang. */}
-      <div className="absolute top-0 left-1 bg-success-soft text-success text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap flex items-center gap-0.5">
-        <span>🚀</span>
+          seperti statusConfig.green. */}
+      <div className="num absolute top-0 left-1 flex items-center gap-1 rounded-sm bg-success-soft px-1.5 text-xs leading-5 text-success whitespace-nowrap">
+        <Rocket aria-hidden className="size-3" />
         <span>{label}</span>
         {isManualOverride && (
-          <span className="opacity-70" title="Manual override">
-            ✏️
-          </span>
+          <Pencil role="img" aria-label="Manual override" className="size-3" />
         )}
       </div>
     </div>

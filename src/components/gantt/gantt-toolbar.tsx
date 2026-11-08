@@ -29,20 +29,23 @@ export function GanttToolbar({
   onAddProject,
 }: GanttToolbarProps) {
   return (
-    <div className="flex items-center justify-between gap-2 px-4 py-3 border-b bg-background shrink-0">
-      <div className="flex items-center gap-2">
-        <h1 className="text-sm font-semibold mr-2">Timeline</h1>
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b bg-background px-4 py-4 lg:px-6">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">Timeline</h1>
 
-        <div className="flex rounded-md border overflow-hidden">
+        {/* Pilihan skala, bukan aksi: terpilih = permukaan tinta tipis, bukan isian primary. */}
+        <div role="group" aria-label="Skala" className="flex h-8 overflow-hidden rounded-md border">
           {viewModes.map((mode) => (
             <button
+              type="button"
               key={mode.value}
+              aria-pressed={viewMode === mode.value}
               onClick={() => onViewModeChange(mode.value)}
               className={cn(
-                "px-2.5 py-1 text-xs transition-colors",
+                "px-3 text-sm transition-colors duration-[var(--dur-micro)]",
                 viewMode === mode.value
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent text-muted-foreground"
+                  ? "bg-secondary font-semibold text-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
               {mode.label}
@@ -50,49 +53,42 @@ export function GanttToolbar({
           ))}
         </div>
 
-        <div className="flex items-center gap-0.5">
-          {/* size="icon" default (size-9=36px) dipakai apa adanya — target sentuh minimal, jangan diperkecil lagi. */}
+        <div className="flex items-center gap-1">
           <Button
+            type="button"
             variant="ghost"
-            size="icon"
+            size="icon-sm"
+            aria-label="Geser ke kiri"
             onClick={() => onPan("left")}
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft aria-hidden />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 text-xs"
-            onClick={onJumpToToday}
-          >
-            <CalendarDays className="w-3.5 h-3.5 mr-1" />
+          <Button type="button" variant="ghost" size="sm" onClick={onJumpToToday}>
+            <CalendarDays aria-hidden />
             Hari ini
           </Button>
           <Button
+            type="button"
             variant="ghost"
-            size="icon"
+            size="icon-sm"
+            aria-label="Geser ke kanan"
             onClick={() => onPan("right")}
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight aria-hidden />
           </Button>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Link href="/timeline/report" target="_blank">
-          <Button variant="outline" size="sm" className="h-9 text-xs">
-            <FileText className="w-3.5 h-3.5 mr-1" />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/timeline/report" target="_blank">
+            <FileText aria-hidden />
             Report
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         {canEdit && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 text-xs"
-            onClick={onAddProject}
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" />
+          <Button type="button" size="sm" onClick={onAddProject}>
+            <Plus aria-hidden />
             Project
           </Button>
         )}

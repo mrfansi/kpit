@@ -28,11 +28,12 @@ interface TimelineRiskAssessmentProps {
   }[];
 }
 
+// Chip baku: latar -soft + teks token penuh, tanpa bingkai.
 const riskColors = {
-  low: "bg-success-soft text-success border-success",
-  medium: "bg-warning-soft text-warning border-warning",
-  high: "bg-danger-soft text-danger border-danger",
-  critical: "bg-danger-soft text-danger border-danger",
+  low: "bg-success-soft text-success",
+  medium: "bg-warning-soft text-warning",
+  high: "bg-danger-soft text-danger",
+  critical: "bg-danger-soft text-danger",
 };
 
 const riskLabels = {
@@ -83,51 +84,50 @@ export function TimelineRiskAssessment(props: TimelineRiskAssessmentProps) {
   }
 
   return (
-    <div className="mt-4">
+    <div className="space-y-3">
       <Button
         type="button"
         variant="outline"
         size="sm"
         onClick={handleAnalyze}
         disabled={loading}
-        className="text-xs"
       >
         {loading ? (
           <>
-            <LoadingSpinner className="mr-1" />
-            Menganalisis...
+            <LoadingSpinner />
+            Menganalisis…
           </>
         ) : assessment ? (
-          "Analisis Ulang"
+          "Analisis ulang"
         ) : (
-          "Analisis Risiko"
+          "Analisis risiko"
         )}
       </Button>
 
-      {error && <p className="text-destructive text-xs mt-2">{error}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
       {assessment && (
-        <div className="mt-3 p-3 bg-muted rounded border border-border">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="space-y-3 rounded-card bg-paper-2 p-4">
+          <div className="flex flex-wrap items-center gap-3">
             <span
-              className={`text-xs px-2 py-0.5 rounded border font-medium ${riskColors[assessment.riskLevel]}`}
+              className={`rounded-sm px-1.5 text-sm font-semibold leading-6 ${riskColors[assessment.riskLevel]}`}
             >
               Risiko: {riskLabels[assessment.riskLevel]}
             </span>
             <span
-              className={`text-xs ${assessment.onTrack ? "text-success" : "text-danger"}`}
+              className={`text-sm ${assessment.onTrack ? "text-success" : "text-danger"}`}
             >
               {assessment.onTrack ? "On Track" : "Off Track"}
             </span>
           </div>
 
           {assessment.estimatedCompletion && (
-            <p className="text-xs text-muted-foreground mb-2">
-              Estimasi selesai: {assessment.estimatedCompletion}
+            <p className="text-sm text-muted-foreground">
+              Estimasi selesai: <span className="num text-foreground">{assessment.estimatedCompletion}</span>
             </p>
           )}
 
-          <div className="text-sm text-foreground space-y-2">
+          <div className="max-w-[65ch] space-y-3 text-base text-foreground">
             {assessment.analysis
               .split("\n\n")
               .filter(Boolean)
@@ -136,8 +136,8 @@ export function TimelineRiskAssessment(props: TimelineRiskAssessmentProps) {
               ))}
           </div>
 
-          <p className="text-xs text-muted-foreground mt-2">
-            Dihasilkan oleh AI — verifikasi sebelum mengambil keputusan
+          <p className="text-xs text-muted-foreground">
+            Dihasilkan oleh AI: verifikasi sebelum mengambil keputusan
           </p>
         </div>
       )}

@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { auditLogs } from "@/lib/db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,78 +44,74 @@ export default async function AdminAuditPage({ searchParams }: Props) {
   const isFiltered = Boolean(filterAction || filterEntity);
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl space-y-6">
       <PageHeader
-        title={<><ClipboardList className="w-6 h-6" /> Audit Log</>}
-        description={`${totalCount} total aktivitas`}
+        title={<><ClipboardList aria-hidden className="size-5 text-muted-foreground" /> Audit Log</>}
+        description={<><span className="num">{totalCount}</span> total aktivitas</>}
       />
-      <AuditFilters actions={[...AUDIT_ACTIONS]} entities={[...AUDIT_ENTITIES]} />
-      <Card>
-        <CardContent className="pt-4">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Waktu</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Aksi</TableHead>
-                  <TableHead>Entitas</TableHead>
-                  <TableHead>Detail</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5}>
-                      <EmptyState
-                        compact
-                        title={unfilteredCount === 0 ? "Belum ada log." : "Tidak ada log yang cocok dengan filter."}
-                        description={unfilteredCount === 0 ? undefined : "Coba ubah aksi atau entitas."}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : logs.map((l) => (
-                  <TableRow key={l.id}>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDistanceToNow(new Date(l.createdAt), { addSuffix: true, locale: idLocale })}
-                    </TableCell>
-                    <TableCell className="text-sm">{l.userEmail ?? "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={l.action === "delete" ? "destructive" : l.action === "create" ? "default" : "secondary"} className="text-xs">
-                        {l.action}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm capitalize">{l.entity}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{l.detail ?? l.entityId ?? "—"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-3 text-sm">
-              <span className="text-muted-foreground text-xs">
-                Halaman {currentPage} dari {totalPages}
-              </span>
-              <div className="flex gap-1">
-                <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage <= 1}>
-                  <Link href={`?page=${currentPage - 1}${filterAction ? `&action=${filterAction}` : ""}${filterEntity ? `&entity=${filterEntity}` : ""}`}>
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </Link>
-                </Button>
-                <Button variant="outline" size="icon" className="h-7 w-7" asChild disabled={currentPage >= totalPages}>
-                  <Link href={`?page=${currentPage + 1}${filterAction ? `&action=${filterAction}` : ""}${filterEntity ? `&entity=${filterEntity}` : ""}`}>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </Button>
-              </div>
+      <div className="space-y-3">
+        <AuditFilters actions={[...AUDIT_ACTIONS]} entities={[...AUDIT_ENTITIES]} />
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="pl-0">Waktu</TableHead>
+              <TableHead className="hidden sm:table-cell">User</TableHead>
+              <TableHead>Aksi</TableHead>
+              <TableHead className="hidden md:table-cell">Entitas</TableHead>
+              <TableHead className="pr-0">Detail</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {logs.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="whitespace-normal">
+                  <EmptyState
+                    compact
+                    title={unfilteredCount === 0 ? "Belum ada log." : "Tidak ada log yang cocok dengan filter."}
+                    description={unfilteredCount === 0 ? undefined : "Coba ubah aksi atau entitas."}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : logs.map((l) => (
+              <TableRow key={l.id}>
+                <TableCell className="num py-3 pl-0 text-muted-foreground">
+                  {formatDistanceToNow(new Date(l.createdAt), { addSuffix: true, locale: idLocale })}
+                </TableCell>
+                <TableCell className="hidden py-3 sm:table-cell">{l.userEmail ?? <span className="text-muted-foreground">-</span>}</TableCell>
+                <TableCell className="py-3">
+                  <Badge variant={l.action === "delete" ? "destructive" : l.action === "create" ? "default" : "secondary"}>
+                    {l.action}
+                  </Badge>
+                </TableCell>
+                <TableCell className="hidden py-3 capitalize md:table-cell">{l.entity}</TableCell>
+                <TableCell className="py-3 pr-0 whitespace-normal text-muted-foreground">{l.detail ?? l.entityId ?? "-"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-3 border-t pt-3 text-sm">
+            <span className="text-muted-foreground">
+              Halaman <span className="num">{currentPage}</span> dari <span className="num">{totalPages}</span>
+            </span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="icon-sm" asChild disabled={currentPage <= 1}>
+                <Link aria-label="Halaman sebelumnya" href={`?page=${currentPage - 1}${filterAction ? `&action=${filterAction}` : ""}${filterEntity ? `&entity=${filterEntity}` : ""}`}>
+                  <ChevronLeft aria-hidden />
+                </Link>
+              </Button>
+              <Button variant="outline" size="icon-sm" asChild disabled={currentPage >= totalPages}>
+                <Link aria-label="Halaman berikutnya" href={`?page=${currentPage + 1}${filterAction ? `&action=${filterAction}` : ""}${filterEntity ? `&entity=${filterEntity}` : ""}`}>
+                  <ChevronRight aria-hidden />
+                </Link>
+              </Button>
             </div>
-          )}
-          {isFiltered && logs.length > 0 && (
-            <p className="mt-2 text-xs text-muted-foreground">Menampilkan hasil terfilter dari {unfilteredCount} total log.</p>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+        {isFiltered && logs.length > 0 && (
+          <p className="text-sm text-muted-foreground">Menampilkan hasil terfilter dari <span className="num">{unfilteredCount}</span> total log.</p>
+        )}
+      </div>
     </div>
   );
 }
