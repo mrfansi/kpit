@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { getAllDomains } from "@/lib/queries";
 import { defaultReportingPeriod, formatPeriodDate, listLastNMonths } from "@/lib/period";
@@ -10,9 +11,38 @@ export default async function MonthlyReportsPage({ searchParams }: { searchParam
   const domains = await getAllDomains();
   const periods = listLastNMonths(24);
   if (!periods.some((item) => item.value === selectedPeriod)) periods.push({ value: selectedPeriod, label: formatPeriodDate(selectedPeriod, "MMMM yyyy") });
-  return <div className="max-w-5xl space-y-6">
-    <PageHeader title="Laporan Bulanan" description="Pilih domain dan bulan untuk menyusun laporan divisi. Setiap domain memerlukan pemetaan divisi eksplisit." />
-    <form action="/admin/reports/monthly" className="flex flex-wrap items-end gap-3"><label className="text-sm font-medium space-y-1">Periode laporan<select name="period" defaultValue={selectedPeriod} className="block rounded-md border border-input bg-background px-3 py-2 text-sm">{periods.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><Button type="submit" variant="outline">Tampilkan</Button></form>
-    {domains.length ? <div className="divide-y rounded-md border">{domains.map((domain) => <div id={`domain-${domain.id}`} key={domain.id} className="flex flex-wrap items-center justify-between gap-3 p-4"><div><h2 className="font-semibold">{domain.name}</h2><p className="text-xs text-muted-foreground">{formatPeriodDate(selectedPeriod, "MMMM yyyy")}</p></div><div className="flex gap-2"><Button size="sm" asChild><Link href={`/admin/reports/monthly/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Sunting laporan</Link></Button><Button size="sm" variant="outline" asChild><Link href={`/report/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Lihat laporan</Link></Button></div></div>)}</div> : <p className="text-sm text-muted-foreground">Belum ada domain. Buat domain dan KPI terlebih dahulu.</p>}
+  return <div className="max-w-5xl space-y-8">
+    <PageHeader
+      title="Laporan Bulanan"
+      description="Pilih domain dan bulan untuk menyusun laporan divisi. Setiap domain memerlukan pemetaan divisi eksplisit."
+      actions={<form action="/admin/reports/monthly" className="flex flex-wrap items-center gap-2">
+        <label htmlFor="report-period" className="text-sm text-muted-foreground">Periode laporan</label>
+        <select id="report-period" name="period" defaultValue={selectedPeriod} className="num h-8 rounded-md border border-input bg-card px-3 text-sm outline-2 outline-offset-[-3px] outline-transparent transition-colors duration-[var(--dur-micro)] hover:bg-accent focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-55">{periods.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+        <Button type="submit" variant="outline" size="sm">Tampilkan</Button>
+      </form>}
+    />
+    {domains.length ? <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b text-muted-foreground">
+            <th className="h-10 pr-4 text-left font-normal whitespace-nowrap">Domain</th>
+            <th className="hidden h-10 px-4 text-left font-normal whitespace-nowrap sm:table-cell">Periode</th>
+            <th className="h-10 pl-4 text-right font-normal whitespace-nowrap">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {domains.map((domain) => <tr id={`domain-${domain.id}`} key={domain.id} className="border-b transition-colors duration-[var(--dur-micro)] last:border-0 hover:bg-paper-2">
+            <td className="py-3 pr-4 font-semibold">{domain.name}</td>
+            <td className="num hidden px-4 py-3 text-muted-foreground sm:table-cell">{formatPeriodDate(selectedPeriod, "MMMM yyyy")}</td>
+            <td className="py-3 pl-4">
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button size="sm" variant="ghost" asChild><Link href={`/report/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Lihat laporan</Link></Button>
+                <Button size="sm" variant="outline" asChild><Link href={`/admin/reports/monthly/${encodeURIComponent(domain.slug)}?period=${selectedPeriod}`}>Sunting laporan</Link></Button>
+              </div>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div> : <EmptyState compact title="Belum ada domain. Buat domain dan KPI terlebih dahulu." />}
   </div>;
 }

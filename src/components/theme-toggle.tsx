@@ -12,18 +12,20 @@ export function ThemeToggle({ className }: { className?: string }) {
   useEffect(() => {
     queueMicrotask(() => setMounted(true));
   }, []);
-  if (!mounted) return <Button variant="ghost" size="icon" className={className} disabled aria-hidden suppressHydrationWarning><Sun className="w-4 h-4" /></Button>;
+  if (!mounted) return <Button type="button" variant="ghost" size="icon" className={className} disabled aria-hidden suppressHydrationWarning><Sun aria-hidden /></Button>;
 
   const isDark = theme === "dark";
   return (
     <Button
+      type="button"
       variant="ghost"
       size="icon"
       className={className}
       onClick={() => setTheme(isDark ? "light" : "dark")}
       title={isDark ? "Ganti ke light mode" : "Ganti ke dark mode"}
+      aria-label={isDark ? "Ganti ke light mode" : "Ganti ke dark mode"}
     >
-      {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      {isDark ? <Sun aria-hidden /> : <Moon aria-hidden />}
     </Button>
   );
 }

@@ -82,10 +82,11 @@ export function AIChat() {
     // dan menutupi kontrol di baris terakhir tabel. Di sini ia punya tempat sendiri.
     return (
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground print:hidden"
+        className="flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-[var(--dur-micro)] hover:bg-accent hover:text-foreground print:hidden"
       >
-        <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+        <MessageCircle aria-hidden className="size-4 shrink-0" />
         <span>AI Assistant</span>
       </button>
     );
@@ -96,11 +97,11 @@ export function AIChat() {
   // ikut dirender di sana, `z-50`-nya hanya berlaku di dalam sidebar, sehingga
   // sel tabel (yang `relative` demi rail status) menimpanya dan panel tampak tembus.
   return createPortal(
-    <div className="print:hidden fixed bottom-6 right-6 w-[calc(100vw-2rem)] max-w-96 h-[min(500px,calc(100vh-6rem))] bg-card rounded-lg shadow-2xl border border-border flex flex-col z-50">
+    <div className="print:hidden fixed right-6 bottom-6 z-50 flex h-[min(500px,calc(100dvh-6rem))] w-[calc(100%-2rem)] max-w-96 flex-col rounded-card border bg-card">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div>
-          <h3 className="font-semibold text-sm">AI Assistant</h3>
+          <h3 className="text-base font-semibold">AI Assistant</h3>
           {dataDate && (
             <p className="text-xs text-muted-foreground">
               Data per {new Date(dataDate).toLocaleDateString("id-ID")}
@@ -109,30 +110,23 @@ export function AIChat() {
         </div>
         <div className="flex items-center gap-1">
           {messages.length > 0 && (
-            <button
-              onClick={handleReset}
-              className="text-xs text-muted-foreground hover:text-foreground px-2 py-1"
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
               Reset
-            </button>
+            </Button>
           )}
-          <button
-            onClick={() => setOpen(false)}
-            className="text-muted-foreground hover:text-foreground p-1"
-            aria-label="Tutup chat"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <Button type="button" variant="ghost" size="icon-sm" onClick={() => setOpen(false)} aria-label="Tutup chat">
+            <X aria-hidden className="size-4" />
+          </Button>
         </div>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
-          <div className="text-center text-muted-foreground text-sm mt-8">
+          <div className="mt-6 space-y-2 text-sm text-muted-foreground">
             <p>Tanyakan apa saja tentang data KPI dan timeline.</p>
-            <p className="text-xs mt-2">
-              Contoh: &quot;KPI mana yang paling buruk?&quot;
+            <p>
+              Contoh: &ldquo;KPI mana yang paling buruk?&rdquo;
             </p>
           </div>
         )}
@@ -142,8 +136,8 @@ export function AIChat() {
             key={i}
             className={`text-sm ${
               msg.role === "user"
-                ? "ml-8 bg-primary/10 rounded-lg p-2 text-foreground"
-                : "mr-8 bg-muted rounded-lg p-2 text-foreground"
+                ? "ml-8 rounded-md bg-secondary px-3 py-2 text-foreground"
+                : "mr-8 rounded-md border px-3 py-2 text-foreground"
             }`}
           >
             {msg.content}
@@ -151,12 +145,12 @@ export function AIChat() {
         ))}
 
         {loading && (
-          <div className="mr-8 bg-muted rounded-lg p-2">
+          <div className="mr-8 rounded-md border px-3 py-2">
             <LoadingSpinner />
           </div>
         )}
 
-        {error && <p className="text-destructive text-xs">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <div ref={messagesEndRef} />
       </div>

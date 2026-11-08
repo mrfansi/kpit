@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -18,7 +19,11 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+
+/** Satu baris catatan di bawah tiap field, selalu dipesan, supaya error tidak menggeser tata letak. */
+const NOTE = "min-h-[1lh] space-y-1 text-sm";
+const SECTION_HEAD = "text-lg font-semibold";
 
 interface KPIFormProps {
   domains: Domain[];
@@ -117,254 +122,266 @@ export function KPIForm({ domains, defaultValues }: KPIFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-xl">
-        {/* Domain */}
-        <FormField
-          control={form.control}
-          name="domainId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Domain</FormLabel>
-              <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value ? String(field.value) : ""}>
-                <FormControl>
-                  <SelectTrigger><SelectValue placeholder="Pilih domain..." /></SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {domains.map((d) => (
-                    <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+        <section aria-labelledby="kpi-info-heading" className="space-y-5">
+          <h2 id="kpi-info-heading" className={SECTION_HEAD}>Informasi KPI</h2>
+          <div className="space-y-3">
+            {/* Domain */}
+            <FormField
+              control={form.control}
+              name="domainId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Domain</FormLabel>
+                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value ? String(field.value) : ""}>
+                    <FormControl>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Pilih domain…" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {domains.map((d) => (
+                        <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className={NOTE}><FormMessage /></div>
+                </FormItem>
+              )}
+            />
 
-        {/* Nama */}
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nama KPI</FormLabel>
-              <FormControl><Input placeholder="Contoh: Conversion Rate" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            {/* Nama */}
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nama KPI</FormLabel>
+                  <FormControl><Input placeholder="Contoh: Conversion Rate" {...field} /></FormControl>
+                  <div className={NOTE}><FormMessage /></div>
+                </FormItem>
+              )}
+            />
 
-        {/* Deskripsi */}
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center justify-between">
-                <FormLabel>Deskripsi <span className="text-muted-foreground font-normal">(opsional)</span></FormLabel>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGenerateDescription}
-                  disabled={generating}
-                  className="h-6 text-xs px-2 gap-1"
-                >
-                  {generating ? (
-                    <>
-                      <span aria-hidden="true" className="inline-block w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    "Generate"
-                  )}
-                </Button>
-              </div>
-              <FormControl><Input placeholder="Penjelasan singkat KPI ini..." {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            {/* Deskripsi */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between gap-3">
+                    <FormLabel>Deskripsi <span className="font-normal text-muted-foreground">(opsional)</span></FormLabel>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={handleGenerateDescription}
+                      disabled={generating}
+                    >
+                      {generating ? (
+                        <>
+                          <LoadingSpinner />
+                          Generating…
+                        </>
+                      ) : (
+                        "Generate"
+                      )}
+                    </Button>
+                  </div>
+                  <FormControl><Input placeholder="Penjelasan singkat KPI ini…" {...field} /></FormControl>
+                  <div className={NOTE}><FormMessage /></div>
+                </FormItem>
+              )}
+            />
+          </div>
+        </section>
 
-        <Separator />
+        <section aria-labelledby="kpi-target-heading" className="space-y-5">
+          <h2 id="kpi-target-heading" className={SECTION_HEAD}>Target dan threshold</h2>
+          <div className="space-y-3">
+            {/* Unit & Target & Direction */}
+            <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-4">
+              <FormField
+                control={form.control}
+                name="unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit</FormLabel>
+                    <FormControl><Input placeholder="%, Rp, unit…" {...field} /></FormControl>
+                    <div className={NOTE}><FormMessage /></div>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="target"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target</FormLabel>
+                    <FormControl><Input type="number" step="any" placeholder="0" className="num" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                    <div className={NOTE}><FormMessage /></div>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="direction"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Arah KPI</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="higher_better"><ArrowUp aria-hidden className="size-3.5" />Makin tinggi makin baik</SelectItem>
+                        <SelectItem value="lower_better"><ArrowDown aria-hidden className="size-3.5" />Makin rendah makin baik</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className={NOTE}><FormMessage /></div>
+                  </FormItem>
+                )}
+              />
+            </div>
 
-        {/* Unit & Target & Direction */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FormField
-            control={form.control}
-            name="unit"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Unit</FormLabel>
-                <FormControl><Input placeholder="%, Rp, unit..." {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="target"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Target</FormLabel>
-                <FormControl><Input type="number" step="any" placeholder="0" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="direction"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Arah KPI</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="higher_better">↑ Makin tinggi makin baik</SelectItem>
-                    <SelectItem value="lower_better">↓ Makin rendah makin baik</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            {/* Thresholds */}
+            <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="thresholdGreen"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Threshold hijau</FormLabel>
+                    <FormControl><Input type="number" step="any" placeholder="Nilai on track" className="num" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                    <div className={NOTE}>
+                      <FormDescription>
+                        {form.watch("direction") === "lower_better"
+                          ? "Nilai ≤ ini = On Track"
+                          : "Nilai ≥ ini = On Track"}
+                      </FormDescription>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="thresholdYellow"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Threshold kuning</FormLabel>
+                    <FormControl><Input type="number" step="any" placeholder="Nilai at risk" className="num" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                    <div className={NOTE}>
+                      <FormDescription>
+                        {form.watch("direction") === "lower_better"
+                          ? "Nilai ≤ ini (tapi > hijau) = At Risk"
+                          : "Nilai ≥ ini (tapi < hijau) = At Risk"}
+                      </FormDescription>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
 
-        {/* Thresholds */}
-        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="thresholdGreen"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="gap-1.5">
-                  <span className="size-2 shrink-0 rounded-full bg-success-fill" aria-hidden />
-                  Threshold Hijau
-                </FormLabel>
-                <FormControl><Input type="number" step="any" placeholder="Nilai on track" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
-                <FormDescription className="text-xs">
-                  {form.watch("direction") === "lower_better"
-                    ? "Nilai ≤ ini = On Track"
-                    : "Nilai ≥ ini = On Track"}
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="thresholdYellow"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="gap-1.5">
-                  <span className="size-2 shrink-0 rounded-full bg-warning-fill" aria-hidden />
-                  Threshold Kuning
-                </FormLabel>
-                <FormControl><Input type="number" step="any" placeholder="Nilai at risk" onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
-                <FormDescription className="text-xs">
-                  {form.watch("direction") === "lower_better"
-                    ? "Nilai ≤ ini (tapi > hijau) = At Risk"
-                    : "Nilai ≥ ini (tapi < hijau) = At Risk"}
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <ThresholdCoherenceNotice
+              direction={form.watch("direction")}
+              target={form.watch("target")}
+              thresholdGreen={form.watch("thresholdGreen")}
+              thresholdYellow={form.watch("thresholdYellow")}
+            />
+          </div>
+        </section>
 
         {/* Batas alami metrik — beda dari target. Kosongkan kalau metriknya
             memang tidak berbatas; menebak batas yang tidak ada lebih buruk
             daripada tidak punya batas sama sekali. */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="minValue"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nilai Minimum <span className="font-normal text-muted-foreground">(opsional)</span></FormLabel>
-                <FormControl><Input type="number" step="any" placeholder="Kosongkan jika tidak terbatas" onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
-                <FormDescription className="text-xs">
-                  Batas bawah yang mungkin secara alami, mis. 0 untuk jumlah.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="maxValue"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nilai Maksimum <span className="font-normal text-muted-foreground">(opsional)</span></FormLabel>
-                <FormControl><Input type="number" step="any" placeholder="Kosongkan jika tidak terbatas" onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
-                <FormDescription className="text-xs">
-                  Mis. 100 untuk skor, 5 untuk rating. Menjaga forecast tidak
-                  menembus langit-langit dan menangkap salah ketik saat input.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <section aria-labelledby="kpi-bounds-heading" className="space-y-5">
+          <h2 id="kpi-bounds-heading" className={SECTION_HEAD}>Batas nilai</h2>
+          <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="minValue"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nilai minimum <span className="font-normal text-muted-foreground">(opsional)</span></FormLabel>
+                  <FormControl><Input type="number" step="any" placeholder="Kosongkan jika tidak terbatas" className="num" onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                  <div className={NOTE}>
+                    <FormDescription>
+                      Batas bawah yang mungkin secara alami, mis. 0 untuk jumlah.
+                    </FormDescription>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="maxValue"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nilai maksimum <span className="font-normal text-muted-foreground">(opsional)</span></FormLabel>
+                  <FormControl><Input type="number" step="any" placeholder="Kosongkan jika tidak terbatas" className="num" onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.valueAsNumber)} value={typeof field.value === "number" && !isNaN(field.value) ? field.value : ""} /></FormControl>
+                  <div className={NOTE}>
+                    <FormDescription>
+                      Mis. 100 untuk skor, 5 untuk rating. Menjaga forecast tidak
+                      menembus langit-langit dan menangkap salah ketik saat input.
+                    </FormDescription>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
+          </div>
+        </section>
 
-        <ThresholdCoherenceNotice
-          direction={form.watch("direction")}
-          target={form.watch("target")}
-          thresholdGreen={form.watch("thresholdGreen")}
-          thresholdYellow={form.watch("thresholdYellow")}
-        />
-
-        <Separator />
-
-        {/* Refresh Type & Period */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="refreshType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tipe Refresh</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="periodic">Periodik</SelectItem>
-                    <SelectItem value="realtime">Real-time</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="period"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Periode</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="daily">Harian</SelectItem>
-                    <SelectItem value="weekly">Mingguan</SelectItem>
-                    <SelectItem value="monthly">Bulanan</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <section aria-labelledby="kpi-period-heading" className="space-y-5">
+          <h2 id="kpi-period-heading" className={SECTION_HEAD}>Refresh dan periode</h2>
+          <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="refreshType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipe refresh</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="periodic">Periodik</SelectItem>
+                      <SelectItem value="realtime">Real-time</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className={NOTE}><FormMessage /></div>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="period"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Periode</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="daily">Harian</SelectItem>
+                      <SelectItem value="weekly">Mingguan</SelectItem>
+                      <SelectItem value="monthly">Bulanan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className={NOTE}><FormMessage /></div>
+                </FormItem>
+              )}
+            />
+          </div>
+        </section>
 
         {/* Actions */}
-        <div className="flex gap-3 pt-2">
+        <div className="flex flex-wrap gap-3 border-t pt-6">
           <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Tambah KPI"}
+            {form.formState.isSubmitting ? "Menyimpan…" : isEdit ? "Simpan Perubahan" : "Tambah KPI"}
           </Button>
           <Button type="button" variant="outline" asChild>
             <Link href="/admin/kpi">Batal</Link>

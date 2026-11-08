@@ -16,10 +16,10 @@ export default async function EditKPIPage({ params }: Props) {
   if (!kpi) notFound();
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl space-y-8">
       <PageHeader
         title="Edit KPI"
-        description={<>Ubah konfigurasi KPI: <span className="font-medium">{kpi.name}</span></>}
+        description={<>Ubah konfigurasi KPI: <span className="font-semibold text-foreground">{kpi.name}</span></>}
       />
       <KPIForm domains={domains} defaultValues={kpi} />
     </div>

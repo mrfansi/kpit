@@ -26,9 +26,9 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
   if (projects.length === 0) return null;
 
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-4">Timeline Gantt Chart</h2>
-      <div className="border rounded-lg overflow-auto">
+    <section aria-labelledby="report-gantt-heading" className="space-y-3">
+      <h2 id="report-gantt-heading" className="text-lg font-semibold">Timeline Gantt Chart</h2>
+      <div className="overflow-x-auto border-y">
         <div style={{ width: layout.totalWidth, minHeight: "100%" }}>
           <GanttHeader columns={layout.columns} totalWidth={layout.totalWidth} />
 
@@ -53,56 +53,40 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
               return (
                 <div
                   key={project.id}
-                  className="absolute rounded-lg shadow-sm group"
+                  className="absolute rounded-sm"
                   style={{
                     left: x,
                     top: y,
                     width: barWidth,
                     height: barHeight,
                     backgroundColor: `${barColor}20`,
-                    border: `2px ${isNotStarted ? "dashed" : "solid"} ${barColor}`,
+                    border: `1px ${isNotStarted ? "dashed" : "solid"} ${barColor}`,
                     opacity: 1,
                   }}
                 >
                   {/* Progress fill */}
                   <div
-                    className="absolute inset-0 rounded-md pointer-events-none"
+                    className="absolute inset-y-0 left-0 pointer-events-none"
                     style={{
                       width: `${project.progress}%`,
                       backgroundColor: `${barColor}35`,
                     }}
                   />
 
-                  {/* Project name + date labels */}
+                  {/* Nama + rentang tanggal. Tooltip hover lama (progress, tanggal, launch)
+                      tersembunyi secara default dan isinya sudah ada di tabel Executive
+                      Summary di atas, jadi dihapus agar tidak ada teks tersembunyi. */}
                   <div className="absolute inset-0 flex flex-col justify-center px-2.5 overflow-hidden">
-                    <span className="text-xs font-medium truncate text-foreground leading-tight">
+                    <span className="text-xs font-semibold truncate text-foreground leading-4">
                       {project.name}
                     </span>
                     {barWidth > 120 && (
-                      <span className="text-[9px] text-muted-foreground leading-tight mt-0.5">
+                      <span className="num text-xs text-ink-2 leading-4 truncate">
                         {format(parseISO(project.startDate), "dd MMM", { locale: idLocale })}
-                        {" — "}
+                        {" - "}
                         {format(parseISO(project.endDate), "dd MMM", { locale: idLocale })}
                       </span>
                     )}
-                  </div>
-
-                  {/* Hover tooltip */}
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
-                    <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg px-3 py-2 text-xs whitespace-nowrap">
-                      <p className="font-semibold">{project.name}</p>
-                      <p className="num text-muted-foreground mt-1">
-                        Progress: {project.progress}%
-                      </p>
-                      <p className="text-muted-foreground">
-                        {format(parseISO(project.startDate), "dd MMM yy", { locale: idLocale })}
-                        {" — "}
-                        {format(parseISO(project.endDate), "dd MMM yy", { locale: idLocale })}
-                      </p>
-                      <p className="text-success">
-                        Launch: {format(parseISO(getEffectiveLaunchDate(project)), "dd MMM yy", { locale: idLocale })}
-                      </p>
-                    </div>
                   </div>
                 </div>
               );
@@ -129,6 +113,6 @@ export function ReportGantt({ projects, statuses }: ReportGanttProps) {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

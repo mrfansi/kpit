@@ -88,20 +88,21 @@ export function TimelineProgressLog({
 
   return (
     <div className="space-y-4">
-      <div className="text-sm font-medium">Progress Log</div>
+      <h4 className="text-base font-semibold">Progress Log</h4>
 
       {/* Input */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Tulis update progress..."
+          placeholder="Tulis update progress…"
+          aria-label="Update progress"
           disabled={isPending}
           rows={2}
-          className="resize-none text-sm"
+          className="resize-none"
         />
-        <Button type="submit" size="icon" className="shrink-0 self-end" disabled={isPending || !text.trim()}>
-          <Send className="w-4 h-4" />
+        <Button type="submit" size="icon" aria-label="Kirim" className="shrink-0 self-end" disabled={isPending || !text.trim()}>
+          <Send aria-hidden />
         </Button>
       </form>
 
@@ -115,61 +116,58 @@ export function TimelineProgressLog({
             <div className="absolute top-2 bottom-2 w-px bg-border" style={{ left: 11 }} />
 
             {logs.map((log, i) => (
-              <div key={log.id} className="relative pb-5 last:pb-0 group">
-                {/* Dot - 12px wide, centered on line at 11px: 11 - 6 = 5 */}
-                <div className="absolute z-10" style={{ left: -23, top: 4 }}>
+              <div key={log.id} className="relative pb-6 last:pb-0 group">
+                {/* Simpul persegi 10px, berpusat di garis pada 11px: 11 - 5 = 6 */}
+                <div className="absolute z-10" style={{ left: -22, top: 5 }}>
                   <div
-                    className={`w-3 h-3 rounded-full border-2 ${i === 0 ? "bg-primary border-primary" : "bg-background border-border"}`}
+                    className={`size-2.5 rounded-sm border ${i === 0 ? "bg-foreground border-foreground" : "bg-background border-edge"}`}
                   />
                 </div>
 
                 {/* Content */}
                 <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <span className="num text-xs text-muted-foreground">
                       {formatDateTime(new Date(log.createdAt))}
                     </span>
                     {log.progressBefore != null && log.progressAfter != null && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] bg-muted px-1.5 py-0.5 rounded font-medium">
+                      <span className="num inline-flex items-center gap-1 rounded-sm bg-secondary px-1.5 text-xs leading-5 text-foreground">
                         {log.progressBefore}%
-                        <ArrowRight className="w-2.5 h-2.5" />
+                        <ArrowRight aria-hidden className="size-3" />
                         {log.progressAfter}%
                       </span>
                     )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
+                          type="button"
                           variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-auto"
+                          size="icon-xs"
+                          aria-label="Hapus log"
+                          className="ml-auto shrink-0 text-muted-foreground hover:text-destructive opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
                           disabled={isPending}
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 aria-hidden />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Hapus Log Ini?</AlertDialogTitle>
+                          <AlertDialogTitle>Hapus log ini?</AlertDialogTitle>
                           <AlertDialogDescription>
                             Log &quot;{log.content.length > 60 ? `${log.content.slice(0, 60)}…` : log.content}&quot; akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Batal</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(log.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Ya, Hapus
+                          <AlertDialogAction variant="destructive" onClick={() => handleDelete(log.id)}>
+                            Ya, hapus
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                  <div className="flex items-start gap-1.5">
-                    <span className="text-xs font-semibold text-foreground">{log.author}</span>
-                  </div>
-                  <p className="text-sm text-foreground mt-0.5 whitespace-pre-wrap">{log.content}</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{log.author}</p>
+                  <p className="mt-0.5 max-w-[65ch] text-base text-foreground whitespace-pre-wrap">{log.content}</p>
                 </div>
               </div>
             ))}

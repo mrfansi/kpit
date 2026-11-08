@@ -8,11 +8,11 @@ export function LogoutButton() {
   return (
     <Button
       variant="ghost"
-      size="sm"
-      className="w-full justify-start text-muted-foreground hover:text-foreground"
+      size="default"
+      className="w-full justify-start gap-2.5 px-2.5 font-normal text-muted-foreground hover:text-foreground has-[>svg]:px-2.5"
       onClick={() => signOut({ callbackUrl: "/login" })}
     >
-      <LogOut className="w-4 h-4 mr-2" />
+      <LogOut aria-hidden className="size-4" />
       Keluar
     </Button>
   );

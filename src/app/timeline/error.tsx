@@ -16,16 +16,16 @@ export default function TimelineError({
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center">
-      <AlertTriangle className="w-10 h-10 text-destructive" />
+    <div role="alert" className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+      <AlertTriangle aria-hidden className="size-6 text-destructive" />
       <div>
-        <h2 className="text-lg font-semibold">Terjadi Kesalahan</h2>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+        <h2 className="text-lg font-semibold">Terjadi kesalahan</h2>
+        <p className="mt-1.5 max-w-prose text-sm text-muted-foreground">
           Gagal memuat timeline. Silakan coba lagi.
         </p>
       </div>
-      <Button variant="outline" size="sm" onClick={reset}>
-        Coba Lagi
+      <Button type="button" variant="outline" size="sm" onClick={reset}>
+        Coba lagi
       </Button>
     </div>
   );

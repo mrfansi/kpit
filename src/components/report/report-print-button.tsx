@@ -6,12 +6,13 @@ import { Printer } from "lucide-react";
 export function ReportPrintButton() {
   return (
     <Button
+      type="button"
       variant="outline"
       size="sm"
       onClick={() => window.print()}
       className="print:hidden"
     >
-      <Printer className="w-3.5 h-3.5 mr-1.5" />
+      <Printer aria-hidden />
       Print / Save PDF
     </Button>
   );

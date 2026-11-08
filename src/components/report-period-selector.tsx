@@ -21,7 +21,8 @@ export function ReportPeriodSelector({ months, selectedPeriod }: ReportPeriodSel
         url.searchParams.set("period", e.target.value);
         router.push(url.toString());
       }}
-      className="px-3 py-2 border text-sm rounded bg-background hover:bg-muted transition-colors cursor-pointer"
+      // Tinggi sama dengan tombol sm di sebelahnya; fokus = outline inset seperti field lain.
+      className="h-8 cursor-pointer rounded-md border border-input bg-card px-2.5 text-sm transition-colors duration-[var(--dur-micro)] outline-2 outline-offset-[-3px] outline-transparent hover:bg-accent focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-55"
     >
       {months.map((m) => (
         <option key={m.value} value={m.value}>{m.label}</option>

@@ -104,7 +104,7 @@ export function TimelineProjectFormDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent key={project?.id ?? "new"} className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{isEdit ? "Edit Project" : "Tambah Project"}</DialogTitle>
+            <DialogTitle>{isEdit ? "Edit project" : "Tambah project"}</DialogTitle>
             <DialogDescription>
               {isEdit
                 ? "Ubah detail project timeline."
@@ -113,7 +113,7 @@ export function TimelineProjectFormDialog({
           </DialogHeader>
           <form ref={formRef} action={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nama Project</Label>
+              <Label htmlFor="name">Nama project</Label>
               <Input
                 id="name"
                 name="name"
@@ -153,7 +153,8 @@ export function TimelineProjectFormDialog({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="w-9 h-9 rounded-md border border-input shadow-sm shrink-0"
+                    aria-label="Pilih warna manual"
+                    className="size-9 rounded-md border border-input shrink-0"
                     style={{ backgroundColor: selectedColor }}
                     onClick={() => {
                       const picker = document.getElementById("color-picker-hidden") as HTMLInputElement;
@@ -173,11 +174,11 @@ export function TimelineProjectFormDialog({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9"
+                      aria-label="Generate warna baru"
                       onClick={() => setSelectedColor(generateSoftColor())}
                       title="Generate warna baru"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
+                      <RefreshCw aria-hidden className="size-3.5" />
                     </Button>
                   )}
                 </div>
@@ -200,9 +201,9 @@ export function TimelineProjectFormDialog({
                 id="statusId"
                 name="statusId"
                 defaultValue={project?.statusId ?? ""}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-9 w-full rounded-md border border-input bg-card px-3 text-base text-foreground transition-colors duration-[var(--dur-micro)] outline-2 outline-offset-[-3px] outline-transparent focus-visible:outline-ring md:text-sm"
               >
-                <option value="">— Pilih status —</option>
+                <option value="">Pilih status</option>
                 {statuses.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -221,15 +222,15 @@ export function TimelineProjectFormDialog({
                 defaultValue={project?.description ?? ""}
               />
             </div>
-            {/* Launch Estimation Section */}
-            <div className="space-y-2 rounded-lg border p-3 bg-muted/30">
-              <div className="flex items-center gap-2 mb-2">
-                <Rocket className="w-3.5 h-3.5 text-success" />
-                <Label className="text-sm font-medium">Estimasi Launching</Label>
+            {/* Launch Estimation Section: sumur tipis, tanpa bingkai. */}
+            <div className="space-y-3 rounded-card bg-paper-2 p-4">
+              <div className="flex items-center gap-2">
+                <Rocket aria-hidden className="size-3.5 text-success" />
+                <p className="text-sm font-semibold">Estimasi launching</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="launchBufferDays" className="text-xs text-muted-foreground">
+                <div className="space-y-2">
+                  <Label htmlFor="launchBufferDays">
                     Buffer (hari setelah selesai)
                   </Label>
                   <Input
@@ -241,15 +242,16 @@ export function TimelineProjectFormDialog({
                     defaultValue={project?.launchBufferDays ?? 7}
                     readOnly={manualLaunch}
                     tabIndex={manualLaunch ? -1 : undefined}
-                    className={manualLaunch ? "opacity-50" : ""}
+                    className={manualLaunch ? "bg-secondary text-muted-foreground" : ""}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    Tanggal Launch
+                <div className="space-y-2">
+                  <Label htmlFor={manualLaunch ? "estimatedLaunchDate" : undefined}>
+                    Tanggal launch
                   </Label>
                   {manualLaunch ? (
                     <Input
+                      id="estimatedLaunchDate"
                       name="estimatedLaunchDate"
                       type="date"
                       defaultValue={project?.estimatedLaunchDate ?? ""}
@@ -257,7 +259,7 @@ export function TimelineProjectFormDialog({
                   ) : (
                     <>
                       <input type="hidden" name="estimatedLaunchDate" value="" />
-                      <div className="h-9 flex items-center px-3 rounded-md border bg-muted text-sm text-muted-foreground">
+                      <div className="num h-9 flex items-center px-3 rounded-md bg-secondary text-sm text-muted-foreground">
                         {project
                           ? getEffectiveLaunchDate({
                               endDate: project.endDate,
@@ -270,35 +272,35 @@ export function TimelineProjectFormDialog({
                   )}
                 </div>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={manualLaunch}
                   onChange={(e) => setManualLaunch(e.target.checked)}
-                  className="rounded border-input"
+                  className="size-4 rounded-sm border-input accent-foreground"
                 />
-                <span className="text-xs text-muted-foreground">Override manual</span>
+                <span className="text-sm">Override manual</span>
               </label>
             </div>
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
               {isEdit ? (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button type="button" variant="destructive" size="sm">
-                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    <Button type="button" variant="outline" size="sm" className="text-destructive">
+                      <Trash2 aria-hidden />
                       Hapus
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Hapus Project</AlertDialogTitle>
+                      <AlertDialogTitle>Hapus project</AlertDialogTitle>
                       <AlertDialogDescription>
                         Apakah Anda yakin ingin menghapus project &quot;{project?.name}&quot;? Tindakan ini tidak dapat dibatalkan.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Batal</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      <AlertDialogAction variant="destructive" onClick={handleDelete}>
                         Hapus
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -307,7 +309,7 @@ export function TimelineProjectFormDialog({
               ) : (
                 <div />
               )}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {isEdit && (
                   <Button
                     type="button"
@@ -315,7 +317,7 @@ export function TimelineProjectFormDialog({
                     size="sm"
                     onClick={() => setLogDialogOpen(true)}
                   >
-                    <ClipboardList className="w-3.5 h-3.5 mr-1" />
+                    <ClipboardList aria-hidden />
                     Progress Log
                   </Button>
                 )}

@@ -13,7 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import Link from "next/link";
@@ -34,154 +33,138 @@ export default async function AdminTimelinePage() {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-10">
       <PageHeader
         title="Kelola Timeline"
         description="Kelola project dan status yang tampil di Gantt Chart"
         actions={
-          <div className="flex items-center gap-2">
-            <Link href="/timeline">
-              <Button variant="outline" size="sm">
-                Lihat Gantt Chart
-              </Button>
-            </Link>
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/timeline">Lihat Gantt Chart</Link>
+            </Button>
             <AddProjectButton statuses={statuses} />
-          </div>
+          </>
         }
       />
 
       {/* Projects Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">
-            Projects ({projects.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {projects.length === 0 ? (
-            <EmptyState title="Belum ada project" description="Klik Tambah Project di atas untuk membuat yang pertama." />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Warna</TableHead>
-                  <TableHead>Periode</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead className="w-16" />
+      <section aria-labelledby="projects-heading" className="space-y-3">
+        <h2 id="projects-heading" className="text-lg font-semibold">
+          Projects <span className="num font-normal text-muted-foreground">({projects.length})</span>
+        </h2>
+        {projects.length === 0 ? (
+          <EmptyState title="Belum ada project" description="Klik Tambah Project di atas untuk membuat yang pertama." />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nama</TableHead>
+                <TableHead className="hidden sm:table-cell">Warna</TableHead>
+                <TableHead className="hidden sm:table-cell">Periode</TableHead>
+                <TableHead className="text-right">Progress</TableHead>
+                <TableHead className="w-16"><span className="sr-only">Aksi</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {projects.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-semibold">{p.name}</TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <div className="flex items-center gap-2">
+                      <span
+                        aria-hidden
+                        className="size-3 rounded-sm"
+                        style={{ backgroundColor: p.color }}
+                      />
+                      <span className="font-outlier text-xs text-muted-foreground">
+                        {p.color}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="num hidden sm:table-cell text-muted-foreground">
+                    {p.startDate} - {p.endDate}
+                  </TableCell>
+                  <TableCell className="num text-right">{p.progress}%</TableCell>
+                  <TableCell className="text-right">
+                    <DeleteProjectButton id={p.id} name={p.name} />
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {projects.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded"
-                          style={{ backgroundColor: p.color }}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {p.color}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {p.startDate} — {p.endDate}
-                    </TableCell>
-                    <TableCell className="text-xs">{p.progress}%</TableCell>
-                    <TableCell>
-                      <DeleteProjectButton id={p.id} name={p.name} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </section>
 
       {/* Add Status Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Tambah Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={createStatus} className="flex items-end gap-3">
-            <div className="flex-1 space-y-1.5">
-              <Label htmlFor="name" className="text-xs">
-                Nama
-              </Label>
-              <Input
-                id="name"
-                name="name"
-                placeholder="Contoh: On Track"
-                required
-                className="h-9"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="color" className="text-xs">
-                Warna
-              </Label>
-              <Input
-                id="color"
-                name="color"
-                type="color"
-                defaultValue="#6366f1"
-                className="h-9 w-16 p-1 cursor-pointer"
-              />
-            </div>
-            <Button type="submit" size="sm" className="h-9">
-              Tambah
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <section aria-labelledby="add-status-heading" className="space-y-3">
+        <h2 id="add-status-heading" className="text-lg font-semibold">Tambah status</h2>
+        <form action={createStatus} className="flex flex-wrap items-end gap-3">
+          <div className="min-w-48 flex-1 space-y-2">
+            <Label htmlFor="name">Nama</Label>
+            <Input
+              id="name"
+              name="name"
+              placeholder="Contoh: On Track"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="color">Warna</Label>
+            <Input
+              id="color"
+              name="color"
+              type="color"
+              defaultValue="#6366f1"
+              className="w-16 cursor-pointer p-1"
+            />
+          </div>
+          {/* Outline: primary layar ini adalah Tambah project di kepala. */}
+          <Button type="submit" variant="outline">
+            Tambah
+          </Button>
+        </form>
+      </section>
 
       {/* Statuses Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">
-            Daftar Status ({statuses.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {statuses.length === 0 ? (
-            <EmptyState title="Belum ada status" description="Tambahkan menggunakan form di atas." />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">Warna</TableHead>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead className="w-16" />
+      <section aria-labelledby="statuses-heading" className="space-y-3">
+        <h2 id="statuses-heading" className="text-lg font-semibold">
+          Daftar status <span className="num font-normal text-muted-foreground">({statuses.length})</span>
+        </h2>
+        {statuses.length === 0 ? (
+          <EmptyState title="Belum ada status" description="Tambahkan menggunakan form di atas." />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">Warna</TableHead>
+                <TableHead>Nama</TableHead>
+                <TableHead className="hidden sm:table-cell">Slug</TableHead>
+                <TableHead className="w-16"><span className="sr-only">Aksi</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {statuses.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell>
+                    <span
+                      aria-hidden
+                      className="block size-3 rounded-sm"
+                      style={{ backgroundColor: s.color }}
+                    />
+                  </TableCell>
+                  <TableCell className="font-semibold">{s.name}</TableCell>
+                  <TableCell className="font-outlier hidden sm:table-cell text-xs text-muted-foreground">
+                    {s.slug}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DeleteStatusButton id={s.id} name={s.name} />
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {statuses.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell>
-                      <div
-                        className="w-4 h-4 rounded-full border"
-                        style={{ backgroundColor: s.color }}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {s.slug}
-                    </TableCell>
-                    <TableCell>
-                      <DeleteStatusButton id={s.id} name={s.name} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </section>
     </div>
   );
 }

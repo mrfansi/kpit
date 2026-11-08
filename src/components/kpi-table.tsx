@@ -52,14 +52,14 @@ export function KPITable({
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b text-xs text-muted-foreground">
-            <Th className="pl-3 text-left">KPI</Th>
+          <tr className="border-b text-muted-foreground">
+            <Th className="pl-0 text-left">KPI</Th>
             <Th className="text-right">Nilai</Th>
             <Th className="hidden text-right sm:table-cell">Target</Th>
-            <Th className="w-36 text-left">Pencapaian</Th>
+            <Th className="hidden w-44 text-left sm:table-cell">Pencapaian</Th>
             <Th className="hidden w-24 text-right md:table-cell">Tren</Th>
-            <Th className="hidden w-28 lg:table-cell">12 bulan</Th>
-            {canEdit && <Th className="w-8" />}
+            <Th className="hidden w-32 lg:table-cell">12 bulan</Th>
+            {canEdit && <Th className="w-10" />}
           </tr>
         </thead>
         <tbody>
@@ -102,82 +102,80 @@ export function KPITable({
             return (
               <tr
                 key={kpi.id}
-                className="group border-b transition-colors last:border-0 hover:bg-accent/50"
+                className="group border-b transition-colors duration-[var(--dur-micro)] last:border-0 hover:bg-paper-2"
               >
-                {/* Rail status menempel di sel pertama, BUKAN di <tr>: memberi
-                    position:relative pada <tr> bersama border-collapse merusak
-                    perhitungan lebar kolom di Chrome (sel pertama tergeser dan
-                    kolom lain ikut runtuh). */}
-                <td
-                  className={cn(
-                    "relative py-2.5 pl-3",
-                    "before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-['']",
-                    cfg.rail
-                  )}
-                >
+                {/* Status dibawa readout-nya sendiri (isi gauge + persen berwarna),
+                    bukan rail tebal di tepi baris. */}
+                {/* w-full + max-w-0: kolom nama mengambil sisa lebar dan memotong deskripsi
+                    di dalam selnya sendiri, tidak meluber ke bawah kolom nilai. */}
+                <td className="w-full max-w-0 py-3 pr-4 pl-0">
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/kpi/${kpi.id}`}
-                      className="font-medium underline-offset-2 hover:underline"
+                      className="font-semibold underline-offset-4 hover:underline"
                     >
                       {kpi.name}
                     </Link>
                     {isStale && (
                       <span title="Data sudah lama, belum diperbarui">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Clock aria-label="Data sudah lama" className="size-3.5 text-muted-foreground" />
                       </span>
                     )}
                     {activeActions > 0 && (
                       <Link
                         href={`/kpi/${kpi.id}#actions`}
-                        className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                        className="inline-flex items-center gap-1 rounded-sm bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground transition-colors duration-[var(--dur-micro)] hover:text-foreground"
                         title={`${activeActions} action plan aktif`}
                       >
-                        <ListChecks className="h-3 w-3" />
+                        <ListChecks aria-hidden className="size-3" />
                         <span className="num">{activeActions}</span>
                       </Link>
                     )}
                   </div>
                   {kpi.description && (
-                    <p className="mt-0.5 max-w-md truncate text-xs text-muted-foreground" title={kpi.description}>
+                    <p className="mt-1 max-w-md truncate text-sm text-muted-foreground" title={kpi.description}>
                       {kpi.description}
                     </p>
                   )}
-                  <span className={cn("text-xs sm:hidden", cfg.color)}>{cfg.label}</span>
+                  <span className={cn("mt-1 inline-block text-xs font-semibold sm:hidden", cfg.color)}>{cfg.label}</span>
                 </td>
 
-                <td className="py-2.5 text-right whitespace-nowrap">
-                  <div className="num font-semibold">
-                    {value !== null ? formatValue(value, kpi.unit) : "—"}
+                <td className="py-3 pr-4 text-right whitespace-nowrap">
+                  <div className="num text-lg leading-tight font-semibold">
+                    {value !== null ? formatValue(value, kpi.unit) : <Empty />}
                   </div>
                   {isFromOtherPeriod && (
-                    <div className="num text-xs text-muted-foreground">
+                    <div className="num mt-0.5 text-xs text-muted-foreground">
                       per {formatPeriodDate(latestEntry!.periodDate, "MMM yyyy")}
                     </div>
                   )}
-                </td>
-
-                <td className="num hidden py-2.5 text-right whitespace-nowrap text-muted-foreground sm:table-cell">
-                  {formatValue(targetData.target, kpi.unit)}
-                </td>
-
-                <td className="py-2.5 pr-2 pl-2">
-                  {pct !== null ? (
-                    <Gauge pct={pct} fill={cfg.solid} textColor={cfg.color} />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
+                  {/* Di ponsel kolom gauge disembunyikan; persennya pindah ke bawah nilai. */}
+                  {pct !== null && (
+                    <div className={cn("num mt-0.5 text-xs font-semibold sm:hidden", cfg.color)}>{pct}%</div>
                   )}
                 </td>
 
-                <td className="hidden py-2.5 text-right md:table-cell">
+                <td className="num hidden py-3 pr-4 text-right whitespace-nowrap text-muted-foreground sm:table-cell">
+                  {formatValue(targetData.target, kpi.unit)}
+                </td>
+
+                <td className="hidden py-3 pr-4 sm:table-cell">
+                  {pct !== null ? (
+                    <Gauge pct={pct} fill={cfg.solid} textColor={cfg.color} />
+                  ) : (
+                    <Empty />
+                  )}
+                </td>
+
+                <td className="hidden py-3 pr-4 text-right md:table-cell">
                   {trend ? (
                     <span
                       className={cn(
-                        "inline-flex items-center gap-0.5 text-xs font-medium",
+                        "inline-flex items-center gap-1 text-sm font-semibold",
                         trendColor(trend, kpi.direction)
                       )}
                     >
-                      <TrendIcon className="h-3.5 w-3.5" />
+                      <TrendIcon aria-hidden className="size-3.5" />
                       {delta !== null && delta !== 0 && (
                         <span className="num">
                           {delta > 0 ? "+" : "−"}
@@ -186,14 +184,14 @@ export function KPITable({
                       )}
                     </span>
                   ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
+                    <Empty />
                   )}
                 </td>
 
-                <td className="hidden py-1.5 pr-2 lg:table-cell">
+                <td className="hidden py-2 pr-2 lg:table-cell">
                   {/* Lebar eksplisit: ResponsiveContainer tidak punya lebar
                       intrinsik, jadi di kolom tabel auto-width ia runtuh. */}
-                  <div className="w-24">
+                  <div className="w-28">
                     {sparklineEntries.length >= 2 ? (
                       <Sparkline entries={sparklineEntries} status={status} height={28} />
                     ) : null}
@@ -201,7 +199,7 @@ export function KPITable({
                 </td>
 
                 {canEdit && (
-                  <td className="py-2.5 pr-2">
+                  <td className="py-3 text-right">
                     <PinKPIButton id={kpi.id} isPinned={kpi.isPinned} />
                   </td>
                 )}
@@ -216,9 +214,18 @@ export function KPITable({
 
 function Th({ className, children }: { className?: string; children?: React.ReactNode }) {
   return (
-    <th scope="col" className={cn("px-2 py-2 font-medium", className)}>
+    <th scope="col" className={cn("px-0 pr-4 pb-2.5 font-normal whitespace-nowrap", className)}>
       {children}
     </th>
+  );
+}
+
+/** Sel tanpa bacaan. Tanda hubung biasa, bukan em dash; teks alternatif untuk pembaca layar. */
+function Empty() {
+  return (
+    <span className="text-muted-foreground" aria-label="Tidak ada data">
+      -
+    </span>
   );
 }
 
@@ -230,21 +237,22 @@ function formatDelta(v: number) {
 /** Skala 0–125% dengan takik di 100%, supaya melampaui target terlihat. */
 const GAUGE_MAX_PCT = 125;
 
+/** Ujung persegi dan takik setinggi baris: dibaca seperti skala instrumen. */
 function Gauge({ pct, fill, textColor }: { pct: number; fill: string; textColor: string }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="relative h-1.5 w-full min-w-12 rounded-full bg-secondary">
+    <div className="flex items-center gap-3">
+      <div className="relative h-2 w-full min-w-16 bg-secondary">
         <div
-          className={cn("h-1.5 rounded-full", fill)}
+          className={cn("h-2", fill)}
           style={{ width: `${Math.min((pct / GAUGE_MAX_PCT) * 100, 100)}%` }}
         />
         <span
           aria-hidden
-          className="absolute -top-0.5 h-2.5 w-px bg-foreground/40"
+          className="absolute -top-1 h-4 w-px bg-foreground"
           style={{ left: `${(100 / GAUGE_MAX_PCT) * 100}%` }}
         />
       </div>
-      <span className={cn("num w-10 shrink-0 text-right text-xs font-medium", textColor)}>
+      <span className={cn("num w-12 shrink-0 text-right text-sm font-semibold", textColor)}>
         {pct}%
       </span>
     </div>

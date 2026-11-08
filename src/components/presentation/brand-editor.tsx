@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import type { BrandStyle } from "@/lib/presentation/brand";
 
@@ -200,29 +201,31 @@ export function BrandEditor() {
     <PageHeader title="Brand Presentasi" description="Ceritakan gaya yang Anda inginkan, sempurnakan bersama AI, lalu gunakan untuk seluruh laporan bulanan." />
     <div className="flex flex-wrap items-center justify-between gap-3 border-y py-4">
       <div className="space-y-1 text-sm">
-        <p className="font-medium">{loading ? "Memuat brand aktif…" : active ? `${active.style.name} · revisi ${active.revision}` : "Brand default · belum ada revisi tersimpan"}</p>
+        <p className="font-semibold">{loading ? "Memuat brand aktif…" : active ? <>{active.style.name}, revisi <span className="num">{active.revision}</span></> : "Brand default, belum ada revisi tersimpan"}</p>
         {active?.updatedAt && <p className="text-xs text-muted-foreground">Disimpan {new Date(active.updatedAt).toLocaleString("id-ID")}{active.updatedBy ? ` oleh ${active.updatedBy}` : ""}</p>}
-        <p className="text-xs text-muted-foreground">{dirty ? "Draf belum disimpan. Brand aktif belum berubah." : "Brand aktif berlaku untuk HTML presentasi dan Presentation Prompt."}</p>
+        <p className="text-muted-foreground">{dirty ? "Draf belum disimpan. Brand aktif belum berubah." : "Brand aktif berlaku untuk HTML presentasi dan Presentation Prompt."}</p>
       </div>
-      <Button onClick={() => void save()} disabled={loading || !!busy || !dirty || conflicted || previewLoading || !previewHtml}>
+      <Button type="button" onClick={() => void save()} disabled={loading || !!busy || !dirty || conflicted || previewLoading || !previewHtml}>
         {busy === "save" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
         Simpan sebagai brand aktif
       </Button>
     </div>
-    {error && <div role="alert" className="space-y-2 rounded-md border border-destructive p-3 text-sm text-destructive"><p>{error}</p>{(!draft || conflicted) && <Button variant="outline" size="sm" disabled={!!busy || loading} onClick={() => { setLoading(true); setLoadKey((key) => key + 1); }}>Muat brand aktif lagi</Button>}</div>}
+    {error && <div role="alert" className="space-y-2 rounded-card bg-danger-soft p-3 text-sm text-danger"><p>{error}</p>{(!draft || conflicted) && <Button type="button" variant="outline" size="sm" disabled={!!busy || loading} onClick={() => { setLoading(true); setLoadKey((key) => key + 1); }}>Muat brand aktif lagi</Button>}</div>}
     <p role="status" aria-live="polite" className="text-sm text-muted-foreground">{busy === "generate" ? "AI sedang merancang gaya presentasi…" : busy === "save" ? "Menyimpan brand aktif…" : notice}</p>
+    {!draft && loading && <div aria-hidden="true" className="grid gap-8 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]"><div className="space-y-4"><Skeleton className="h-6 w-56" /><Skeleton className="h-4 w-full" /><Skeleton className="h-28 w-full" /></div><Skeleton className="aspect-video w-full" /></div>}
     {draft && <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
       <section className="min-w-0 space-y-4" aria-labelledby="conversation-title" aria-busy={busy === "generate"}>
         <div><h2 id="conversation-title" className="text-lg font-semibold">Rancang lewat percakapan</h2><p className="mt-1 text-sm text-muted-foreground">Sebutkan suasana, warna, atau jenis huruf. Setelah itu, coba arahan seperti “lebih terang” atau “judul lebih formal”.</p></div>
-        {messages.length > 0 && <div role="log" aria-label="Percakapan desain brand" aria-live="polite" className="max-h-96 space-y-4 overflow-y-auto rounded-md border p-4">
-          {messages.map((message, index) => <div key={index} className={message.role === "user" ? "ml-4 rounded-md bg-muted p-3" : "space-y-1"}><p className="text-xs font-semibold">{message.role === "user" ? "Anda" : "AI"}</p><p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.text}</p></div>)}
+        {messages.length > 0 && <div role="log" aria-label="Percakapan desain brand" aria-live="polite" className="max-h-96 space-y-4 overflow-y-auto rounded-card border p-4">
+          {messages.map((message, index) => <div key={index} className={message.role === "user" ? "ml-4 space-y-1 rounded-md bg-paper-2 p-3" : "space-y-1"}><p className="text-xs font-semibold">{message.role === "user" ? "Anda" : "AI"}</p><p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.text}</p></div>)}
           <div ref={threadEnd} />
         </div>}
-        {messages.length === 0 && <div className="flex flex-wrap gap-2" aria-label="Contoh arahan gaya">{starters.map((starter) => <Button key={starter} type="button" variant="outline" size="sm" className="h-auto max-w-full whitespace-normal rounded-full text-left" disabled={!!busy || loading || conflicted} onClick={() => { setInstruction(starter); textarea.current?.focus(); }}>{starter}</Button>)}</div>}
+        {/* Contoh arahan = kalimat panjang: daftar baris pilihan yang tenang, satu baris per arahan (terpotong di layar sempit, utuh di title dan di kotak teks setelah dipilih). */}
+        {messages.length === 0 && <ul className="divide-y border-y" aria-label="Contoh arahan gaya">{starters.map((starter) => <li key={starter}><Button type="button" variant="ghost" title={starter} className="h-auto w-full justify-start rounded-none px-2 py-2.5 text-left font-normal" disabled={!!busy || loading || conflicted} onClick={() => { setInstruction(starter); textarea.current?.focus(); }}><span className="min-w-0 truncate">{starter}</span></Button></li>)}</ul>}
         <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void generate(); }}>
           <Label htmlFor="brand-instruction">{messages.length ? "Apa yang ingin diubah?" : "Gaya presentasi yang Anda inginkan"}</Label>
           <Textarea ref={textarea} id="brand-instruction" value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder="Misalnya: latar navy, judul tegas, dan aksen biru. Tetap nyaman dibaca saat rapat." maxLength={1000} rows={4} required disabled={!!busy || loading || conflicted} aria-describedby="instruction-hint" />
-          <div className="flex items-center justify-between gap-3"><p id="instruction-hint" className="text-xs text-muted-foreground">Maksimal 1.000 karakter. Warna status KPI tetap.</p><Button type="submit" disabled={!!busy || loading || conflicted || !instruction.trim()}>Kirim</Button></div>
+          <div className="flex items-center justify-between gap-3"><p id="instruction-hint" className="text-sm text-muted-foreground">Maksimal 1.000 karakter. Warna status KPI tetap.</p><Button type="submit" variant="outline" disabled={!!busy || loading || conflicted || !instruction.trim()}>Kirim</Button></div>
         </form>
         <div className="flex flex-wrap gap-2 border-t pt-4">
           <Button type="button" variant="outline" disabled={!!busy || loading || conflicted || !defaults} onClick={() => { if (!defaults) return; showDraft(defaults); setDescription("Dikembalikan ke gaya default."); setMessages([]); setInstruction(""); setDirty(true); setError(""); setNotice("Gaya default ditampilkan. Klik Simpan sebagai brand aktif untuk menerapkannya."); }}>Kembali ke default</Button>
@@ -230,13 +233,14 @@ export function BrandEditor() {
         </div>
       </section>
       <section className="min-w-0 space-y-4" aria-labelledby="preview-title">
-        <div><h2 id="preview-title" className="text-lg font-semibold">Pratinjau · {draft.name}</h2><p className="mt-1 text-sm text-muted-foreground">Deck asli dengan data contoh, bukan laporan perusahaan. Klik di dalam slide, lalu gunakan tombol panah untuk berpindah.</p></div>
-        <div className="aspect-video overflow-hidden rounded-md border bg-muted" aria-busy={previewLoading}>
-          {previewHtml ? <iframe title="Pratinjau brand pada presentasi laporan bulanan" sandbox="allow-scripts" srcDoc={previewHtml} className="h-full w-full border-0" /> : <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">{previewLoading ? <span role="status">Menyiapkan pratinjau…</span> : <div role="alert" className="space-y-3"><p>{previewError}</p><Button variant="outline" size="sm" onClick={() => { setPreviewLoading(true); setPreviewError(""); setPreviewKey((key) => key + 1); }}>Coba pratinjau lagi</Button></div>}</div>}
+        <div><h2 id="preview-title" className="text-lg font-semibold">Pratinjau: {draft.name}</h2><p className="mt-1 max-w-prose text-sm text-muted-foreground">Deck asli dengan data contoh, bukan laporan perusahaan. Klik di dalam slide, lalu gunakan tombol panah untuk berpindah.</p></div>
+        <div className="aspect-video overflow-hidden rounded-card border bg-paper-2" aria-busy={previewLoading}>
+          {previewHtml ? <iframe title="Pratinjau brand pada presentasi laporan bulanan" sandbox="allow-scripts" srcDoc={previewHtml} className="h-full w-full border-0" /> : <div className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">{previewLoading ? <span role="status">Menyiapkan pratinjau…</span> : <div role="alert" className="space-y-3"><p>{previewError}</p><Button type="button" variant="outline" size="sm" onClick={() => { setPreviewLoading(true); setPreviewError(""); setPreviewKey((key) => key + 1); }}>Coba pratinjau lagi</Button></div>}</div>}
         </div>
-        <div className="space-y-3 text-xs text-muted-foreground" aria-label="Warna dan jenis huruf draf">
-          <ul className="flex flex-wrap gap-x-4 gap-y-3">{Object.entries(draft.colors).map(([key, color]) => <li key={key} className="flex items-center gap-2"><span aria-hidden="true" className="size-5 shrink-0 rounded-sm border" style={{ backgroundColor: color }} /><span>{colorLabels[key as keyof BrandStyle["colors"]]}<span className="block">{color}</span></span></li>)}</ul>
-          <p>Judul: <span className="text-foreground">{draft.fonts.heading}</span> · Isi: <span className="text-foreground">{draft.fonts.body}</span></p>
+        <div className="space-y-3 text-sm text-muted-foreground" aria-label="Warna dan jenis huruf draf">
+          {/* Swatch = warna brand milik presentasi (konten pengguna), jadi inline style dari data. */}
+          <ul className="flex flex-wrap gap-x-5 gap-y-3">{Object.entries(draft.colors).map(([key, color]) => <li key={key} className="flex items-center gap-2"><span aria-hidden="true" className="size-5 shrink-0 rounded-sm border" style={{ backgroundColor: color }} /><span className="text-xs">{colorLabels[key as keyof BrandStyle["colors"]]}<span className="num block">{color}</span></span></li>)}</ul>
+          <p className="flex flex-wrap gap-x-5 gap-y-1"><span>Judul: <span className="text-foreground">{draft.fonts.heading}</span></span><span>Isi: <span className="text-foreground">{draft.fonts.body}</span></span></p>
           {draft.guideline && <p className="max-w-prose whitespace-pre-wrap leading-relaxed">{draft.guideline}</p>}
         </div>
       </section>

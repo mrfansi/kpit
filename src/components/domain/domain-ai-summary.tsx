@@ -63,12 +63,15 @@ export function DomainAISummary({ requestData }: DomainAISummaryProps) {
     // Saat belum ada ringkasan, panel ini menyusut jadi satu baris. Panel kosong
     // tidak boleh mengambil ruang sebanyak panel berisi — data yang harus naik,
     // bukan tombol yang menunggu diklik.
-    <div className={cn("rounded-lg border", hasContent ? "space-y-2 p-4" : "px-4 py-2.5")}>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium">
-          Ringkasan Domain
+    <section
+      aria-labelledby="domain-summary-heading"
+      className={cn("border-b", hasContent ? "space-y-3 pb-5" : "pb-4")}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <h2 id="domain-summary-heading" className="text-base font-semibold">
+          Ringkasan domain
           {!hasContent && (
-            <span className="ml-2 font-normal text-muted-foreground">
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
               belum dibuat untuk periode ini
             </span>
           )}
@@ -79,12 +82,12 @@ export function DomainAISummary({ requestData }: DomainAISummaryProps) {
           size="sm"
           onClick={handleGenerate}
           disabled={loading}
-          className="shrink-0 text-xs print:hidden"
+          className="print:hidden"
         >
           {loading ? (
             <>
-              <LoadingSpinner className="mr-1" />
-              Menganalisis...
+              <LoadingSpinner />
+              Menganalisis…
             </>
           ) : summary ? (
             "Buat ulang"
@@ -94,21 +97,21 @@ export function DomainAISummary({ requestData }: DomainAISummaryProps) {
         </Button>
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
       {summary && (
-        <div className="space-y-2 text-sm text-foreground">
+        <div className="max-w-[65ch] space-y-3 text-base text-foreground">
           {summary
             .split("\n\n")
             .filter(Boolean)
             .map((paragraph, i) => (
               <p key={i}>{paragraph}</p>
             ))}
-          <p className="mt-2 text-xs text-muted-foreground print:hidden">
-            Dihasilkan oleh AI — verifikasi data sebelum mengambil keputusan
+          <p className="text-xs text-muted-foreground print:hidden">
+            Dihasilkan oleh AI. Verifikasi data sebelum mengambil keputusan.
           </p>
         </div>
       )}
-    </div>
+    </section>
   );
 }

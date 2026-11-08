@@ -1,14 +1,49 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full · scope: app
+ * paper: oklch(99% 0 0) · accent: oklch(20% 0 0) · display: Archivo · body: Archivo · outlier: JetBrains Mono (code only)
+ * nav: kept (sidebar of sixteen destinations, fixed; a sheet under lg) · signature: the KPI readout ledger · states: loading, empty, error, full
+ * axes: light/grotesk-sans/neutral · posture: restrained · surface: absolute (cards on white, mm) · contrast: pass · modes: light+dark · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V3 · weakest: V, an app shell is familiar by design; the variety lives in the readout figure and the gauge, not in a new shell */
+/* Hallmark · finish-review: subagent · fix · 8 findings · 8 resolved (the empty-row cue on /admin/input checked on an empty period) · gap: none */
+/* Hallmark · waive 71 · each repeated-row head (Tindakan 1, Risiko 1) sits first in its own p-4 tinted panel, centred beside its Hapus control · the measure reads the head's 1px offset inside that row, not the panel padding above it, on the monthly report editor */
+/* Hallmark · dropped toggleBold, toggleItalic, toggleStrike, toggleHeading, toggleBulletList, toggleOrderedList, onClick={handleLink}, setFormat(option.value), setScope(option.value) · not dropped in behaviour: the rich-text toolbar runs the same editor.chain() calls and handleLink from its tool array (tool.run), and the export dialog sets format and scope from radio onChange */
+/* Hallmark · dropped $ACTION_KEY, -form-item · Next regenerates the server-action key per build and React regenerates the useId field ids per tree position; all 33 named fields in the source are kept */
+/* Hallmark · dropped the hover tooltips on the /timeline/report Gantt bars · they hid a third of the page's text at rest (62); each fact they held is in the Executive summary table on the same page */
+/* Hallmark · reworded "Product & Tech — Product & Tech" to "Product & Tech" with the scope on the context line · 19 names the dash and 69 the echo */
+/* Hallmark · reworded "Lampiran — tidak termasuk slide inti" to "Lampiran (tidak termasuk slide inti)" · 19 names the dash */
+/* Hallmark · dropped laporan bulanan, kpit default, bulan laporan, bulan sebelumnya · reworded, not dropped: the middle dot (63) in these heads became a colon or parentheses */
+/* Hallmark · note on the figures WARN · spot-checked on /report/product-tech: every value is still printed; the record tokenises them differently now that sources sit in their own spans and negative deltas carry the minus sign */
+/* Hallmark · dismissed F18 · data-slot on these elements is shadcn's component tag (button, sheet-trigger), not an image slot */
+/* Hallmark · answered F25 · the appendix ledger on /report/[domain] scrolls sideways inside its own frame, its first column names the row, and the report is read at a desk or printed */
+/* Hallmark · waive 72 · the monthly report KPI disclosure pads its summary and body px-4 py-4 · the crowding is measured on the hidden body of a closed KPI disclosure in the monthly report editor */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./tokens.css";
+@import "./base.css" layer(base);
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Nama shadcn tetap dipakai komponen; nilainya dipetakan ke peran di tokens.css.
+ * `accent` shadcn = permukaan hover, `muted` shadcn = latar tenang; peran Hallmark
+ * yang namanya bertabrakan (--color-accent, --color-muted) sengaja tidak masuk @theme.
+ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-outlier);
+  --color-paper: var(--color-paper);
+  --color-paper-2: var(--color-paper-2);
+  --color-paper-3: var(--color-paper-3);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-ink-2: var(--color-ink-2);
+  --color-rule: var(--color-rule);
+  --color-edge: var(--color-edge);
+  --color-hover: var(--color-hover);
+  --color-scrim: var(--color-scrim);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -58,169 +93,58 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/*
- * Palet "panel instrumen", tanpa warna brand sama sekali.
- *
- * Chrome sepenuhnya netral (chroma = 0). Elemen interaktif TIDAK boleh
- * dibedakan lewat hue — pakai kontras, bobot, dan garis. Kalau tombol butuh
- * hue untuk terlihat penting, hierarkinya yang salah.
- *
- * Hue hanya boleh masuk lewat dua pintu, dan keduanya membawa makna:
- *
- * 1. SINYAL STATUS — hijau / kuning / merah, token di bawah. Ini penilaian:
- *    KPI ini sehat atau tidak. Hue-nya wajib konsisten di seluruh aplikasi,
- *    jadi selalu lewat `statusConfig` di src/lib/kpi-status.ts, tidak pernah
- *    ditulis langsung.
- *
- * 2. IDENTITAS KATEGORI — warna per domain dan per project, disimpan di DB
- *    dan dihasilkan `generateSoftColor()` (src/lib/colors.ts). Ini BUKAN
- *    penilaian, cuma label: membedakan "Finance" dari "Operations" pada dot
- *    sidebar, bar Gantt, dan baris tabel laporan. Sengaja pastel dan
- *    berchroma rendah supaya tidak pernah terbaca sebagai sinyal status.
- *
- * Di luar dua itu, hue apa pun — apalagi hex atau kelas Tailwind mentah
- * seperti `text-blue-500` — adalah bug: ia akan berebut perhatian dengan
- * sinyal status dan tidak ikut berubah saat dark mode.
- */
+/* Alias shadcn. Dideklarasikan di :root (elemen yang sama yang membawa kelas .dark),
+   jadi ikut berganti mode tanpa blok .dark kedua. */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.99 0 0);
-  --foreground: oklch(0.18 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0 0);
-  --primary: oklch(0.2 0 0);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.25 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.51 0 0);
-  --accent: oklch(0.94 0 0);
-  --accent-foreground: oklch(0.2 0 0);
-  --destructive: oklch(0.55 0.2 25);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.4 0 0);
-
-  /*
-   * Sinyal status KPI, tiga peran terpisah karena syarat kontrasnya beda:
-   * - warna utama = TEKS, butuh 4.5:1 di atas latar terang → harus gelap.
-   * - `-fill`     = ISIAN grafis (bar, rail, sparkline), cuma butuh 3:1 → boleh cerah.
-   * - `-soft`     = latar chip.
-   * Menyatukan teks dan isian ke satu nilai memaksa kuning digelapkan sampai
-   * berubah jadi coklat lumpur. Makanya dipisah.
-   */
-  --success: oklch(0.5 0.13 155);
-  --success-soft: oklch(0.94 0.045 155);
-  --success-fill: oklch(0.63 0.15 155);
-  --warning: oklch(0.52 0.11 78);
-  --warning-soft: oklch(0.95 0.06 85);
-  --warning-fill: oklch(0.78 0.16 82);
-  --danger: oklch(0.53 0.2 25);
-  --danger-soft: oklch(0.95 0.035 25);
-  --danger-fill: oklch(0.6 0.21 25);
-  /* "Info" = netral, bukan penilaian baik/buruk (mis. status "open", hint).
-     Sengaja abu-abu: kalau diberi hue, ia akan bersaing dengan sinyal status. */
-  --info: oklch(0.45 0 0);
-  --info-soft: oklch(0.95 0 0);
-
-  /* Chart netral: garis tren tidak boleh mengaku-aku sebagai sinyal status.
-     Warna hanya masuk lewat status KPI-nya sendiri. */
-  --chart-1: oklch(0.28 0 0);
-  --chart-2: oklch(0.44 0 0);
-  --chart-3: oklch(0.58 0 0);
-  --chart-4: oklch(0.7 0 0);
-  --chart-5: oklch(0.82 0 0);
-
-  --sidebar: oklch(0.975 0 0);
-  --sidebar-foreground: oklch(0.18 0 0);
-  --sidebar-primary: oklch(0.2 0 0);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.93 0 0);
-  --sidebar-accent-foreground: oklch(0.2 0 0);
-  --sidebar-border: oklch(0.89 0 0);
-  --sidebar-ring: oklch(0.4 0 0);
-}
-
-.dark {
-  --background: oklch(0.16 0 0);
-  --foreground: oklch(0.96 0 0);
-  --card: oklch(0.21 0 0);
-  --card-foreground: oklch(0.96 0 0);
-  --popover: oklch(0.21 0 0);
-  --popover-foreground: oklch(0.96 0 0);
-  --primary: oklch(0.95 0 0);
-  --primary-foreground: oklch(0.18 0 0);
-  --secondary: oklch(0.27 0 0);
-  --secondary-foreground: oklch(0.96 0 0);
-  --muted: oklch(0.27 0 0);
-  --muted-foreground: oklch(0.7 0 0);
-  --accent: oklch(0.31 0 0);
-  --accent-foreground: oklch(0.96 0 0);
-  --destructive: oklch(0.7 0.18 25);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.75 0 0);
-
-  --success: oklch(0.76 0.15 155);
-  --success-soft: oklch(0.3 0.06 155);
-  --success-fill: oklch(0.7 0.16 155);
-  --warning: oklch(0.81 0.13 82);
-  --warning-soft: oklch(0.32 0.06 80);
-  --warning-fill: oklch(0.79 0.15 82);
-  --danger: oklch(0.72 0.17 25);
-  --danger-soft: oklch(0.32 0.08 25);
-  --danger-fill: oklch(0.66 0.2 25);
-  --info: oklch(0.72 0 0);
-  --info-soft: oklch(0.3 0 0);
-
-  --chart-1: oklch(0.9 0 0);
-  --chart-2: oklch(0.78 0 0);
-  --chart-3: oklch(0.66 0 0);
-  --chart-4: oklch(0.54 0 0);
-  --chart-5: oklch(0.44 0 0);
-
-  --sidebar: oklch(0.19 0 0);
-  --sidebar-foreground: oklch(0.96 0 0);
-  --sidebar-primary: oklch(0.95 0 0);
-  --sidebar-primary-foreground: oklch(0.18 0 0);
-  --sidebar-accent: oklch(0.3 0 0);
-  --sidebar-accent-foreground: oklch(0.96 0 0);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.75 0 0);
+  --radius: 0.375rem;
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-accent-ink);
+  --secondary: var(--color-paper-3);
+  --secondary-foreground: var(--color-ink-2);
+  --muted: var(--color-paper-3);
+  --muted-foreground: var(--color-muted);
+  --accent: var(--color-hover);
+  --accent-foreground: var(--color-ink);
+  --destructive: var(--color-error);
+  --border: var(--color-rule);
+  --input: var(--color-edge);
+  --ring: var(--color-focus);
+  --sidebar: var(--color-paper-2);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-accent);
+  --sidebar-primary-foreground: var(--color-accent-ink);
+  --sidebar-accent: var(--color-hover);
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-rule);
+  --sidebar-ring: var(--color-focus);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
   }
-  :focus-visible {
-    @apply outline-2 outline-offset-2 outline-ring;
-  }
 }
 
-/* Angka metrik: mono + tabular supaya digit sejajar antar baris/kartu. */
+/*
+ * Angka metrik ("readout"): Archivo semi-condensed + angka tabular, supaya digit
+ * sejajar antar baris dan angka besar tetap rapat seperti tampilan instrumen.
+ */
 @utility num {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
+  font-stretch: 87.5%;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum", "lnum";
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-/* Tiptap editor styles */
+/* Tiptap editor */
 .tiptap-editor {
   &:focus {
     outline: none;
@@ -235,26 +159,26 @@
   }
 }
 
-/* Prose styles for rendered comment content */
+/* Isi komentar yang dirender */
 .prose-comment {
   line-height: 1.6;
 
   h2 {
-    font-size: 1.125rem;
+    font-size: var(--text-lg);
     font-weight: 600;
-    margin-top: 0.75rem;
-    margin-bottom: 0.5rem;
+    margin-top: var(--space-sm);
+    margin-bottom: var(--space-xs);
   }
 
   h3 {
-    font-size: 1rem;
+    font-size: var(--text-md);
     font-weight: 600;
-    margin-top: 0.5rem;
-    margin-bottom: 0.25rem;
+    margin-top: var(--space-xs);
+    margin-bottom: var(--space-2xs);
   }
 
   p {
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-xs);
   }
 
   p:last-child {
@@ -267,8 +191,8 @@
 
   ul,
   ol {
-    padding-left: 1.25rem;
-    margin-bottom: 0.5rem;
+    padding-left: var(--space-lg);
+    margin-bottom: var(--space-xs);
   }
 
   ul {
@@ -280,7 +204,7 @@
   }
 
   li {
-    margin-bottom: 0.125rem;
+    margin-bottom: var(--space-3xs);
   }
 
   a {
@@ -290,37 +214,38 @@
   }
 
   a:hover {
-    opacity: 0.8;
+    text-decoration-thickness: 2px;
   }
 
   img {
     max-width: 100%;
     height: auto;
     border-radius: var(--radius);
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
+    margin-top: var(--space-xs);
+    margin-bottom: var(--space-xs);
   }
 
   blockquote {
-    border-left: 3px solid var(--border);
-    padding-left: 0.75rem;
-    margin: 0.5rem 0;
+    border-left: 2px solid var(--border);
+    padding-left: var(--space-sm);
+    margin: var(--space-xs) 0;
     color: var(--muted-foreground);
-    font-style: italic;
   }
 
   code {
+    font-family: var(--font-outlier);
     background: var(--muted);
-    padding: 0.125rem 0.375rem;
-    border-radius: 0.25rem;
+    padding: var(--space-3xs) var(--space-2xs);
+    border-radius: var(--radius-sm);
     font-size: 0.875em;
   }
 
   pre {
+    font-family: var(--font-outlier);
     background: var(--muted);
-    padding: 0.75rem;
+    padding: var(--space-sm);
     border-radius: var(--radius);
-    margin: 0.5rem 0;
+    margin: var(--space-xs) 0;
     overflow-x: auto;
   }
 

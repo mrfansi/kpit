@@ -49,133 +49,145 @@ export function DomainForm({ domain }: DomainFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nama Domain</FormLabel>
-              <FormControl><Input placeholder="Sales" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-2xl space-y-8">
+        <section aria-labelledby="domain-info-heading" className="space-y-5">
+          <h2 id="domain-info-heading" className="text-lg font-semibold">Informasi domain</h2>
 
-        <FormField
-          control={form.control}
-          name="slug"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Slug</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="sales"
-                  {...field}
-                  onChange={(e) => {
-                    field.onChange(e.target.value.toLowerCase().replace(/\s+/g, "-"));
-                  }}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="icon"
-            render={({ field }) => {
-              return (
+          {/* Tiap field: label, kontrol, lalu satu baris catatan yang selalu dipesan,
+              supaya pesan error tidak mendorong field di bawahnya. */}
+          <div className="space-y-3">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Icon</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {ICON_OPTIONS.map((o) => {
-                        const Icon = domainIconMap[o.value];
-                        return (
-                          <SelectItem key={o.value} value={o.value}>
-                            <span className="flex items-center gap-2">
-                              {Icon && <Icon className="w-4 h-4" />}
-                              {o.label}
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                  <FormLabel>Nama domain</FormLabel>
+                  <FormControl><Input placeholder="Sales" {...field} /></FormControl>
+                  <div className="min-h-[1lh] text-sm"><FormMessage /></div>
                 </FormItem>
-              );
-            }}
-          />
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="color"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Warna</FormLabel>
-                <FormControl>
-                  <div className="flex gap-2 items-center">
-                    <button
-                      type="button"
-                      className="w-9 h-9 rounded-md border border-input shadow-sm shrink-0"
-                      style={{ backgroundColor: field.value }}
-                      onClick={() => {
-                        const picker = document.getElementById("domain-color-picker") as HTMLInputElement;
-                        picker?.click();
+            <FormField
+              control={form.control}
+              name="slug"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Slug</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="sales"
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e.target.value.toLowerCase().replace(/\s+/g, "-"));
                       }}
-                      title="Klik untuk pilih warna manual"
                     />
-                    <input
-                      id="domain-color-picker"
-                      type="color"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      className="sr-only"
-                    />
-                    {!isEdit && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9"
-                        onClick={() => field.onChange(generateSoftColor())}
-                        title="Generate warna baru"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+                  </FormControl>
+                  <div className="min-h-[1lh] text-sm"><FormMessage /></div>
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Deskripsi (opsional)</FormLabel>
-              <FormControl><Input placeholder="Metrik performa penjualan" {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="icon"
+                render={({ field }) => {
+                  return (
+                    <FormItem>
+                      <FormLabel>Icon</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ICON_OPTIONS.map((o) => {
+                            const Icon = domainIconMap[o.value];
+                            return (
+                              <SelectItem key={o.value} value={o.value}>
+                                <span className="flex items-center gap-2">
+                                  {Icon && <Icon aria-hidden className="size-4" />}
+                                  {o.label}
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <div className="min-h-[1lh] text-sm"><FormMessage /></div>
+                    </FormItem>
+                  );
+                }}
+              />
 
-        <div className="flex gap-3 pt-2">
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Warna</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center gap-2">
+                        {/* Warna identitas domain dari DB/pemilih, bukan warna chrome. */}
+                        <button
+                          type="button"
+                          className="size-9 shrink-0 rounded-md border border-input transition-colors duration-[var(--dur-micro)] hover:border-edge"
+                          style={{ backgroundColor: field.value }}
+                          onClick={() => {
+                            const picker = document.getElementById("domain-color-picker") as HTMLInputElement;
+                            picker?.click();
+                          }}
+                          aria-label="Klik untuk pilih warna manual"
+                          title="Klik untuk pilih warna manual"
+                        />
+                        <input
+                          id="domain-color-picker"
+                          type="color"
+                          value={field.value}
+                          onChange={(e) => field.onChange(e.target.value)}
+                          className="sr-only"
+                        />
+                        {!isEdit && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => field.onChange(generateSoftColor())}
+                            aria-label="Generate warna baru"
+                            title="Generate warna baru"
+                          >
+                            <RefreshCw aria-hidden />
+                          </Button>
+                        )}
+                      </div>
+                    </FormControl>
+                    <div className="min-h-[1lh] text-sm"><FormMessage /></div>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Deskripsi <span className="font-normal text-muted-foreground">(opsional)</span>
+                  </FormLabel>
+                  <FormControl><Input placeholder="Metrik performa penjualan" {...field} /></FormControl>
+                  <div className="min-h-[1lh] text-sm"><FormMessage /></div>
+                </FormItem>
+              )}
+            />
+          </div>
+        </section>
+
+        <div className="flex flex-wrap gap-3 border-t pt-6">
           <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Tambah Domain"}
+            {form.formState.isSubmitting ? "Menyimpan…" : isEdit ? "Simpan Perubahan" : "Tambah Domain"}
           </Button>
           <Button type="button" variant="outline" asChild>
             <Link href="/admin/domain">Batal</Link>

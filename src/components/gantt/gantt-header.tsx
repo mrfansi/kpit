@@ -20,8 +20,8 @@ export function GanttHeader({ columns, totalWidth }: GanttHeaderProps) {
           <div
             key={i}
             className={cn(
-              "absolute top-0 h-full flex items-center justify-center border-r text-xs font-medium",
-              col.isCurrentPeriod && "bg-primary/5 text-primary"
+              "num absolute top-0 flex h-full items-center justify-center border-r text-sm text-muted-foreground",
+              col.isCurrentPeriod && "bg-paper-2 font-semibold text-foreground"
             )}
             style={{ left: col.x, width: col.width }}
           >

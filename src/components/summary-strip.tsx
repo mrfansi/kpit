@@ -13,9 +13,8 @@ interface SummaryStripProps {
 const ORDER: KPIStatus[] = ["green", "yellow", "red", "no-data"];
 
 /**
- * Satu baris pengganti empat blok lama (chip status + health bar terpisah).
- * Bar-nya sekaligus jadi legenda: proporsi = jumlah, jadi angka dan grafik
- * tidak lagi mengulang informasi yang sama di dua tempat.
+ * Readout utama layar: persen on-track sebagai angka terbesar, distribusi status
+ * sebagai satu bar yang sekaligus legenda (proporsi = jumlah), total KPI di ujung.
  */
 export function SummaryStrip({ kpisWithEntries }: SummaryStripProps) {
   const counts: Record<KPIStatus, number> = { green: 0, yellow: 0, red: 0, "no-data": 0 };
@@ -32,14 +31,16 @@ export function SummaryStrip({ kpisWithEntries }: SummaryStripProps) {
   const onTrackPct = tracked > 0 ? Math.round((counts.green / tracked) * 100) : null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-y py-3">
-      <div className="flex items-baseline gap-2">
-        <span className="num text-2xl font-semibold tracking-tight">{total}</span>
-        <span className="text-sm text-muted-foreground">KPI</span>
-      </div>
+    <div className="grid gap-x-8 gap-y-5 border-y py-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+      {onTrackPct !== null && (
+        <div className="flex items-baseline gap-2.5 sm:block">
+          <div className="num text-readout leading-none font-semibold tracking-tight">{onTrackPct}%</div>
+          <div className="text-sm text-muted-foreground sm:mt-1.5">on track</div>
+        </div>
+      )}
 
-      <div className="flex min-w-56 flex-1 flex-col gap-1.5">
-        <div className="flex h-1.5 overflow-hidden rounded-full bg-secondary">
+      <div className="flex min-w-0 flex-col gap-3 sm:border-l sm:pl-8">
+        <div className="flex h-3 gap-0.5 overflow-hidden bg-secondary">
           {ORDER.map((s) =>
             counts[s] > 0 ? (
               <div
@@ -50,25 +51,24 @@ export function SummaryStrip({ kpisWithEntries }: SummaryStripProps) {
             ) : null
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <ul className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
           {ORDER.map((s) =>
             counts[s] > 0 ? (
-              <span key={s} className="flex items-center gap-1.5 text-xs">
-                <span className={cn("h-2 w-2 rounded-full", statusConfig[s].solid)} />
+              <li key={s} className="flex items-center gap-1.5 text-sm">
+                {/* Kunci legenda untuk segmen bar di atas, bukan titik dekoratif. */}
+                <span aria-hidden className={cn("size-2.5 shrink-0", statusConfig[s].solid)} />
                 <span className={cn("num font-semibold", statusConfig[s].color)}>{counts[s]}</span>
                 <span className="text-muted-foreground">{statusConfig[s].label}</span>
-              </span>
+              </li>
             ) : null
           )}
-        </div>
+        </ul>
       </div>
 
-      {onTrackPct !== null && (
-        <div className="text-right">
-          <div className="num text-2xl font-semibold tracking-tight">{onTrackPct}%</div>
-          <div className="text-xs text-muted-foreground">on track</div>
-        </div>
-      )}
+      <div className="flex items-baseline gap-2 sm:border-l sm:pl-8">
+        <span className="num text-3xl leading-none font-semibold tracking-tight">{total}</span>
+        <span className="text-sm text-muted-foreground">KPI</span>
+      </div>
     </div>
   );
 }

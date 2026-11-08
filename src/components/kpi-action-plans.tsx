@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { CalendarClock, CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Plus, Trash2 } from "lucide-react";
 import type { KPIActionPlan } from "@/lib/db/schema";
 import { createActionPlan, deleteActionPlan, updateActionPlan } from "@/lib/actions/action-plan";
 import { actionPlanStatusLabels, isActionPlanOverdue, type ActionPlanStatus } from "@/lib/action-plan";
@@ -121,22 +121,19 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
 
   return (
     // Sasaran tautan "N action plan" dari tabel KPI di Overview.
-    <div id="actions" className="scroll-mt-4 space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
-          <h2 className="text-base font-semibold">Action Plan</h2>
-          {actions.length > 0 && <span className="num text-xs text-muted-foreground">({actions.length})</span>}
-        </div>
-      </div>
+    <section id="actions" className="scroll-mt-4 space-y-4">
+      <h2 className="text-lg font-semibold">
+        Action plan
+        {actions.length > 0 && <span className="num ml-2 text-sm font-normal text-muted-foreground">({actions.length})</span>}
+      </h2>
 
       {canEdit && (
-      <form action={handleCreate} className="grid gap-3 rounded-lg border bg-muted/20 p-4 print:hidden">
+      <form action={handleCreate} className="grid gap-4 rounded-card bg-paper-2 p-4 print:hidden">
         {suggestion && (
-          <div className="flex flex-col gap-2 rounded-md border border-warning bg-warning-soft px-3 py-2 text-sm text-warning sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 border-b pb-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <span>Early warning tersedia sebagai draft action plan.</span>
-            <Button type="button" variant="outline" size="sm" className="h-8 bg-background/80" onClick={useSuggestion}>
-              Use as Action Plan
+            <Button type="button" variant="outline" size="sm" onClick={useSuggestion}>
+              Use as action plan
             </Button>
           </div>
         )}
@@ -156,12 +153,12 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="action-description">Catatan</Label>
-          <Textarea id="action-description" name="description" value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} placeholder="Langkah singkat atau konteks masalah..." disabled={isPending} />
+          <Textarea id="action-description" name="description" value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} placeholder="Langkah singkat atau konteks masalah…" disabled={isPending} />
         </div>
         <div className="flex justify-end">
           <Button type="submit" size="sm" disabled={isPending}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Tambah Action
+            <Plus aria-hidden />
+            Tambah action
           </Button>
         </div>
       </form>
@@ -170,23 +167,23 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
       {actions.length === 0 ? (
         <EmptyState compact title="Belum ada action plan untuk KPI ini." />
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y border-y">
           {actions.map((action) => {
             const overdue = isActionPlanOverdue(action);
             return (
-              <li key={action.id} className="rounded-lg border bg-card p-4">
+              <li key={action.id} className="py-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-semibold">{action.title}</h3>
-                      <Badge className={`border-0 text-xs ${statusClass[action.status]}`}>{actionPlanStatusLabels[action.status]}</Badge>
-                      {overdue && <Badge variant="destructive" className="text-xs">Overdue</Badge>}
+                      <h3 className="text-base font-semibold">{action.title}</h3>
+                      <Badge className={statusClass[action.status]}>{actionPlanStatusLabels[action.status]}</Badge>
+                      {overdue && <Badge variant="destructive">Overdue</Badge>}
                     </div>
                     {action.description && <p className="text-sm text-muted-foreground">{action.description}</p>}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                       <span>PIC: {action.owner}</span>
-                      <span className="flex items-center gap-1">
-                        <CalendarClock className="h-3.5 w-3.5" />
+                      <span className="num flex items-center gap-1">
+                        <CalendarClock aria-hidden className="size-3.5" />
                         {new Date(`${action.dueDate}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
                       </span>
                     </div>
@@ -194,24 +191,31 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
                   {canEdit && (
                   <div className="flex items-center gap-2 print:hidden">
                     <Select value={action.status} onValueChange={(value) => handleStatusChange(action, value as ActionPlanStatus)} disabled={isPending}>
-                      <SelectTrigger className="h-8 w-36 text-xs">
+                      <SelectTrigger size="sm" className="w-36" aria-label={`Status action plan ${action.title}`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.entries(actionPlanStatusLabels).map(([value, label]) => (
-                          <SelectItem key={value} value={value} className="text-xs">{label}</SelectItem>
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" disabled={isPending}>
-                          <Trash2 className="h-3.5 w-3.5" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground hover:text-destructive"
+                          disabled={isPending}
+                          aria-label={`Hapus action plan ${action.title}`}
+                        >
+                          <Trash2 aria-hidden />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Hapus Action Plan Ini?</AlertDialogTitle>
+                          <AlertDialogTitle>Hapus action plan ini?</AlertDialogTitle>
                           <AlertDialogDescription>
                             Action plan &quot;{action.title}&quot; akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
                           </AlertDialogDescription>
@@ -222,7 +226,7 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
                             onClick={() => handleDelete(action)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            Ya, Hapus
+                            Ya, hapus
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -235,6 +239,6 @@ export function KPIActionPlans({ kpiId, initialActions, suggestion, canEdit = fa
           })}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

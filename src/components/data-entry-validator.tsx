@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface ValidationFlag {
   kpiName: string;
@@ -66,53 +67,52 @@ export function DataEntryValidator({
   }
 
   return (
-    <div className="mt-4">
+    <div className="space-y-3">
       <Button
         type="button"
         variant="outline"
         size="sm"
         onClick={handleValidate}
         disabled={loading}
-        className="text-xs"
       >
         {loading ? (
           <>
-            <span
-              className="inline-block w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin mr-1"
-              aria-hidden="true"
-            />
-            Memvalidasi...
+            <LoadingSpinner />
+            Memvalidasi…
           </>
         ) : (
           "Validasi AI"
         )}
       </Button>
 
-      {error && <p className="text-danger text-xs mt-2">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       {validated && flags.length === 0 && (
-        <p className="text-success text-xs mt-2">
+        <p className="text-sm text-success">
           Semua nilai terlihat wajar.
         </p>
       )}
 
       {flags.length > 0 && (
-        <div className="mt-2 space-y-1">
-          {flags.map((flag, i) => (
-            <div
-              key={i}
-              className={`text-xs p-2 rounded ${
-                flag.severity === "warning"
-                  ? "bg-warning-soft border border-warning text-warning"
-                  : "bg-info-soft border border-info text-info"
-              }`}
-            >
-              <span className="font-semibold">{flag.kpiName}:</span>{" "}
-              {flag.concern}
-            </div>
-          ))}
-          <p className="text-xs text-muted-foreground mt-1">
-            Peringatan ini bersifat advisory — Anda tetap bisa submit data.
+        <div className="space-y-2">
+          {/* Satu sumur berwarna per KPI yang ditandai; tanpa garis tepi. */}
+          <ul className="space-y-1.5">
+            {flags.map((flag, i) => (
+              <li
+                key={i}
+                className={`max-w-prose rounded-card px-3 py-2 text-sm ${
+                  flag.severity === "warning"
+                    ? "bg-warning-soft text-warning"
+                    : "bg-info-soft text-foreground"
+                }`}
+              >
+                <span className="font-semibold">{flag.kpiName}:</span>{" "}
+                {flag.concern}
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm text-muted-foreground">
+            Peringatan ini bersifat advisory. Anda tetap bisa submit data.
           </p>
         </div>
       )}

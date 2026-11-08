@@ -79,61 +79,62 @@ export default async function OverviewPage({ searchParams }: Props) {
     }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Overview KPI</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Posisi per{" "}
-            <span className="num font-medium text-foreground">
-              {selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "—"}
-            </span>
-          </p>
+    <div className="space-y-10">
+      {/* Kepala layar + readout utama: satu blok, readout langsung di bawah judul. */}
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">Overview KPI</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Posisi per{" "}
+              <span className="num font-semibold text-foreground">
+                {selectedPeriod ? formatPeriodDate(selectedPeriod, "MMMM yyyy") : "-"}
+              </span>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <Suspense>
+              <PeriodSelector defaultValue={selectedPeriod} />
+            </Suspense>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/report/all${selectedPeriod ? `?period=${selectedPeriod}` : ""}`}>
+                <FileText aria-hidden />
+                Executive Report
+              </Link>
+            </Button>
+            <ExportButtons />
+            {canEdit && <BatchCommentDraft periodDate={selectedPeriod ?? ""} />}
+            {canEdit && <QuickEntryModal kpis={allKPIs} kpiLatestPeriods={kpiLatestPeriods} />}
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap print:hidden">
+
+        <SummaryStrip kpisWithEntries={allKPIsWithEntries} />
+
+        {!isFiltered && (
+          <AttentionBar
+            redKPIs={redKPIs}
+            missingKPIs={missingKPIs}
+            period={selectedPeriod ?? ""}
+            canEdit={canEdit}
+          />
+        )}
+      </div>
+
+      <div className="space-y-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Suspense>
-            <PeriodSelector defaultValue={selectedPeriod} />
+            <KPIFilterBar defaultQ={q} defaultStatus={status} />
           </Suspense>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/report/all${selectedPeriod ? `?period=${selectedPeriod}` : ""}`}>
-              <FileText className="w-3.5 h-3.5 mr-1.5" />
-              Executive Report
-            </Link>
-          </Button>
-          <ExportButtons />
-          {canEdit && <BatchCommentDraft periodDate={selectedPeriod ?? ""} />}
-          {canEdit && <QuickEntryModal kpis={allKPIs} kpiLatestPeriods={kpiLatestPeriods} />}
+          <DomainTabs domains={domains} />
         </div>
-      </div>
 
-      <SummaryStrip kpisWithEntries={allKPIsWithEntries} />
-
-      {!isFiltered && (
-        <AttentionBar
-          redKPIs={redKPIs}
-          missingKPIs={missingKPIs}
-          period={selectedPeriod ?? ""}
-          canEdit={canEdit}
-        />
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Suspense>
-          <KPIFilterBar defaultQ={q} defaultStatus={status} />
-        </Suspense>
-        <DomainTabs domains={domains} />
-      </div>
-
-      {/* KPI yang dipinned */}
-      {pinnedWithEntries.length > 0 && !isFiltered && (
-        <section className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Pin className="h-3.5 w-3.5 text-muted-foreground" />
-            <h2 className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        {/* KPI yang dipinned */}
+        {pinnedWithEntries.length > 0 && !isFiltered && (
+          <section aria-labelledby="pinned-heading" className="space-y-3">
+            <h2 id="pinned-heading" className="flex items-center gap-2 text-lg font-semibold">
+              <Pin aria-hidden className="size-4 text-muted-foreground" />
               Dipinned
             </h2>
-          </div>
-          <div className="overflow-hidden rounded-lg border">
             <KPITable
               rows={pinnedWithEntries}
               actionCounts={actionCounts}
@@ -141,21 +142,20 @@ export default async function OverviewPage({ searchParams }: Props) {
               canEdit={canEdit}
               emptyMessage=""
             />
-          </div>
-        </section>
-      )}
+          </section>
+        )}
 
-      {byDomain.map(({ domain, kpisWithEntries }) => (
-        <section key={domain.id} className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: domain.color }} />
-            <h2 className="text-sm font-semibold">{domain.name}</h2>
-            <span className="num text-xs text-muted-foreground">
-              {kpisWithEntries.length} KPI
-            </span>
-            <DomainStatusBadges kpisWithEntries={kpisWithEntries} />
-          </div>
-          <div className="overflow-hidden rounded-lg border">
+        {byDomain.map(({ domain, kpisWithEntries }) => (
+          <section key={domain.id} aria-labelledby={`domain-${domain.id}`} className="space-y-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {/* Warna identitas domain (bukan status), sebagai kunci kecil persegi. */}
+              <span aria-hidden className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: domain.color }} />
+              <h2 id={`domain-${domain.id}`} className="text-lg font-semibold">{domain.name}</h2>
+              <span className="num text-sm text-muted-foreground">
+                {kpisWithEntries.length} KPI
+              </span>
+              <DomainStatusBadges kpisWithEntries={kpisWithEntries} />
+            </div>
             <KPITable
               rows={kpisWithEntries}
               actionCounts={actionCounts}
@@ -167,9 +167,9 @@ export default async function OverviewPage({ searchParams }: Props) {
                   : "Belum ada KPI untuk domain ini."
               }
             />
-          </div>
-        </section>
-      ))}
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

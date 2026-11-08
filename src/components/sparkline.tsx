@@ -25,6 +25,8 @@ export function Sparkline({ entries, status, height = 40 }: SparklineProps) {
   const padding = range < 1 ? Math.max(min * 0.1, 1) : range * 0.15;
 
   return (
+    // Dekoratif: angka yang dibandingkan sudah tertulis di sel sebelahnya.
+    <div aria-hidden className="pointer-events-none" style={{ height }}>
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data}>
         <YAxis hide domain={[min - padding, max + padding]} />
@@ -38,5 +40,6 @@ export function Sparkline({ entries, status, height = 40 }: SparklineProps) {
         />
       </LineChart>
     </ResponsiveContainer>
+    </div>
   );
 }

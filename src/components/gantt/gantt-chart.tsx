@@ -231,72 +231,80 @@ export function GanttChart({
           className="shrink-0 bg-background z-30 overflow-hidden"
           style={{ width: listWidth }}
         >
+          {/* Tidak sticky: panel kiri overflow-hidden dan tidak pernah bergulir sendiri,
+              jadi sticky di sini tidak berbuat apa-apa selain menumpuk dengan kepala Gantt. */}
           <div
-            className="sticky top-0 z-10 border-b bg-background flex items-center px-3"
+            className="border-b bg-background flex items-center px-3"
             style={{ height: HEADER_HEIGHT }}
           >
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Projects
-            </span>
+            <span className="text-sm text-muted-foreground">Projects</span>
           </div>
           <div>
             {localProjects.map((project) => (
               <div
                 key={project.id}
-                className="flex flex-col justify-center px-3 border-b hover:bg-accent/50 transition-colors group/row"
+                className="flex flex-col justify-center px-3 border-b hover:bg-paper-2 transition-colors duration-[var(--dur-micro)] group/row"
                 style={{ height: ROW_HEIGHT }}
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
+                  {/* Warna identitas project dari DB, sebagai kunci kecil persegi. */}
                   <span
-                    className="w-2 h-2 rounded-full shrink-0"
+                    aria-hidden
+                    className="size-2.5 rounded-sm shrink-0"
                     style={{ backgroundColor: project.color }}
                   />
-                  <span className="text-sm font-medium truncate flex-1 min-w-0">
+                  <span className="text-sm font-semibold truncate flex-1 min-w-0">
                     {project.name}
                   </span>
                   {canEdit && (
                     // Tanpa lg: tombol permanen terlihat di mobile/tablet — hover tidak ada di layar sentuh.
                     <div className="flex items-center gap-0.5 shrink-0">
                       <button
-                        className="opacity-100 lg:opacity-0 lg:group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                        type="button"
+                        aria-label={`Progress Log ${project.name}`}
+                        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-100 lg:opacity-0 lg:group-hover/row:opacity-100 lg:focus-visible:opacity-100 transition-[opacity,color,background-color] duration-[var(--dur-micro)] hover:bg-accent hover:text-foreground"
                         onClick={() => setLogPanelProject(project)}
                         title="Progress Log"
                       >
-                        <ClipboardList className="w-3 h-3 text-muted-foreground" />
+                        <ClipboardList aria-hidden className="size-3.5" />
                       </button>
                       <button
-                        className="opacity-100 lg:opacity-0 lg:group-hover/row:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                        type="button"
+                        aria-label={`Edit project ${project.name}`}
+                        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-100 lg:opacity-0 lg:group-hover/row:opacity-100 lg:focus-visible:opacity-100 transition-[opacity,color,background-color] duration-[var(--dur-micro)] hover:bg-accent hover:text-foreground"
                         onClick={() => {
                           setEditingProject(project);
                           setProjectDialogOpen(true);
                         }}
                         title="Edit project"
                       >
-                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                        <Pencil aria-hidden className="size-3.5" />
                       </button>
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 mt-1 pl-3.5">
+                <div className="flex items-center gap-2 mt-1 pl-[18px]">
                   {(() => {
                     const status = statuses.find((s) => s.id === project.statusId);
                     if (!status) return null;
+                    // Warna status dari DB hanya sebagai latar tipis; teks tetap tinta supaya lolos 4.5:1.
                     return (
                       <span
-                        className="text-[8px] font-medium px-1 py-px rounded shrink-0"
-                        style={{ backgroundColor: `${status.color}20`, color: status.color }}
+                        className="text-xs leading-4 px-1 rounded-sm shrink-0 text-foreground"
+                        style={{ backgroundColor: `${status.color}26` }}
                       >
                         {status.name}
                       </span>
                     );
                   })()}
-                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  {/* Gauge persegi, tanpa animasi lebar. */}
+                  <div className="flex-1 h-1.5 bg-secondary overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all"
+                      className="h-full"
                       style={{ width: `${project.progress}%`, backgroundColor: project.color }}
                     />
                   </div>
-                  <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                  <span className="num text-xs text-muted-foreground shrink-0">
                     {project.progress}%
                   </span>
                 </div>
@@ -307,7 +315,7 @@ export function GanttChart({
 
         {/* Resize handle */}
         <div
-          className="shrink-0 w-1 cursor-col-resize bg-border hover:bg-primary/40 active:bg-primary/60 transition-colors z-30"
+          className="shrink-0 w-1 cursor-col-resize bg-border hover:bg-edge active:bg-foreground transition-colors duration-[var(--dur-micro)] z-30"
           onMouseDown={(e) => {
             e.preventDefault();
             const startX = e.clientX;
@@ -372,8 +380,8 @@ export function GanttChart({
                   <div
                     key={project.id}
                     className={cn(
-                      "absolute rounded-lg shadow-sm group transition-shadow",
-                      isDragging && "shadow-lg ring-2 ring-primary/30 z-50"
+                      "absolute rounded-sm group",
+                      isDragging && "ring-2 ring-foreground/30 z-50"
                     )}
                     style={{
                       left: adjustedX,
@@ -381,13 +389,13 @@ export function GanttChart({
                       width: adjustedWidth,
                       height: barHeight,
                       backgroundColor: `${barColor}20`,
-                      border: `2px ${isNotStarted ? "dashed" : "solid"} ${barColor}`,
+                      border: `1px ${isNotStarted ? "dashed" : "solid"} ${barColor}`,
                       opacity: 1,
                     }}
                   >
                     {/* Progress fill */}
                     <div
-                      className="absolute inset-0 rounded-md pointer-events-none"
+                      className="absolute inset-y-0 left-0 pointer-events-none"
                       style={{
                         width: `${project.progress}%`,
                         backgroundColor: `${barColor}35`,
@@ -396,13 +404,13 @@ export function GanttChart({
 
                     {/* Project name + date labels */}
                     <div className="absolute inset-0 flex flex-col justify-center px-2.5 pointer-events-none overflow-hidden">
-                      <span className="text-xs font-medium truncate text-foreground leading-tight">
+                      <span className="text-xs font-semibold truncate text-foreground leading-4">
                         {project.name}
                       </span>
                       {adjustedWidth > 120 && (
-                        <span className="text-[9px] text-muted-foreground leading-tight mt-0.5">
+                        <span className="num text-xs text-ink-2 leading-4 truncate">
                           {format(parseISO(project.startDate), "dd MMM", { locale: idLocale })}
-                          {" — "}
+                          {" - "}
                           {format(parseISO(project.endDate), "dd MMM", { locale: idLocale })}
                         </span>
                       )}

@@ -18,19 +18,19 @@ export default function Error({
 
   return (
     <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
-      <AlertTriangle className="h-10 w-10 text-destructive" />
+      <AlertTriangle aria-hidden className="size-6 text-muted-foreground" />
       <div>
         <h2 className="text-lg font-semibold">Laporan gagal dimuat</h2>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+        <p className="mt-1 max-w-prose text-sm text-muted-foreground">
           Data KPI tidak berhasil dirangkum. Coba muat ulang; kalau tetap gagal, buka
           domainnya satu per satu dari Overview.
         </p>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         <Button variant="outline" size="sm" asChild>
           <Link href="/">Kembali ke Overview</Link>
         </Button>
-        <Button size="sm" onClick={reset}>
+        <Button type="button" size="sm" onClick={reset}>
           Coba lagi
         </Button>
       </div>

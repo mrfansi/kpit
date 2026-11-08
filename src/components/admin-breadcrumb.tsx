@@ -47,17 +47,17 @@ export function AdminBreadcrumb() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="mb-4 flex items-center gap-1.5 rounded-md border bg-accent/40 px-3 py-1.5 text-xs text-muted-foreground print:hidden"
+      className="mb-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground print:hidden"
     >
-      <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-      <span className="font-medium tracking-wide text-primary uppercase">Admin</span>
+      <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
+      <span>Admin</span>
       {trail.map((crumb, i) => {
         const isLast = i === trail.length - 1;
         return (
           <Fragment key={crumb.label}>
-            <span aria-hidden="true">/</span>
+            <span aria-hidden="true" className="text-border">/</span>
             {crumb.href && !isLast ? (
-              <Link href={crumb.href} className="hover:text-foreground hover:underline">
+              <Link href={crumb.href} className="underline-offset-4 transition-colors duration-[var(--dur-micro)] hover:text-foreground hover:underline">
                 {crumb.label}
               </Link>
             ) : (

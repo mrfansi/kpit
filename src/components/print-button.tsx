@@ -1,12 +1,13 @@
 "use client";
 
+import { Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 export function PrintButton() {
   return (
-    <button
-      onClick={() => window.print()}
-      className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded hover:bg-primary/90 transition-colors"
-    >
+    <Button type="button" variant="outline" size="sm" onClick={() => window.print()}>
+      <Printer aria-hidden />
       Cetak / Simpan PDF
-    </button>
+    </Button>
   );
 }
