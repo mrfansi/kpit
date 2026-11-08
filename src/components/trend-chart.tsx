@@ -29,7 +29,7 @@ interface TrendChartProps {
 
 const chartConfig = {
   value: { label: "Aktual", color: "var(--chart-1)" },
-  forecast: { label: "Forecast", color: "var(--chart-3)" },
+  forecast: { label: "Proyeksi", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
 export function TrendChart({
@@ -80,6 +80,8 @@ export function TrendChart({
           axisLine={false}
         />
         <YAxis
+          // Domain mencakup target agar garis target selalu terlihat.
+          domain={[(min: number) => Math.min(min, target), (max: number) => Math.max(max, target)]}
           tick={{ fontSize: 12, className: "num fill-muted-foreground" }}
           tickLine={false}
           axisLine={false}
@@ -91,7 +93,7 @@ export function TrendChart({
             <ChartTooltipContent
               formatter={(value, name) => [
                 formatValue(Number(value), unit),
-                name === "forecast" ? " Forecast" : " Aktual",
+                name === "forecast" ? " Proyeksi" : " Aktual",
               ]}
             />
           }

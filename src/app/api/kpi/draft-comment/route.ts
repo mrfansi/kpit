@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
+import { requireApiSession, handleAIError } from "@/lib/ai/api-helpers";
 import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 import { draftCommentForKPI } from "@/lib/ai/comment-draft";
 import { AIServiceError } from "@/lib/ai";
@@ -18,7 +18,7 @@ const draftSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requireApiSession();
   if (authResult.error) return authResult.error;
 
   // Hanya admin yang bisa memposting komentar, jadi tidak ada gunanya membakar

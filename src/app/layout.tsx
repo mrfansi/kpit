@@ -1,4 +1,5 @@
 import { ThemeProvider } from "@/components/theme-provider";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
@@ -25,6 +26,8 @@ export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  // Per-request CSP nonce from src/proxy.ts; absent on the one page that keeps 'unsafe-inline'.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   // Anonymous visitors (login, not-found) get a bare shell: no domain query, no data-bearing navigation.
   const domains = session?.user ? await getAllDomains() : [];
 
@@ -33,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // harus bisa me-resolve var(--font-plex-sans) di elemen yang sama.
     <html lang="id" className={`${plexSans.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <body className="antialiased">
-        <ThemeProvider>
+        <ThemeProvider nonce={nonce}>
         <a
           href="#main"
           className="sr-only z-[var(--z-toast)] rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3"
@@ -61,7 +64,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </main>
         )}
 
-        <Toaster richColors position="top-right" />
+        <Toaster position="top-right" />
         <Suspense><ToastHandler /></Suspense>
         </ThemeProvider>
       </body>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,8 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, 
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  // Isian pada saat simpan terakhir berhasil; selama sama, tidak ada yang hilang bila tab ditutup.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
 
   // Derive values/notes from existingEntries prop (server-provided, updates on navigation)
   const [values, setValues] = useState<Record<number, string>>(() => {
@@ -81,6 +83,20 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, 
 
   const domainMap = Object.fromEntries(domains.map((d) => [d.id, d]));
 
+  // Peringatkan sebelum menutup tab bila isian berbeda dari data tersimpan.
+  const dirty = kpis.some((k) => {
+    const saved = existingEntries.find((e) => e.kpiId === k.id);
+    const cur = values[k.id] ?? "";
+    if (!saved) return cur !== "" || !!notes[k.id];
+    return cur !== String(saved.value) || (notes[k.id] ?? "") !== (saved.note ?? "");
+  });
+  useEffect(() => {
+    if (!dirty || JSON.stringify([values, notes]) === savedSnapshot) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, values, notes, savedSnapshot]);
+
   function handlePeriodChange(newPeriod: string) {
     router.push(`/admin/input?period=${newPeriod}`);
   }
@@ -107,6 +123,7 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, 
       return;
     }
 
+    const snapshot = JSON.stringify([values, notes]);
     startTransition(async () => {
       try {
         const result = await bulkCreateEntries(rows);
@@ -116,6 +133,7 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, 
         }
         toast.success(`${result.saved} data berhasil disimpan`);
         setSavedAt(new Date().toLocaleTimeString("id-ID"));
+        setSavedSnapshot(snapshot);
       } catch {
         toast.error("Gagal menyimpan data");
       }
@@ -173,6 +191,10 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, 
               <TableRow key={kpi.id}>
                 <TableCell className="py-2 pl-0 whitespace-normal">
                   <span className="font-semibold">{kpi.name}</span>
+                  {/* Ponsel: unit dan target disembunyikan dari kolom, tampil di bawah nama. */}
+                  <span className="num mt-0.5 block text-xs text-muted-foreground sm:hidden">
+                    Unit {kpi.unit} · Target {formatValue(effective.target, kpi.unit)}
+                  </span>
                   {/* Penanda netral per baris: mana yang masih kosong, tanpa hue. */}
                   {isEmpty && <span className="mt-0.5 block text-xs text-muted-foreground">belum diisi</span>}
                   {/* Di ponsel kolom Catatan disembunyikan; isiannya pindah ke bawah nama. */}

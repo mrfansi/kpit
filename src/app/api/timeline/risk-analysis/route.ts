@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
-import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
+import { requireApiSession, handleAIError } from "@/lib/ai/api-helpers";
 import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 
 const riskAnalysisSchema = z.object({
@@ -27,7 +27,7 @@ const riskAnalysisSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requireApiSession();
   if (authResult.error) return authResult.error;
   const limited = await enforceAIRateLimit(authResult.session.user.id, "risk-analysis");
   if (limited) return limited;

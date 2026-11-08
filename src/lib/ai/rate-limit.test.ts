@@ -41,3 +41,25 @@ test("D1 rate limiter", async (t) => {
     assert.equal((await checkAIRateLimit("u2", "fresh", 1, t0 + 86_400_000)).allowed, true);
   });
 });
+
+test("rejected requests do not eat the daily cap; counters survive better-auth pruning", async (t) => {
+  const environment = await createTestD1();
+  t.after(() => environment.dispose());
+  const dayCount = async (user: string) =>
+    (await environment.env.DB.prepare("SELECT count FROM app_rate_limit WHERE key = ?").bind(`ai:${user}:day`).first<{ count: number }>())?.count;
+  const t0 = 20_000_000;
+
+  await t.test("over-burst requests are refunded on both keys", async () => {
+    assert.equal((await checkAIRateLimit("u3", "r", 15, t0)).granted, 15);
+    for (let i = 0; i < 5; i++) assert.equal((await checkAIRateLimit("u3", "r", 10, t0 + 1000)).allowed, false);
+    const partial = await checkAIRateLimit("u3", "other", 20, t0 + 2000);
+    assert.equal(partial.granted, 15);
+    assert.equal(await dayCount("u3"), 30);
+  });
+
+  await t.test("deleting every better-auth rate_limit row keeps app counters", async () => {
+    await environment.env.DB.prepare("DELETE FROM rate_limit").run();
+    assert.equal(await dayCount("u3"), 30);
+    assert.equal((await checkAIRateLimit("u3", "r", 1, t0 + 3000)).allowed, false);
+  });
+});

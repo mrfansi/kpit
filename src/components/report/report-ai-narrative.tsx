@@ -79,11 +79,11 @@ export function ReportAINarrative({ staticSummary, requestData }: ReportAINarrat
               Menganalisis…
             </>
           ) : narrative ? (
-            "Regenerate"
+            "Buat ulang"
           ) : (
             <>
               <Sparkles aria-hidden />
-              Generate Analisis AI
+              Buat analisis AI
             </>
           )}
         </Button>

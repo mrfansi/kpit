@@ -1,8 +1,8 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { readdir, readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { getPlatformProxy, type PlatformProxy } from "wrangler";
-import { wrangler, wranglerConfigPath } from "@/scripts/wrangler-config";
+import { wranglerConfigPath } from "@/scripts/wrangler-config";
 import { installTestEnv } from "@/testing/cloudflare-workers";
 
 export type TestEnv = { DB: D1Database; UPLOADS: R2Bucket };
@@ -17,14 +17,18 @@ export async function createTestD1(): Promise<{ env: TestEnv; dispose(): Promise
   let proxy: PlatformProxy<TestEnv> | undefined;
   let previous: Record<string, unknown> | undefined;
   try {
-    wrangler(["d1", "migrations", "apply", "DB", "--local", "--persist-to", directory]);
-    // Wrangler's --persist-to appends v3; getPlatformProxy uses the exact path.
     proxy = await getPlatformProxy<TestEnv>({
       configPath: wranglerConfigPath(),
-      persist: { path: join(directory, "v3") },
+      persist: { path: directory },
       remoteBindings: false,
       envFiles: [],
     });
+    // Apply migrations in-process; spawning the Wrangler CLI per test file was slow.
+    const migrations = resolve("drizzle");
+    for (const file of (await readdir(migrations)).filter((f) => f.endsWith(".sql")).sort()) {
+      const statements = (await readFile(join(migrations, file), "utf8")).split("--> statement-breakpoint").map((s) => s.trim()).filter(Boolean);
+      await proxy.env.DB.batch(statements.map((s) => proxy!.env.DB.prepare(s)));
+    }
     previous = installTestEnv(proxy.env);
     return {
       env: proxy.env,

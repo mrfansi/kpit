@@ -1,10 +1,9 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { inChunks } from "@/lib/db/chunks";
 import { kpis, kpiTargets } from "@/lib/db/schema";
 import { checkThresholdCoherence } from "@/lib/kpi-coherence";
-import { and, eq, or } from "drizzle-orm";
+import { and, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
 import { requireAdmin } from "@/lib/auth-utils";
@@ -128,12 +127,17 @@ export async function resolveTargetCSVRows(text: string): Promise<{
   // Cek target lama yang bertabrakan, supaya preview bisa memperingatkan
   // admin sebelum target lama ditimpa.
   if (resolved.length > 0) {
-    const existing = await inChunks(resolved, 0, (chunk) => db
+    // Satu query per file (bukan per 50 baris): D1 membatasi 50 query per invocation.
+    // shortcut: mengambil semua pasangan KPI x periode yang disebut lalu mencocokkan di JS; upgrade bila tabel target sangat besar.
+    const kpiIds = JSON.stringify([...new Set(resolved.map((r) => r.kpiId))]);
+    const periods = JSON.stringify([...new Set(resolved.map((r) => r.periodDate))]);
+    const existing = await db
       .select({ kpiId: kpiTargets.kpiId, periodDate: kpiTargets.periodDate, target: kpiTargets.target })
       .from(kpiTargets)
-      .where(or(...chunk.map((row) =>
-        and(eq(kpiTargets.kpiId, row.kpiId), eq(kpiTargets.periodDate, row.periodDate))
-      ))), 2);
+      .where(and(
+        sql`${kpiTargets.kpiId} in (select value from json_each(${kpiIds}))`,
+        sql`${kpiTargets.periodDate} in (select value from json_each(${periods}))`,
+      ));
     const existingMap = new Map(existing.map((entry) => [`${entry.kpiId}:${entry.periodDate}`, entry.target]));
     for (const row of resolved) {
       row.existingTarget = existingMap.get(`${row.kpiId}:${row.periodDate}`);

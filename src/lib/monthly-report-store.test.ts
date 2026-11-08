@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createTestD1 } from "./test-d1";
-import { getMonthlyReportBundle, getMonthlyReportImport, saveMonthlyReport, MonthlyReportError } from "./monthly-report-store";
-import { refreshFromEntries } from "./monthly-report-import";
+import { getMonthlyReportBundle, getMonthlyReportBundles, getMonthlyReportImport, saveMonthlyReport, MonthlyReportError } from "./monthly-report-store";
+import { markManualTarget, refreshFromEntries } from "./monthly-report-import";
+import { formatDayShort } from "./date-utils";
 import type { MonthlyReportBundle } from "./monthly-report-types";
 
 test("monthly drafts are scoped to their domain and reject stale revisions or foreign KPI IDs", async () => {
@@ -184,6 +185,7 @@ test("new reports prefill from comments and action plans; saved reports flag sta
     const fresh = await getMonthlyReportBundle("finance", "2026-10-01");
     assert.ok(fresh);
     assert.equal(fresh.content.metrics[0].deviationCause, "Vendor naik & telat bayar");
+    assert.equal(fresh.content.metrics[0].deviationEvidence, `Komentar KPI #2 (${formatDayShort(new Date(2000))})`);
     assert.deepEqual(fresh.content.actions, [{ action: "Renegosiasi vendor", pic: "Sari", deadline: "2026-11-15" }]);
     assert.equal(fresh.content.metrics[0].observations.find((o) => o.month === "2026-10-01")?.source, "Entri KPI Okt 2026: Dari sheet");
     assert.ok(!fresh.questions.some((q) => q.path.endsWith(".entry")));
@@ -216,7 +218,7 @@ test("new reports prefill from comments and action plans; saved reports flag sta
     assert.ok(!final.questions.some((q) => q.path.endsWith(".entry")));
 
     await env.DB.prepare("UPDATE kpis SET is_active = 0 WHERE id = 10").run();
-    assert.deepEqual(await getMonthlyReportImport("finance", "2026-10-01", "entries"), { entries: [], checkedKpiIds: [] });
+    assert.deepEqual(await getMonthlyReportImport("finance", "2026-10-01", "entries"), { entries: [], checkedKpiIds: [], targets: [] });
   } finally {
     await dispose();
   }
@@ -245,7 +247,7 @@ test("a new report carries last month's actions with empty status, and the YTD s
     assert.equal(november.metrics[0].ytd.label, "YTD Mar–Nov");
 
     const notes = await getMonthlyReportImport("finance", "2026-11-01", "notes");
-    assert.deepEqual(notes && "previousActions" in notes ? notes.previousActions : null, draft.actions);
+    assert.deepEqual(notes && "previousActions" in notes ? notes.previousActions : null, draft.actions.map((a) => ({ ...a, status: "", note: "" })));
   } finally {
     await dispose();
   }
@@ -266,6 +268,165 @@ test("a new report copies numerator and denominator from the KPI entry", async (
     assert.ok(pulled && "entries" in pulled);
     assert.deepEqual(pulled.entries.map((e) => [e.numerator, e.denominator]), [[3, 4]]);
   } finally {
+    await dispose();
+  }
+});
+
+test("a KPI created after a saved report's month leaves that report alone, while new reports include it", async () => {
+  const { env, dispose } = await createTestD1();
+  try {
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO domains (id,name,slug) VALUES (1,'Finance','finance')"),
+      env.DB.prepare("INSERT INTO kpis (id,domain_id,name,unit,target,threshold_green,threshold_yellow,created_at) VALUES (10,1,'Cash','Rp',100,90,80,0)"),
+    ]);
+    const october = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.ok(october);
+    const saved = await saveMonthlyReport("finance", "2026-10-01", october.content, 0, { id: "admin" });
+    const created = (month: number, day: number) => Math.floor(Date.UTC(2026, month, day) / 1000);
+    await env.DB.prepare("INSERT INTO kpis (id,domain_id,name,unit,target,threshold_green,threshold_yellow,created_at) VALUES (11,1,'Bugs','x',5,4,3,?)").bind(created(10, 15)).run();
+    const after = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.ok(after);
+    assert.deepEqual(after.content.metrics.map((m) => m.kpiId), [10]);
+    assert.deepEqual(after.questions, saved.questions);
+    assert.equal(after.ready, saved.ready);
+
+    // The same rule applies when saving: the November KPI is not required in October's snapshot.
+    await saveMonthlyReport("finance", "2026-10-01", after.content, saved.revision, { id: "admin" });
+
+    const november = await getMonthlyReportBundle("finance", "2026-11-01");
+    assert.deepEqual(november?.content.metrics.map((m) => m.kpiId).sort(), [10, 11]);
+
+    // A KPI created inside the report month still joins that month's report, with the KPI-set question.
+    await env.DB.prepare("INSERT INTO kpis (id,domain_id,name,unit,target,threshold_green,threshold_yellow,created_at) VALUES (12,1,'Churn','x',5,4,3,?)").bind(created(9, 20)).run();
+    const joined = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.deepEqual(joined?.content.metrics.map((m) => m.kpiId), [10, 12]);
+    assert.ok(joined?.questions.some((q) => q.path === "kpiSetChangeNote"));
+  } finally {
+    await dispose();
+  }
+});
+
+test("report targets from the KPI registry go stale and refresh; hand-typed targets are never touched", async () => {
+  const { env, dispose } = await createTestD1();
+  try {
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO domains (id,name,slug) VALUES (1,'Finance','finance')"),
+      env.DB.prepare("INSERT INTO kpis (id,domain_id,name,unit,target,threshold_green,threshold_yellow,created_at) VALUES (10,1,'Cash','Rp',100,90,80,0)"),
+      env.DB.prepare("INSERT INTO kpi_entries (kpi_id,value,period_date,created_at) VALUES (10,60,'2026-10-01',1)"),
+      env.DB.prepare("INSERT INTO kpi_targets (id,kpi_id,period_date,target,threshold_green,threshold_yellow) VALUES (5,10,'2026-10-01',99.5,90,80)"),
+    ]);
+    const initial = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.ok(initial);
+    const saved = await saveMonthlyReport("finance", "2026-10-01", initial.content, 0, { id: "admin" });
+    const octoberRow = (bundle: MonthlyReportBundle) => bundle.content.metrics[0].observations.find((o) => o.month === "2026-10-01")!;
+    assert.deepEqual([octoberRow(saved).target, octoberRow(saved).targetSource], [99.5, "KPI target override #5 (2026-10-01)"]);
+    const staleTarget = (bundle: MonthlyReportBundle | null) => bundle?.questions.filter((q) => q.path === "metrics.0.observations.2026-10-01.target") ?? [];
+    assert.equal(staleTarget(saved).length, 0);
+
+    await env.DB.prepare("UPDATE kpi_targets SET target = 98 WHERE id = 5").run();
+    const stale = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.equal(staleTarget(stale).length, 1);
+    assert.match(staleTarget(stale)[0].question, /berbeda dari target KPI terbaru \(98\)/);
+
+    const pulled = await getMonthlyReportImport("finance", "2026-10-01", "entries");
+    assert.ok(pulled && "targets" in pulled);
+    assert.deepEqual(pulled.targets.find((t) => t.periodDate === "2026-10-01"), { kpiId: 10, periodDate: "2026-10-01", target: 98, source: "KPI target override #5 (2026-10-01)" });
+    const refreshed = refreshFromEntries(saved.content, pulled.entries, new Set(pulled.checkedKpiIds), pulled.targets);
+    assert.equal(refreshed.changes.length, 1);
+    assert.match(refreshed.changes[0], /target 99\.5 → 98/);
+    const resaved = await saveMonthlyReport("finance", "2026-10-01", refreshed.content, saved.revision, { id: "admin" });
+    assert.equal(octoberRow(resaved).target, 98);
+    assert.equal(staleTarget(resaved).length, 0);
+
+    // A target typed by hand stays, and the registry changing again raises nothing for it.
+    const typed = structuredClone(resaved.content);
+    const row = typed.metrics[0].observations.find((o) => o.month === "2026-10-01")!;
+    Object.assign(row, markManualTarget({ ...row, target: 90 }));
+    const manual = await saveMonthlyReport("finance", "2026-10-01", typed, resaved.revision, { id: "admin" });
+    await env.DB.prepare("UPDATE kpi_targets SET target = 70 WHERE id = 5").run();
+    const after = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.equal(staleTarget(after).length, 0);
+    const again = await getMonthlyReportImport("finance", "2026-10-01", "entries");
+    assert.ok(again && "targets" in again);
+    assert.equal(refreshFromEntries(manual.content, again.entries, new Set(again.checkedKpiIds), again.targets).changes.length, 0);
+  } finally {
+    await dispose();
+  }
+});
+
+test("a new report carries last month's risks for review and the plan status of last month's actions", async () => {
+  const { env, dispose } = await createTestD1();
+  try {
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO domains (id,name,slug) VALUES (1,'Finance','finance')"),
+      env.DB.prepare("INSERT INTO kpis (id,domain_id,name,unit,target,threshold_green,threshold_yellow,created_at) VALUES (10,1,'Cash','Rp',100,90,80,0)"),
+      env.DB.prepare("INSERT INTO kpi_action_plans (kpi_id,title,owner,due_date,status,created_at,updated_at) VALUES (10,'Renegosiasi vendor','Sari','2026-11-15','done',0,0),(10,'Audit stok','Budi','2026-11-20','cancelled',0,0)"),
+    ]);
+    const october = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.ok(october);
+    const draft = structuredClone(october.content);
+    draft.risksReviewed = true;
+    draft.risks = [{ issue: "Vendor naik", impact: "Biaya", escalationOwner: "CFO" }];
+    draft.actions = [
+      { action: "Renegosiasi vendor", pic: "Sari", deadline: "2026-11-15" },
+      { action: "Audit stok", pic: "Budi", deadline: "2026-11-20" },
+      { action: "Tanpa plan", pic: "Sari", deadline: "2026-11-25" },
+    ];
+    await saveMonthlyReport("finance", "2026-10-01", draft, 0, { id: "admin" });
+
+    const november = await getMonthlyReportBundle("finance", "2026-11-01");
+    assert.ok(november);
+    assert.deepEqual(november.content.previousActions.map((a) => a.status), ["done", "dropped", ""]);
+    assert.deepEqual(november.content.risks, draft.risks);
+    assert.equal(november.content.risksReviewed, false);
+    assert.ok(november.questions.some((q) => q.path === "risksReviewed"));
+    const notes = await getMonthlyReportImport("finance", "2026-11-01", "notes");
+    assert.deepEqual(notes && "previousActions" in notes ? notes.previousActions?.map((a) => a.status) : null, ["done", "dropped", ""]);
+
+    // December skips November: October is not "last month", so nothing is carried.
+    const december = await getMonthlyReportBundle("finance", "2026-12-01");
+    assert.deepEqual([december?.content.previousActions, december?.content.risks], [[], []]);
+    const skipped = await getMonthlyReportImport("finance", "2026-12-01", "notes");
+    assert.deepEqual(skipped && "previousActions" in skipped ? skipped.previousActions : null, []);
+  } finally {
+    await dispose();
+  }
+});
+
+test("bundles for several domains match the single-domain bundles with a constant number of queries", async () => {
+  const { env, dispose } = await createTestD1();
+  const binding = env.DB;
+  try {
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO domains (id,name,slug) VALUES (1,'Finance','finance'),(2,'Sales','sales'),(3,'Ops','ops')"),
+      env.DB.prepare(`INSERT INTO kpis (id,domain_id,name,unit,target,threshold_green,threshold_yellow,created_at) VALUES
+        (10,1,'Cash','Rp',100,90,80,0),(11,1,'Margin','%',50,40,30,0),(20,2,'Orders','n',100,90,80,0),(30,3,'Uptime','%',99,95,90,0)`),
+      env.DB.prepare("INSERT INTO kpi_entries (kpi_id,value,period_date,created_at) VALUES (10,60,'2026-10-01',1),(20,70,'2026-10-01',1),(30,99,'2026-10-01',1)"),
+    ]);
+    for (const slug of ["finance", "sales"]) {
+      const draft = await getMonthlyReportBundle(slug, "2026-10-01");
+      assert.ok(draft);
+      await saveMonthlyReport(slug, "2026-10-01", draft.content, 0, { id: "admin" });
+    }
+    // A KPI added after saving makes one saved report merge it in, the heaviest path.
+    await env.DB.prepare("INSERT INTO kpis (id,domain_id,name,unit,target,threshold_green,threshold_yellow,created_at) VALUES (21,2,'Refunds','n',1,1,1,?)").bind(Math.floor(Date.UTC(2026, 9, 20) / 1000)).run();
+    const singles = await Promise.all([1, 2, 3].map((id) => getMonthlyReportBundle(["finance", "sales", "ops"][id - 1], "2026-10-01")));
+
+    let prepares = 0;
+    env.DB = new Proxy(binding, {
+      get(target, key) {
+        if (key === "prepare") return (sql: string) => { prepares++; return target.prepare(sql); };
+        const value = Reflect.get(target, key);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    const bundles = await getMonthlyReportBundles("2026-10-01", [1, 2, 3, 99]);
+    env.DB = binding;
+    assert.deepEqual([...bundles.keys()], [1, 2, 3]);
+    assert.deepEqual([...bundles.values()], singles);
+    assert.ok(prepares <= 8, `expected at most 8 queries, got ${prepares}`);
+  } finally {
+    env.DB = binding;
     await dispose();
   }
 });

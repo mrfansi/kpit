@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { consumeRateLimits } from "@/lib/rate-limit-d1";
+import { consumeRateLimits, refundRateLimits } from "@/lib/rate-limit-d1";
 
 /**
  * Per-user rate limiter for AI endpoints, backed by D1 so the limits hold across Worker isolates.
  *
  * Guards against cost-explosion DoS: every AI call hits the paid DeepSeek API.
  * Two layers: a short per-route window (burst control) + a daily cap (cost ceiling).
- * shortcut: a call rejected by the burst window still counts against the daily cap (both counters are
- * charged in one batch); fine at 300/day, revisit if legitimate users trip it.
+ * A request that is only partly granted refunds the unused units on both counters, so rejected
+ * requests never eat the daily cap. The daily cap is a rolling 24 h window from the first charge.
  */
 
 const WINDOW_SECONDS = 60;
@@ -39,10 +39,21 @@ export async function checkAIRateLimit(
   const remainingBurst = Math.max(0, MAX_PER_WINDOW - (burst.count - cost));
   const remainingDay = Math.max(0, MAX_PER_DAY - (day.count - cost));
   const granted = Math.min(cost, remainingBurst, remainingDay);
+  if (granted < cost) {
+    await refundRateLimits([
+      { key: `ai:${userId}:${route}`, amount: cost - granted },
+      { key: `ai:${userId}:day`, amount: cost - granted },
+    ]);
+  }
   if (granted > 0) return { allowed: true, granted, retryAfterSec: 0 };
   return remainingBurst === 0
     ? { allowed: false, granted, retryAfterSec: burst.retryAfterSec, reason: "Terlalu banyak permintaan AI. Coba lagi sebentar." }
-    : { allowed: false, granted, retryAfterSec: day.retryAfterSec, reason: "Kuota AI harian sudah tercapai. Coba lagi besok." };
+    : {
+        allowed: false,
+        granted,
+        retryAfterSec: day.retryAfterSec,
+        reason: `Kuota AI harian sudah tercapai. Coba lagi dalam ${Math.ceil(day.retryAfterSec / 3600)} jam.`,
+      };
 }
 
 /**

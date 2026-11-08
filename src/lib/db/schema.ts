@@ -180,12 +180,10 @@ export type NewKPITarget = typeof kpiTargets.$inferInsert;
 export type NewKPIComment = typeof kpiComments.$inferInsert;
 export type NewKPIActionPlan = typeof kpiActionPlans.$inferInsert;
 
-// `users` is better-auth's user model (modelName "users"). `password_hash` is
-// not read by better-auth: the credential lives in `account.password`. It stays
-// NOT NULL and in sync on every password write. After a rollback the previous
-// (next-auth, bcrypt-only) worker can only log in users still on a bcrypt hash. The "" default exists only
-// because better-auth refuses a required column it never writes; sign-up is
-// disabled, and "" matches no password in the old worker either.
+// `users` is better-auth's user model (modelName "users"). The credential lives in
+// `account.password`; `password_hash` is a legacy next-auth column that is no longer
+// written (it keeps the "" default only because the column is NOT NULL and better-auth
+// refuses a required column it never writes).
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -248,6 +246,13 @@ export const verification = sqliteTable("verification", {
 export const rateLimit = sqliteTable("rate_limit", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: integer("last_request").notNull(),
+});
+
+// Our own counters (D1 rate limiter in rate-limit-d1.ts); separate from better-auth's pruned `rate_limit`.
+export const appRateLimit = sqliteTable("app_rate_limit", {
+  key: text("key").primaryKey(),
   count: integer("count").notNull(),
   lastRequest: integer("last_request").notNull(),
 });

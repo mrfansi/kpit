@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAuth } from "@/lib/ai/api-helpers";
+import { requireApiSession } from "@/lib/ai/api-helpers";
 import { checkAIRateLimit } from "@/lib/ai/rate-limit";
-import { draftCommentForKPI, type DraftResult } from "@/lib/ai/comment-draft";
+import { draftCommentForKPI, loadDraftInputs, type DraftResult } from "@/lib/ai/comment-draft";
 import { getKPIsWithLatestEntry } from "@/lib/queries";
 
 const batchSchema = z.object({
@@ -19,7 +19,7 @@ const batchSchema = z.object({
 const MAX_BATCH = 15;
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requireApiSession();
   if (authResult.error) return authResult.error;
 
   if (authResult.session.user.role !== "admin") {
@@ -60,8 +60,10 @@ export async function POST(request: NextRequest) {
   // Paralel: dengan model cepat, sembilan KPI selesai dalam sekali tunggu
   // alih-alih sembilan kali berturut-turut. Kegagalan per KPI dikembalikan
   // sebagai nilai, jadi satu KPI bermasalah tidak menjatuhkan seluruh batch.
+  // Data dimuat sekali untuk semua KPI: D1 membatasi 50 query per invokasi.
+  const inputs = allowed.length > 0 ? await loadDraftInputs(allowed.map((row) => row.kpi), periodDate) : new Map();
   const results: DraftResult[] = await Promise.all(
-    allowed.map((row) => draftCommentForKPI(row.kpi.id, periodDate))
+    allowed.map((row) => draftCommentForKPI(row.kpi.id, periodDate, inputs.get(row.kpi.id)))
   );
 
   const drafts = results.filter((r) => r.ok);

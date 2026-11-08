@@ -103,4 +103,24 @@ test("entry actions validate like the form and audit old to new values", async (
     assert.deepEqual(await bulkCreateEntries([{ kpiId: free.id, periodDate, value: 0, numerator: 9, denominator: 10 }]), { saved: 1 });
     assert.deepEqual(await stored(), [[90, 9, 10]]);
   });
+
+  await t.test("unchanged value keeps pembilang/penyebut (note-only edit, same-value overwrite); a changed value clears them", async () => {
+    const periodDate = "2026-07-01";
+    const stored = async () => (await db.select().from(kpiEntries).where(eq(kpiEntries.periodDate, periodDate))).map((e) => [e.value, e.numerator, e.denominator, e.note]);
+    await createEntry({ kpiId: free.id, periodDate, value: 0, numerator: 9, denominator: 10 });
+    const [entry] = await db.select().from(kpiEntries).where(eq(kpiEntries.periodDate, periodDate));
+
+    assert.deepEqual(await updateEntry(entry.id, 90, "catatan"), { success: true });
+    assert.deepEqual(await stored(), [[90, 9, 10, "catatan"]]);
+    const log = (await db.select().from(auditLogs).where(eq(auditLogs.entityId, `${free.id}:${periodDate}`))).pop();
+    assert.doesNotMatch(log?.detail ?? "", /numerator|denominator/);
+
+    assert.deepEqual(await createEntry({ kpiId: free.id, periodDate, value: 90, note: "lagi" }), { success: true });
+    assert.deepEqual(await stored(), [[90, 9, 10, "lagi"]]);
+
+    // createEntry menghapus lalu menyisipkan ulang, jadi id entri berganti.
+    const [current] = await db.select().from(kpiEntries).where(eq(kpiEntries.periodDate, periodDate));
+    assert.deepEqual(await updateEntry(current.id, 80), { success: true });
+    assert.deepEqual(await stored(), [[80, null, null, null]]);
+  });
 });

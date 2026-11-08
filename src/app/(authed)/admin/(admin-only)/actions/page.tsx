@@ -15,10 +15,10 @@ interface Props {
 
 const filterOptions: { label: string; value: "all" | ActionPlanStatus }[] = [
   { label: "Semua", value: "all" },
-  { label: "Open", value: "open" },
-  { label: "In Progress", value: "in_progress" },
-  { label: "Done", value: "done" },
-  { label: "Cancelled", value: "cancelled" },
+  { label: actionPlanStatusLabels.open, value: "open" },
+  { label: actionPlanStatusLabels.in_progress, value: "in_progress" },
+  { label: actionPlanStatusLabels.done, value: "done" },
+  { label: actionPlanStatusLabels.cancelled, value: "cancelled" },
 ];
 
 // Neutral/warna semantik: "open" tidak punya sinyal baik/buruk jadi netral
@@ -60,8 +60,8 @@ export default async function AdminActionsPage({ searchParams }: Props) {
         <dl className="grid grid-cols-2 gap-x-8 gap-y-5 border-y py-5 sm:grid-cols-4">
           <SummaryReadout label="Total action" value={summary.total} />
           <SummaryReadout label="Masih aktif" value={summary.active} />
-          <SummaryReadout label="Overdue" value={summary.overdue} tone={summary.overdue > 0 ? "text-danger" : undefined} />
-          <SummaryReadout label="Done bulan ini" value={summary.doneThisMonth} />
+          <SummaryReadout label="Terlambat" value={summary.overdue} tone={summary.overdue > 0 ? "text-danger" : undefined} />
+          <SummaryReadout label="Selesai bulan ini" value={summary.doneThisMonth} />
         </dl>
       </div>
 
@@ -134,7 +134,7 @@ export default async function AdminActionsPage({ searchParams }: Props) {
                       <span className="num">
                         {formatDueDate(action.dueDate)}
                       </span>
-                      {overdue && <Badge variant="destructive" className="ml-2">Overdue</Badge>}
+                      {overdue && <Badge variant="destructive" className="ml-2">Terlambat</Badge>}
                     </TableCell>
                     <TableCell className="pr-0">
                       <Badge className={statusClass[action.status]}>{actionPlanStatusLabels[action.status]}</Badge>

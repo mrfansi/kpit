@@ -1,8 +1,7 @@
-import type { KPIEntry } from "@/lib/db/schema";
 import { statusConfig, type KPIStatus } from "@/lib/kpi-status";
 
 interface ReportSparklineProps {
-  entries: KPIEntry[];
+  entries: { value: number }[];
   status: KPIStatus;
   width?: number;
   height?: number;

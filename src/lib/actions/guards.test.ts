@@ -26,3 +26,24 @@ test("every exported server action calls requireAdmin or requireAuth", () => {
 
   assert.ok(checked > 0, "no server actions found; the parser is probably broken");
 });
+
+// Mutating API routes must read the session fresh from D1 (and check Origin), or a demoted admin keeps access on a cached cookie.
+test("every non-GET API route handler calls requireApiSession or authFresh", () => {
+  const root = join(process.cwd(), "src/app/api");
+  const routes = (readdirSync(root, { recursive: true }) as string[])
+    .map((f) => f.split("\\").join("/"))
+    .filter((f) => f.endsWith("/route.ts") && !f.startsWith("auth/"));
+  let checked = 0;
+
+  for (const file of routes) {
+    const src = readFileSync(join(root, file), "utf8").replace(comments, "");
+    const chunks = src.split(/^(?=export\s)/m).filter((c) => /^export\s+(async\s+)?function\s+(POST|PUT|PATCH|DELETE)\b/.test(c));
+    for (const chunk of chunks) {
+      const name = /^export\s+(?:async\s+)?function\s+(\w+)/.exec(chunk)![1];
+      assert.match(chunk, /\b(requireApiSession|authFresh)\(/, `${file}: ${name} has no fresh-session guard`);
+      checked++;
+    }
+  }
+
+  assert.ok(checked > 0, "no mutating route handlers found; the parser is probably broken");
+});

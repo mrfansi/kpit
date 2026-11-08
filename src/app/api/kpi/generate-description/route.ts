@@ -5,7 +5,7 @@ import {
   sanitizeInput,
   cleanAIOutput,
 } from "@/lib/ai";
-import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
+import { requireApiSession, handleAIError } from "@/lib/ai/api-helpers";
 import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 
 const MAX_DESCRIPTION_LENGTH = 200;
@@ -21,7 +21,7 @@ const generateSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requireApiSession();
   if (authResult.error) return authResult.error;
   if (authResult.session.user.role !== "admin") {
     return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });

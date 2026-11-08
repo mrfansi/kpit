@@ -96,7 +96,7 @@ export function KPITargetSuggestion({
             Menganalisis…
           </>
         ) : (
-          "Suggest target"
+          "Sarankan target"
         )}
       </Button>
 
@@ -115,7 +115,7 @@ export function KPITargetSuggestion({
               <span className="text-muted-foreground">{unit}</span>
             </span>
             <span className="rounded-sm bg-secondary px-1.5 py-0.5 text-xs font-semibold">
-              Confidence: {confidenceLabels[suggestion.confidence]}
+              Keyakinan: {confidenceLabels[suggestion.confidence]}
             </span>
           </div>
           <p className="text-sm text-muted-foreground">{suggestion.reasoning}</p>

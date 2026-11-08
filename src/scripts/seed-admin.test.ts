@@ -26,13 +26,13 @@ test("D1 admin seed requires an explicit target and preserves existing accounts"
     const first = queryD1("SELECT email,password_hash FROM users", target);
     assert.equal(first.length, 1);
     assert.equal(first[0].email, env.SEED_ADMIN_EMAIL);
-    assert.match(String(first[0].password_hash), /^pbkdf2-sha256\$100000\$/);
-    assert.ok(await verifyPassword({ hash: String(first[0].password_hash), password: env.SEED_ADMIN_PASSWORD }));
+    assert.equal(first[0].password_hash, ""); // the credential lives only in account.password
     const accounts = queryD1("SELECT a.provider_id,a.account_id,a.password,u.id FROM account a JOIN users u ON u.id = a.user_id", target);
     assert.equal(accounts.length, 1);
     assert.equal(accounts[0].provider_id, "credential");
     assert.equal(accounts[0].account_id, accounts[0].id);
-    assert.equal(accounts[0].password, first[0].password_hash);
+    assert.match(String(accounts[0].password), /^pbkdf2-sha256\$100000\$/);
+    assert.ok(await verifyPassword({ hash: String(accounts[0].password), password: env.SEED_ADMIN_PASSWORD }));
     const repeated = seed(args, { SEED_ADMIN_PASSWORD: "AnotherPassword456!" });
     assert.equal(repeated.status, 0, repeated.stderr);
     assert.match(repeated.stdout, /sudah ada, skip/);

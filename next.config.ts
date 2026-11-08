@@ -18,19 +18,18 @@ const nextConfig: NextConfig = {
       },
       {
         // The deck routes set their own strict CSP; vinext lets config headers override handler headers.
+        // Pages get a per-request nonce CSP from src/proxy.ts, which vinext prefers over this one, so
+        // this policy only covers what the proxy leaves alone (API/upload responses, redirects) and
+        // needs no inline script.
         source: "/((?!api/report/presentation$|api/presentation/brand/preview$).*)",
         headers: [
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              // Next.js injects inline runtime scripts; the presentation export
-              // route serves inline <script>. No external script origins allowed.
               // Dev (vite + React dev mode) requires 'unsafe-eval' for callstack
               // reconstruction; production stays strict.
-              isDev
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-                : "script-src 'self' 'unsafe-inline'",
+              isDev ? "script-src 'self' 'unsafe-eval'" : "script-src 'self'",
               // Google Fonts: the brand preview iframe (srcdoc) inherits this policy and
               // loads the brand's chosen fonts, same origins the exported deck allows.
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",

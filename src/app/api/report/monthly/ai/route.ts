@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/auth";
 import { getAIService } from "@/lib/ai";
-import { handleAIError } from "@/lib/ai/api-helpers";
+import { handleAIError, requireApiSession } from "@/lib/ai/api-helpers";
 import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 import { getMonthlyReportBundle, MonthlyReportError, saveMonthlyReport } from "@/lib/monthly-report-store";
 import { checkMonthlyMutationRequest } from "@/lib/monthly-report-request";
@@ -15,8 +14,8 @@ const MAX_AI_NOTES = 10_000;
 export async function POST(request: NextRequest) {
   const rejection = checkMonthlyMutationRequest(request);
   if (rejection) return NextResponse.json({ error: rejection.error }, { status: rejection.status });
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { session, error } = await requireApiSession();
+  if (error) return error;
   if (session.user.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const domain = request.nextUrl.searchParams.get("domain") ?? "";
   const period = request.nextUrl.searchParams.get("period") ?? "";

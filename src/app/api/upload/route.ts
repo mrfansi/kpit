@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireApiSession } from "@/lib/ai/api-helpers";
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "cloudflare:workers";
 import { isAllowedImageUpload } from "@/lib/upload-validation";
@@ -6,10 +6,8 @@ import { isAllowedImageUpload } from "@/lib/upload-validation";
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { session, error } = await requireApiSession();
+  if (error) return error;
   if (session.user.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

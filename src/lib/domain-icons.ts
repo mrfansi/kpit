@@ -91,5 +91,3 @@ export const ICON_OPTIONS = [
   { value: "Wrench", label: "Wrench" },
   { value: "Layers", label: "Layers" },
 ];
-
-export const DEFAULT_ICON = "BarChart2";

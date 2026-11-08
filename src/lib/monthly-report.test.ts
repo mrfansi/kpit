@@ -22,6 +22,9 @@ test("exact reporting month never falls back to an older observation and partial
   assert.equal(result.metrics[0].ytd.value, null);
   assert.equal(result.metrics[0].ytd.state, "missing");
   assert.ok(result.questions.some((q) => q.path === "metrics.0.observations.2026-04-01"));
+  const missing = result.questions.find((q) => q.path === "metrics.0.observations.2026-04-01");
+  assert.match(missing?.question ?? "", /April 2026/);
+  assert.ok(result.questions.every((q) => !/\d{4}-\d{2}-\d{2}/.test(q.question)));
 });
 
 test("legitimate zero misses true target even when status threshold would be green", () => {
@@ -138,7 +141,8 @@ test("shared facts compare historic inputs and YTD, but not division-specific bu
   const peers = [{ domain: { id: 2, name: "Finance", slug: "finance" }, period: "2026-02-01", content: peer }];
   const mismatch = computeMonthlyReport(report, "2026-02-01", peers);
   assert.equal(mismatch.reconciliations[0].state, "conflict");
-  assert.match(mismatch.reconciliations[0].detail, /2026-01-01/);
+  assert.match(mismatch.reconciliations[0].detail, /Januari 2026/);
+  assert.doesNotMatch(mismatch.reconciliations[0].detail, /\d{4}-\d{2}-\d{2}/);
   assert.equal(mismatch.metrics[0].ytd.value, 120);
   peer.metrics[0].observations[0].actual = 20;
   assert.equal(computeMonthlyReport(report, "2026-02-01", peers).reconciliations[0].state, "matched");

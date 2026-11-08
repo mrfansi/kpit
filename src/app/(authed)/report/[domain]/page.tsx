@@ -60,8 +60,8 @@ export default async function ReportPage({ params, searchParams }: Props) {
     ["Arus kas", content.finance.cashFlow],
     ["Neraca", content.finance.balanceSheet],
   ] as const;
-  const divisionName = content.division ? REPORT_DIVISIONS[content.division] : "Divisi belum dipilih";
-  // Judul = divisi; nama domain hanya disebut di baris konteks bila berbeda (hindari gema "X, X").
+  // Judul = divisi, atau nama domain bila divisi belum dipilih; nama domain hanya disebut di baris konteks bila berbeda (hindari gema "X, X").
+  const divisionName = content.division ? REPORT_DIVISIONS[content.division] : bundle.domain.name;
   const showDomainName = bundle.domain.name !== divisionName;
   return <article className="mx-auto max-w-5xl space-y-10 print:max-w-full">
     <header>

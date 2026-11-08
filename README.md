@@ -22,7 +22,6 @@ npx cf r2 bucket create --help   # then create R2 bucket `kpit-uploads`
 # `cf` cannot set a single secret yet; wrangler can (it reads no config, so pass the name):
 npx wrangler secret put AUTH_SECRET --name kpit
 npx wrangler secret put AUTH_URL --name kpit
-npx wrangler secret put AUTH_TRUST_HOST --name kpit
 ```
 
 `cf deploy` replaces every binding that `cloudflare.config.ts` does not declare
@@ -31,9 +30,9 @@ therefore declared there with `bindings.secret()` (the deploy keeps their values
 the one plain variable, `DEEPSEEK_MODEL`, is declared with its value. When you add a
 secret or variable, add it to `cloudflare.config.ts` in the same change.
 
-Use a random `AUTH_SECRET` of at least 32 characters, `AUTH_URL` equal to the
-canonical HTTPS application origin, and `AUTH_TRUST_HOST=true` on the
-trusted Workers deployment (better-auth then accepts the request's own origin).
+Use a random `AUTH_SECRET` of at least 32 characters and `AUTH_URL` equal to the
+canonical HTTPS application origin; better-auth's CSRF check trusts only that
+origin, so locally open the app on the `AUTH_URL` host (e.g. `http://localhost:3000`).
 The names are unchanged from the next-auth setup, so no new secret is needed.
 
 Optional runtime settings (secrets via `wrangler secret put <NAME> --name kpit`, except
@@ -51,7 +50,6 @@ missing from it, such as `DEEPSEEK_API_KEY`, only print a warning):
 ```dotenv
 AUTH_SECRET=replace-with-a-random-local-secret-at-least-32-characters
 AUTH_URL=http://localhost:3000
-AUTH_TRUST_HOST=true
 ```
 
 For `npm run preview` (Worker on http://localhost:4173) set
@@ -141,26 +139,17 @@ change or deleted user takes effect within 5 minutes. Sign-up is disabled: users
 are created by admins (`/admin/users`) or `npm run seed:admin`. `users.role`
 (`admin` | `viewer`) is never accepted from client input.
 
-Passwords are `pbkdf2-sha256$100000$<salt>$<key>` (`src/lib/password.ts`).
-Legacy bcrypt hashes from the old next-auth setup still verify and are rehashed
-on the user's next successful login. A rollback to the old worker therefore breaks
-logins for every user who has signed in since PR #16 (it cannot verify PBKDF2 hashes); they need a password reset. Migration `0017_better_auth.sql` adds
-`session`/`account`/`verification` and three columns on `users`, then backfills
-one `credential` account per user (`account.password` = `users.password_hash`)
-and lower-cases stored emails (better-auth looks users up by lower-cased email;
-a row that would collide with another is left unchanged).
-
-**`users.password_hash` stays NOT NULL and must stay in sync with
-`account.password`**: every password write (`createUser`, `updateUserPassword`
-in `src/lib/db/users.ts`, `seed:admin`) writes both, so the previous next-auth
-worker can still log in users who have not signed in since PR #16 after a rollback. If a rollback window lets the
-old worker create users or change passwords, re-sync before going forward again:
-
-```sql
-INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
-  SELECT lower(hex(randomblob(16))), id, 'credential', id, password_hash, created_at, unixepoch() FROM users
-  WHERE true ON CONFLICT (provider_id, account_id) DO UPDATE SET password = excluded.password, updated_at = excluded.updated_at;
-```
+Passwords are `pbkdf2-sha256$100000$<salt>$<key>` (`src/lib/password.ts`) and live
+only in `account.password` (the `credential` account of each user; written by
+`createUser`, `updateUserPassword` in `src/lib/db/users.ts` and `seed:admin`).
+`users.password_hash` is a legacy NOT NULL column that is no longer written (new
+users get `''`); migration `0017_better_auth.sql` adds
+`session`/`account`/`verification` and three columns on `users`, then backfilled
+one `credential` account per user from it
+and lower-cased stored emails (better-auth looks users up by lower-cased email;
+a row that would collide with another is left unchanged). Rolling back to the
+previous next-auth worker is not supported: it reads `password_hash`, which
+is stale or empty for every user created or changed since.
 
 Rollout order: apply the migration to the database first (it is additive, so
 the running old worker is unaffected), then deploy. Sessions issued by

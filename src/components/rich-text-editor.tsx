@@ -53,6 +53,9 @@ export function RichTextEditor({ content = "", onChange, placeholder = "Tulis ca
     },
     editorProps: {
       attributes: {
+        role: "textbox",
+        "aria-multiline": "true",
+        "aria-label": "Editor teks",
         class: "tiptap-editor min-h-[120px] px-3 py-2 text-base prose-comment",
       },
     },
@@ -103,15 +106,15 @@ export function RichTextEditor({ content = "", onChange, placeholder = "Tulis ca
 
   // Tombol bilah alat: ghost icon-sm; status aktif dibawa aria-pressed + latar secondary.
   const tools = [
-    { label: "Bold", icon: Bold, active: editor.isActive("bold"), run: () => editor.chain().focus().toggleBold().run() },
-    { label: "Italic", icon: Italic, active: editor.isActive("italic"), run: () => editor.chain().focus().toggleItalic().run() },
-    { label: "Strikethrough", icon: Strikethrough, active: editor.isActive("strike"), run: () => editor.chain().focus().toggleStrike().run() },
+    { label: "Tebal", icon: Bold, active: editor.isActive("bold"), run: () => editor.chain().focus().toggleBold().run() },
+    { label: "Miring", icon: Italic, active: editor.isActive("italic"), run: () => editor.chain().focus().toggleItalic().run() },
+    { label: "Coret", icon: Strikethrough, active: editor.isActive("strike"), run: () => editor.chain().focus().toggleStrike().run() },
     null,
-    { label: "Heading", icon: Heading2, active: editor.isActive("heading", { level: 2 }), run: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
-    { label: "Bullet List", icon: List, active: editor.isActive("bulletList"), run: () => editor.chain().focus().toggleBulletList().run() },
-    { label: "Numbered List", icon: ListOrdered, active: editor.isActive("orderedList"), run: () => editor.chain().focus().toggleOrderedList().run() },
+    { label: "Judul", icon: Heading2, active: editor.isActive("heading", { level: 2 }), run: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+    { label: "Daftar poin", icon: List, active: editor.isActive("bulletList"), run: () => editor.chain().focus().toggleBulletList().run() },
+    { label: "Daftar bernomor", icon: ListOrdered, active: editor.isActive("orderedList"), run: () => editor.chain().focus().toggleOrderedList().run() },
     null,
-    { label: "Link", icon: LinkIcon, active: editor.isActive("link"), run: handleLink },
+    { label: "Tautan", icon: LinkIcon, active: editor.isActive("link"), run: handleLink },
   ];
 
   return (
@@ -143,8 +146,8 @@ export function RichTextEditor({ content = "", onChange, placeholder = "Tulis ca
           size="icon-sm"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          title="Upload Gambar"
-          aria-label="Upload gambar"
+          title="Unggah gambar"
+          aria-label="Unggah gambar"
         >
           {uploading ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : <ImagePlus aria-hidden />}
         </Button>
