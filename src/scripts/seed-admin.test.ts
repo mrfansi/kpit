@@ -23,10 +23,9 @@ test("D1 admin seed requires an explicit target and preserves existing accounts"
     wrangler(["d1", "migrations", "apply", "DB", ...args]);
     const created = seed(args);
     assert.equal(created.status, 0, created.stderr);
-    const first = queryD1("SELECT email,password_hash FROM users", target);
+    const first = queryD1("SELECT email FROM users", target);
     assert.equal(first.length, 1);
     assert.equal(first[0].email, env.SEED_ADMIN_EMAIL);
-    assert.equal(first[0].password_hash, ""); // the credential lives only in account.password
     const accounts = queryD1("SELECT a.provider_id,a.account_id,a.password,u.id FROM account a JOIN users u ON u.id = a.user_id", target);
     assert.equal(accounts.length, 1);
     assert.equal(accounts[0].provider_id, "credential");
@@ -36,7 +35,7 @@ test("D1 admin seed requires an explicit target and preserves existing accounts"
     const repeated = seed(args, { SEED_ADMIN_PASSWORD: "AnotherPassword456!" });
     assert.equal(repeated.status, 0, repeated.stderr);
     assert.match(repeated.stdout, /sudah ada, skip/);
-    assert.deepEqual(queryD1("SELECT email,password_hash FROM users", target), first);
+    assert.deepEqual(queryD1("SELECT email FROM users", target), first);
     assert.equal(queryD1("SELECT id FROM account", target).length, 1);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

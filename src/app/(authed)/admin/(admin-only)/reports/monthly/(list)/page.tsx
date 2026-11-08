@@ -4,14 +4,14 @@ import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getAllDomains } from "@/lib/queries";
-import { formatRevisionTime, getReportSummaries } from "@/lib/monthly-report-revisions";
+import { formatRevisionTime, getKpiEntryCounts, getReportSummaries } from "@/lib/monthly-report-revisions";
 import { defaultReportingPeriod, formatPeriodDate, listLastNMonths } from "@/lib/period";
 
 export default async function MonthlyReportsPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const { period } = await searchParams;
   const selectedPeriod = period && /^\d{4}-(0[1-9]|1[0-2])-01$/.test(period) ? period : defaultReportingPeriod();
   const domains = await getAllDomains();
-  const summaries = await getReportSummaries(domains, selectedPeriod);
+  const [summaries, entryCounts] = await Promise.all([getReportSummaries(domains, selectedPeriod), getKpiEntryCounts(selectedPeriod)]);
   const periods = listLastNMonths(24);
   if (!periods.some((item) => item.value === selectedPeriod)) periods.push({ value: selectedPeriod, label: formatPeriodDate(selectedPeriod, "MMMM yyyy") });
   return <div className="max-w-5xl space-y-8">
@@ -37,8 +37,9 @@ export default async function MonthlyReportsPage({ searchParams }: { searchParam
         <tbody>
           {domains.map((domain) => {
             const summary = summaries.get(domain.id);
+            const entries = entryCounts.get(domain.id) ?? { filled: 0, total: 0 };
             return <tr id={`domain-${domain.id}`} key={domain.id} className="border-b transition-colors duration-[var(--dur-micro)] last:border-0 hover:bg-paper-2">
-            <td className="py-3 pr-4 font-semibold">{domain.name}</td>
+            <td className="py-3 pr-4"><span className="font-semibold">{domain.name}</span><p className="num mt-1 text-xs text-muted-foreground">Entri KPI: {entries.filled} dari {entries.total}</p></td>
             <td className="num hidden px-4 py-3 text-muted-foreground sm:table-cell">{formatPeriodDate(selectedPeriod, "MMMM yyyy")}</td>
             <td className="px-4 py-3">
               {summary ? <>

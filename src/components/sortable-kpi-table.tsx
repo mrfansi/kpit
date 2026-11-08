@@ -79,12 +79,12 @@ function SortableRow({ kpi, domainName }: { kpi: KPI; domainName: string }) {
       <TableCell className="pr-0 text-right">
         <div className="flex justify-end gap-1">
           <Button variant="ghost" size="icon-sm" asChild>
-            <Link href={`/admin/kpi/${kpi.id}/targets`} aria-label="Atur target per periode" title="Atur target per periode">
+            <Link href={`/admin/kpi/${kpi.id}/targets`} prefetch={false} aria-label={`Atur target per periode ${kpi.name}`} title="Atur target per periode">
               <Target aria-hidden />
             </Link>
           </Button>
           <Button variant="ghost" size="icon-sm" asChild>
-            <Link href={`/admin/kpi/${kpi.id}/edit`} aria-label="Edit KPI" title="Edit KPI">
+            <Link href={`/admin/kpi/${kpi.id}/edit`} prefetch={false} aria-label={`Ubah KPI ${kpi.name}`} title="Ubah KPI">
               <Pencil aria-hidden />
             </Link>
           </Button>

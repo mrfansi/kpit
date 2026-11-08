@@ -1,6 +1,6 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, countDistinct, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { domains, monthlyReportRevisions, monthlyReports, users } from "@/lib/db/schema";
+import { domains, kpiEntries, kpis, monthlyReportRevisions, monthlyReports, users } from "@/lib/db/schema";
 import { computeMonthlyReport } from "@/lib/monthly-report";
 import { getMonthlyReportBundles, MonthlyReportError } from "@/lib/monthly-report-store";
 import type { MonthlyReportBundle } from "@/lib/monthly-report-types";
@@ -33,6 +33,16 @@ export async function getReportSummaries(domainRows: { id: number }[], period: s
       : { status: reportStatus({ revision: 0, questions: [] }), revision: 0, updatedAt: null, updatedBy: null });
   }
   return result;
+}
+
+export type KpiEntryCount = { filled: number; total: number };
+
+// One grouped query for every domain: active monthly KPIs vs those with an entry in the period. Domains without KPIs are absent.
+export async function getKpiEntryCounts(period: string): Promise<Map<number, KpiEntryCount>> {
+  const rows = await db.select({ domainId: kpis.domainId, total: countDistinct(kpis.id), filled: countDistinct(kpiEntries.kpiId) }).from(kpis)
+    .leftJoin(kpiEntries, and(eq(kpiEntries.kpiId, kpis.id), eq(kpiEntries.periodDate, period)))
+    .where(and(eq(kpis.isActive, true), eq(kpis.period, "monthly"))).groupBy(kpis.domainId);
+  return new Map(rows.map((r) => [r.domainId, { filled: r.filled, total: r.total }]));
 }
 
 export async function listRevisions(domainSlug: string, period: string) {

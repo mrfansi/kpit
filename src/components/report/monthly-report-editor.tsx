@@ -13,6 +13,7 @@ import { appendTimelineActivities, applyNotes, applyPreviousActions, draftSummar
 import { computeMonthlyReport, reportMonths, SHORT_MONTHS, ytdStartInvalid } from "@/lib/monthly-report";
 import { statusConfig } from "@/lib/kpi-status";
 import { ChevronRight } from "lucide-react";
+import { defaultReportingPeriod, shiftMonth } from "@/lib/period";
 
 const inputClass = "min-w-0 space-y-1.5";
 const sectionClass = "space-y-4 border-t pt-6";
@@ -139,6 +140,20 @@ export function MonthlyReportEditor({ initial }: { initial: MonthlyReportBundle 
     window.addEventListener("beforeunload", guard);
     return () => window.removeEventListener("beforeunload", guard);
   }, [edited]);
+  // Next's router navigates without unloading, so beforeunload never fires for in-app links: intercept clicks in capture phase, before Link's handler.
+  // shortcut: back/forward (popstate) is not guarded; the URL has already changed when popstate fires and vinext's router offers no cancel hook, so a decline could not restore the page without a history hack. Upgrade if the router gains a beforePopState-style API.
+  useEffect(() => {
+    if (!edited) return;
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download") || a.origin !== window.location.origin) return;
+      if (a.pathname === window.location.pathname && a.search === window.location.search) return;
+      if (!window.confirm("Ada perubahan yang belum disimpan. Tinggalkan halaman?")) { e.preventDefault(); e.stopImmediatePropagation(); }
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [edited]);
   // Questions only the server can produce (cross-division, KPI entry mismatch): saved ones the pure computation does not reproduce.
   const savedOnlyQuestions = useMemo(() => {
     const pure = new Set(computeMonthlyReport(bundle.content, bundle.period).questions.map(questionKey));
@@ -163,7 +178,7 @@ export function MonthlyReportEditor({ initial }: { initial: MonthlyReportBundle 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `Pengambilan data gagal (${response.status}).`);
       const current = contentRef.current;
-      const result = kind === "entries" ? refreshFromEntries(current, data.entries, new Set<number>(data.checkedKpiIds)) : kind === "notes" ? applyNotes(current, data, bundle.period) : kind === "previous" ? applyPreviousActions(current, data.previousActions ?? []) : appendTimelineActivities(current, data.lines);
+      const result = kind === "entries" ? refreshFromEntries(current, data.entries, new Set<number>(data.checkedKpiIds), data.targets) : kind === "notes" ? applyNotes(current, data, bundle.period) : kind === "previous" ? applyPreviousActions(current, data.previousActions ?? []) : appendTimelineActivities(current, data.lines);
       if (!result.changes.length) { setNotice(pullTitles[kind].none); return; }
       replace(result.content);
       setImported({ title: pullTitles[kind].done, lines: result.changes });
@@ -226,7 +241,7 @@ export function MonthlyReportEditor({ initial }: { initial: MonthlyReportBundle 
   }
   return <div className="max-w-6xl space-y-10 pb-12">
     <div className="space-y-4">
-      <PageHeader title={`Laporan bulanan: ${bundle.domain.name}`} description={<>Periode <span className="num">{monthLabel(bundle.period)}</span>, revisi <span className="num">{bundle.revision}</span>{bundle.updatedAt ? <>, diperbarui <span className="num">{new Date(bundle.updatedAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short" })}</span></> : ", belum disimpan"}</>} actions={<Button variant="outline" size="sm" asChild><Link href={`/admin/reports/monthly?period=${bundle.period}`}>Semua domain</Link></Button>} />
+      <PageHeader title={`Laporan bulanan: ${bundle.domain.name}`} description={<>Periode <span className="num">{monthLabel(bundle.period)}</span>, revisi <span className="num">{bundle.revision}</span>{bundle.updatedAt ? <>, diperbarui <span className="num">{new Date(bundle.updatedAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short" })}</span></> : ", belum disimpan"}</>} actions={<><Button variant="outline" size="sm" asChild><Link href={`/admin/reports/monthly/${encodeURIComponent(bundle.domain.slug)}?period=${shiftMonth(bundle.period, -1)}`}>Bulan sebelumnya</Link></Button>{shiftMonth(bundle.period, 1) <= defaultReportingPeriod() && <Button variant="outline" size="sm" asChild><Link href={`/admin/reports/monthly/${encodeURIComponent(bundle.domain.slug)}?period=${shiftMonth(bundle.period, 1)}`}>Bulan berikutnya</Link></Button>}<Button variant="outline" size="sm" asChild><Link href={`/admin/reports/monthly?period=${bundle.period}`}>Semua domain</Link></Button></>} />
       <div className="flex flex-wrap items-center gap-2 border-y py-3">
         <div className="mr-auto"><span className={`inline-block rounded-sm px-2 py-0.5 text-sm ${dirty ? "border border-edge" : "bg-secondary"}`}>{dirty ? "Perubahan belum disimpan" : bundle.ready ? "Siap untuk presentasi final" : <>Draf, <span className="num">{questionCount}</span> pertanyaan terbuka</>}</span></div>
         <Button type="button" variant="outline" onClick={() => void assist()} disabled={busy || conflict}>{busy ? "Memproses…" : "Periksa / Bantu dengan AI"}</Button>

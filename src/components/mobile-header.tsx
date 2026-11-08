@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { BarChart2, Home, User, Menu, GanttChart, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Domain } from "@/lib/db/schema";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoutButton } from "@/components/logout-button";
@@ -64,6 +64,7 @@ export function MobileHeader({ domains, isAuthenticated = false, userName, role 
             <SheetTitle className="font-display text-lg leading-none font-semibold tracking-tight">
               KPI Dashboard
             </SheetTitle>
+            <SheetDescription className="sr-only">Menu navigasi dashboard KPI</SheetDescription>
           </SheetHeader>
 
           <nav aria-label="Navigasi utama" className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">

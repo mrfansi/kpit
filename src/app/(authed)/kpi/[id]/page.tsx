@@ -217,6 +217,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Tren historis</h2>
+          {allEntries.length > 0 && (
           <div className="flex flex-wrap items-center gap-1 print:hidden">
             {RANGE_OPTIONS.map((opt) => {
               const active = String(validRange) === opt.value;
@@ -242,6 +243,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
               </Link>
             </Button>
           </div>
+          )}
         </div>
         <TrendChart
           entries={entries}

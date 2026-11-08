@@ -1,7 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
 /** Bentuk daftar admin: kepala layar (judul + konteks, toolbar kanan) lalu baris tabel berpemisah garis. */
-export default function Loading() {
+export default function AdminListSkeleton() {
   return (
     <div className="space-y-8" aria-busy="true">
       <div className="flex flex-wrap items-end justify-between gap-4">

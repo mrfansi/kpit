@@ -5,7 +5,7 @@ import test from "node:test";
 import { eq } from "drizzle-orm";
 import { getAuth } from "@/auth";
 import { db } from "@/lib/db";
-import { account, session as sessions, users } from "@/lib/db/schema";
+import { account, session as sessions } from "@/lib/db/schema";
 import { createUser } from "@/lib/db/users";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createTestD1 } from "@/lib/test-d1";
@@ -57,7 +57,7 @@ test("changePasswordAction checks the current password and revokes other session
 
   const environment = await createTestD1();
   t.after(() => environment.dispose());
-  await createUser({ id: "cp-user", email: "cp@example.test", name: "CP", passwordHash: await hashPassword("Old-password-1"), role: "viewer" });
+  await createUser({ id: "cp-user", email: "cp@example.test", name: "CP", password: await hashPassword("Old-password-1"), role: "viewer" });
   const current = await signIn("cp@example.test", "Old-password-1");
   const other = await signIn("cp@example.test", "Old-password-1");
   requestHeaders = current;
@@ -77,7 +77,6 @@ test("changePasswordAction checks the current password and revokes other session
     assert.deepEqual(result, { success: true });
     const [credential] = await db.select().from(account).where(eq(account.userId, "cp-user"));
     assert.ok(await verifyPassword({ hash: credential.password!, password: "New-password-1" }));
-    assert.equal((await db.select().from(users).where(eq(users.id, "cp-user")))[0].passwordHash, "");
     assert.equal((await db.select().from(sessions).where(eq(sessions.userId, "cp-user"))).length, 1);
     assert.ok(await isValid(current));
     assert.equal(await isValid(other), false);

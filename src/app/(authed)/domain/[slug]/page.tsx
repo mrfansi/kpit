@@ -68,6 +68,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
   });
 
   const isFiltered = Boolean(q || status);
+  const hasKPIs = kpisWithEntries.length > 0;
 
   const kpiLatestPeriods: Record<number, string> = {};
   for (const { kpi, latestEntry } of kpisWithEntries) {
@@ -133,11 +134,11 @@ export default async function DomainPage({ params, searchParams }: Props) {
                 Laporan bulanan
               </Link>
             </Button>
-            <ExportButtons domainSlug={slug} />
-            {canEdit && (
+            {hasKPIs && <ExportButtons domainSlug={slug} />}
+            {canEdit && hasKPIs && (
               <BatchCommentDraft domainId={domain.id} periodDate={selectedPeriod ?? ""} />
             )}
-            {canEdit && (
+            {canEdit && hasKPIs && (
               <QuickEntryModal kpis={kpisWithEntries.map(({ kpi }) => ({ id: kpi.id, name: kpi.name }))} kpiLatestPeriods={kpiLatestPeriods} />
             )}
           </div>
@@ -145,7 +146,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
 
         <SummaryStrip kpisWithEntries={kpisWithEntries} />
 
-        <DomainAISummary requestData={domainSummaryData} />
+        {hasKPIs && <DomainAISummary requestData={domainSummaryData} />}
 
         {!isFiltered && (
           <AttentionBar
@@ -159,13 +160,27 @@ export default async function DomainPage({ params, searchParams }: Props) {
 
       <div className="space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Suspense>
-            <KPIFilterBar defaultQ={q} defaultStatus={status} />
-          </Suspense>
+          {hasKPIs ? (
+            <Suspense>
+              <KPIFilterBar defaultQ={q} defaultStatus={status} />
+            </Suspense>
+          ) : <span />}
           <DomainTabs domains={domains} activeSlug={slug} />
         </div>
 
-        {filtered.length === 0 && !isFiltered ? (
+        {!hasKPIs ? (
+          <div className="flex flex-col items-center">
+            <EmptyState
+              title="Belum ada KPI"
+              description={canEdit ? "Domain ini belum punya KPI. Tambahkan KPI pertama untuk mulai mengisi data." : "KPI untuk domain ini belum ditambahkan."}
+            />
+            {canEdit && (
+              <Button asChild>
+                <Link href="/admin/kpi/new">Tambah KPI</Link>
+              </Button>
+            )}
+          </div>
+        ) : filtered.length === 0 && !isFiltered ? (
           <EmptyState />
         ) : (
           <KPITable

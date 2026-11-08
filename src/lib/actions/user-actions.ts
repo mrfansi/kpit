@@ -44,9 +44,9 @@ export async function addUserAction(
   });
   if (!parsed.success) return { error: "Data tidak valid. Pastikan semua field terisi dengan benar." };
 
-  const passwordHash = await hashPassword(parsed.data.password);
+  const password = await hashPassword(parsed.data.password);
   try {
-    await createUser({ id: randomUUID(), ...parsed.data, passwordHash });
+    await createUser({ id: randomUUID(), ...parsed.data, password });
     await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "user", detail: parsed.data.email });
     revalidatePath("/admin/users");
     return { success: true };
