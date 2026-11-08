@@ -25,12 +25,12 @@ const UPSERT = `INSERT INTO rate_limit (id, key, count, last_request) VALUES (?1
 
 /** Consume several counters in one D1 batch; `now` is injectable for tests. */
 export async function consumeRateLimits(rules: RateLimitRule[], now = Date.now()): Promise<RateLimitOutcome[]> {
-  const results = await env.DB.batch<{ count: number; last_request: number }>(
-    rules.map((rule) =>
+  const results: D1Result<{ count: number; last_request: number }>[] = await env.DB.batch(
+    rules.map((rule: RateLimitRule) =>
       env.DB.prepare(UPSERT).bind(crypto.randomUUID(), rule.key, rule.cost ?? 1, now, rule.windowSeconds * 1000),
     ),
   );
-  return results.map((result, index) => {
+  return results.map((result: D1Result<{ count: number; last_request: number }>, index: number) => {
     const { count, last_request } = result.results[0];
     const { max, windowSeconds } = rules[index];
     return {
