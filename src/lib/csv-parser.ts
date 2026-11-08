@@ -6,7 +6,7 @@ export function parseCSV(text: string): { headers: string[]; rows: string[][] } 
   const cleaned = text.replace(/^\uFEFF/, "");
 
   const result = Papa.parse<string[]>(cleaned, {
-    skipEmptyLines: true,
+    skipEmptyLines: "greedy",
     header: false,
   });
 

@@ -9,7 +9,6 @@ import { db } from "@/lib/db";
 import { upsertKPIEntry } from "@/lib/db/entries";
 import { requireAdmin } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
-import { notifyRedEntries } from "@/lib/notify";
 import { checkValueBounds } from "@/lib/kpi-bounds";
 
 const EntrySchema = z.object({
@@ -47,7 +46,6 @@ export async function createEntry(data: Omit<NewKPIEntry, "createdAt">) {
 
   await upsertKPIEntry({ ...data, note: data.note ?? undefined });
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", entityId: String(data.kpiId), detail: `periode ${data.periodDate}` });
-  await notifyRedEntries([{ kpiId: data.kpiId, value: data.value, periodDate: data.periodDate }]);
   revalidatePath("/");
   revalidatePath(`/kpi/${data.kpiId}`);
 }
@@ -67,7 +65,7 @@ export async function updateEntry(id: number, value: number, note?: string) {
   const boundsError = checkValueBounds(value, row);
   if (boundsError) throw new Error(boundsError);
 
-  await db.update(kpiEntries).set({ value, note }).where(eq(kpiEntries.id, id));
+  await db.update(kpiEntries).set({ value, note: note?.trim() ? note : null }).where(eq(kpiEntries.id, id));
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "update", entity: "kpi_entry", entityId: String(id) });
   revalidatePath("/");
 }
@@ -138,8 +136,6 @@ export async function bulkCreateEntries(rows: BulkEntryRow[]): Promise<{ saved: 
   await db.batch([first!, ...rest, ...parsedRows.map((row) => db.insert(kpiEntries).values(row))]);
 
   await logAudit({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "create", entity: "kpi_entry", detail: `bulk ${parsedRows.length} entri periode ${periodDate}` });
-
-  await notifyRedEntries(parsedRows);
 
   revalidatePath("/");
   for (const row of parsedRows) {

@@ -8,6 +8,10 @@ const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Warna harus format hex #RRGGBB");
 
+// Field form kosong dikirim sebagai "", yang z.coerce ubah jadi 0.
+const emptyAsUndefined = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((v) => (v === "" ? undefined : v), schema);
+
 export const projectSchema = z
   .object({
     name: z.string().min(2, "Nama minimal 2 karakter").max(100),
@@ -17,9 +21,9 @@ export const projectSchema = z
     endDate: isoDate,
     progress: z.coerce.number().int().min(0).max(100).default(0),
     sortOrder: z.coerce.number().int().default(0),
-    launchBufferDays: z.coerce.number().int().min(0).max(365).default(7),
+    launchBufferDays: emptyAsUndefined(z.coerce.number().int().min(0).max(365).default(7)),
     estimatedLaunchDate: isoDate.optional().or(z.literal("")),
-    statusId: z.coerce.number().int().positive().optional(),
+    statusId: emptyAsUndefined(z.coerce.number().int().positive().optional()),
   })
   .refine((data) => data.endDate >= data.startDate, {
     message: "Tanggal selesai harus setelah atau sama dengan tanggal mulai",
@@ -37,8 +41,3 @@ export const projectSchema = z
   );
 
 export type ProjectFormValues = z.infer<typeof projectSchema>;
-
-export const progressLogSchema = z.object({
-  projectId: z.coerce.number().int().positive(),
-  content: z.string().min(1, "Konten tidak boleh kosong").max(50000),
-});

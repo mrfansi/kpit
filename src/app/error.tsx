@@ -21,6 +21,9 @@ export default function Error({
         <p className="max-w-prose text-base text-muted-foreground">
           Gagal memuat halaman. Silakan coba lagi.
         </p>
+        {error.digest && (
+          <p className="text-sm text-muted-foreground">Kode galat: {error.digest}</p>
+        )}
       </div>
       <Button type="button" onClick={reset}>
         Coba lagi

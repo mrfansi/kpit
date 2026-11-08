@@ -23,10 +23,3 @@ export function getAIService(): AIService {
   instance = new DeepSeekProvider(apiKey, process.env.DEEPSEEK_MODEL);
   return instance;
 }
-
-/**
- * Reset the singleton (useful for testing).
- */
-export function resetAIService(): void {
-  instance = null;
-}

@@ -1,11 +1,11 @@
-import { and, desc, eq, gte, inArray, lte, or } from "drizzle-orm";
+import { cache } from "react";
+import { and, desc, eq, getTableColumns, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "./db";
 import { domains, kpiActionPlans, kpiComments, kpiEntries, kpiTargets, kpis, type KPI, type KPIActionPlan, type KPIComment, type KPIEntry, type KPITarget } from "./db/schema";
 import { activeActionPlanStatuses, getActionPlanSummary } from "./action-plan";
 
-export async function getAllDomains() {
-  return db.select().from(domains).orderBy(domains.name);
-}
+// Memoized per render pass: the root layout and the page both ask for it. Outside a render it is a plain call.
+export const getAllDomains = cache(async () => db.select().from(domains).orderBy(domains.name));
 
 export async function getDomainBySlug(slug: string) {
   const rows = await db.select().from(domains).where(eq(domains.slug, slug)).limit(1);
@@ -25,10 +25,6 @@ export async function getAllKPIs(): Promise<KPI[]> {
   return db.select().from(kpis).where(eq(kpis.isActive, true)).orderBy(kpis.domainId, kpis.sortOrder, kpis.name);
 }
 
-export async function getPinnedKPIs(): Promise<KPI[]> {
-  return db.select().from(kpis).where(and(eq(kpis.isActive, true), eq(kpis.isPinned, true))).orderBy(kpis.domainId, kpis.sortOrder, kpis.name);
-}
-
 export async function getEntriesForPeriod(periodDate: string): Promise<KPIEntry[]> {
   return db.select().from(kpiEntries).where(eq(kpiEntries.periodDate, periodDate));
 }
@@ -39,19 +35,6 @@ export async function getArchivedKPIs(): Promise<KPI[]> {
 
 export async function getKPIById(id: number): Promise<KPI | null> {
   const rows = await db.select().from(kpis).where(eq(kpis.id, id)).limit(1);
-  return rows[0] ?? null;
-}
-
-export async function getLatestEntry(kpiId: number, atOrBeforeDate?: string): Promise<KPIEntry | null> {
-  const conditions = [eq(kpiEntries.kpiId, kpiId)];
-  if (atOrBeforeDate) conditions.push(lte(kpiEntries.periodDate, atOrBeforeDate));
-
-  const rows = await db
-    .select()
-    .from(kpiEntries)
-    .where(and(...conditions))
-    .orderBy(desc(kpiEntries.periodDate))
-    .limit(1);
   return rows[0] ?? null;
 }
 
@@ -68,60 +51,51 @@ export async function getKPIEntries(kpiId: number, fromDate?: string, toDate?: s
 }
 
 export async function getKPIsWithLatestEntry(domainId?: number, atOrBeforeDate?: string) {
-  const allKPIs = domainId ? await getKPIsByDomain(domainId) : await getAllKPIs();
-  if (allKPIs.length === 0) return [];
+  const inScope = and(eq(kpis.isActive, true), domainId ? eq(kpis.domainId, domainId) : undefined);
+  const cutoff = atOrBeforeDate ? lte(kpiEntries.periodDate, atOrBeforeDate) : undefined;
+  // Only the 12 newest entries per KPI are read: the newest is the latest, all 12 feed the sparkline.
+  const ranked = db
+    .select({
+      ...getTableColumns(kpiEntries),
+      rn: sql<number>`row_number() over (partition by ${kpiEntries.kpiId} order by ${kpiEntries.periodDate} desc, ${kpiEntries.id} desc)`.as("rn"),
+    })
+    .from(kpiEntries)
+    .innerJoin(kpis, eq(kpis.id, kpiEntries.kpiId))
+    .where(and(inScope, cutoff))
+    .as("ranked");
 
-  const kpiIds = allKPIs.map((k) => k.id);
-  const dateCondition = atOrBeforeDate ? lte(kpiEntries.periodDate, atOrBeforeDate) : undefined;
-
-  // Reserve one parameter for the optional period cutoff.
-  const latestEntriesRaw: KPIEntry[] = [];
-  for (let offset = 0; offset < kpiIds.length; offset += 99) {
-    latestEntriesRaw.push(...await db
-      .select()
-      .from(kpiEntries)
-      .where(and(inArray(kpiEntries.kpiId, kpiIds.slice(offset, offset + 99)), dateCondition))
-      .orderBy(kpiEntries.kpiId, desc(kpiEntries.periodDate)));
-  }
-
-  // Build map: kpiId → latest entry
-  const latestEntryMap = new Map<number, typeof latestEntriesRaw[0]>();
-  for (const entry of latestEntriesRaw) {
-    if (!latestEntryMap.has(entry.kpiId)) {
-      latestEntryMap.set(entry.kpiId, entry);
-    }
-  }
-
-  // Batch 2: 12 newest entries per KPI for sparkline (rows are newest-first per KPI)
-  const sparklineMap = new Map<number, typeof latestEntriesRaw>();
-  for (const entry of latestEntriesRaw) {
-    const arr = sparklineMap.get(entry.kpiId) ?? [];
-    if (arr.length < 12) arr.push(entry);
-    sparklineMap.set(entry.kpiId, arr);
-  }
-
-  // Batch 3: target overrides for all KPIs at their latest period
-  const targetOverrides: KPITarget[] = [];
-  const entriesWithPeriods = [...latestEntryMap.values()];
-  // Exact KPI/period pairs cost two parameters each.
-  for (let offset = 0; offset < entriesWithPeriods.length; offset += 50) {
-    targetOverrides.push(...await db
-      .select()
+  const [allKPIs, rows, targetOverrides] = await Promise.all([
+    domainId ? getKPIsByDomain(domainId) : getAllKPIs(),
+    db
+      .select({ id: ranked.id, kpiId: ranked.kpiId, value: ranked.value, periodDate: ranked.periodDate, note: ranked.note, createdAt: ranked.createdAt })
+      .from(ranked)
+      .where(lte(ranked.rn, 12))
+      .orderBy(sql`${ranked.rn}`),
+    // Target overrides sitting on each KPI's latest period.
+    db
+      .select(getTableColumns(kpiTargets))
       .from(kpiTargets)
-      .where(or(...entriesWithPeriods.slice(offset, offset + 50).map((entry) =>
-        and(eq(kpiTargets.kpiId, entry.kpiId), eq(kpiTargets.periodDate, entry.periodDate))
-      ))));
-  }
+      .innerJoin(kpis, eq(kpis.id, kpiTargets.kpiId))
+      .where(and(
+        inScope,
+        sql`${kpiTargets.periodDate} = (select max(${kpiEntries.periodDate}) from ${kpiEntries} where ${kpiEntries.kpiId} = ${kpiTargets.kpiId}${atOrBeforeDate ? sql` and ${kpiEntries.periodDate} <= ${atOrBeforeDate}` : sql``})`,
+      )),
+  ]);
 
-  const targetOverrideMap = new Map<string, typeof targetOverrides[0]>();
-  for (const t of targetOverrides) {
-    targetOverrideMap.set(`${t.kpiId}:${t.periodDate}`, t);
+  // rows are newest-first per KPI (ordered by rank).
+  const newestFirst = new Map<number, KPIEntry[]>();
+  for (const row of rows) {
+    const list = newestFirst.get(row.kpiId);
+    if (list) list.push(row);
+    else newestFirst.set(row.kpiId, [row]);
   }
+  const targetOverrideMap = new Map(targetOverrides.map((t) => [`${t.kpiId}:${t.periodDate}`, t]));
 
   return allKPIs.map((kpi) => {
-    const latestEntry = latestEntryMap.get(kpi.id) ?? null;
+    const history = newestFirst.get(kpi.id) ?? [];
+    const latestEntry = history[0] ?? null;
     // Chronological (oldest → newest): consumers draw left→right and treat the second-last entry as previous.
-    const sparklineEntries = (sparklineMap.get(kpi.id) ?? []).slice().reverse();
+    const sparklineEntries = history.slice().reverse();
 
     const override = latestEntry ? targetOverrideMap.get(`${kpi.id}:${latestEntry.periodDate}`) : undefined;
     const effectiveTarget = override
@@ -156,28 +130,6 @@ export async function getKPITargets(kpiId: number): Promise<KPITarget[]> {
     .from(kpiTargets)
     .where(eq(kpiTargets.kpiId, kpiId))
     .orderBy(desc(kpiTargets.periodDate));
-}
-
-/**
- * Ambil entry untuk MoM dan YoY comparison.
- * @param kpiId
- * @param currentPeriodDate  ISO date awal bulan (YYYY-MM-DD)
- */
-export async function getPeriodComparisonEntries(kpiId: number, currentPeriodDate: string) {
-  // Parse year/month dari string langsung untuk menghindari timezone issues
-  const [y, m] = currentPeriodDate.split("-").map(Number);
-
-  const prevMonthD = new Date(y, m - 2, 1); // m-1 (zero-based) - 1 (prev month)
-  const prevMonthDate = `${prevMonthD.getFullYear()}-${String(prevMonthD.getMonth() + 1).padStart(2, "0")}-01`;
-
-  const prevYearDate = `${y - 1}-${String(m).padStart(2, "0")}-01`;
-
-  const [prevMonth, prevYear] = await Promise.all([
-    getLatestEntry(kpiId, prevMonthDate),
-    getLatestEntry(kpiId, prevYearDate),
-  ]);
-
-  return { prevMonth, prevYear };
 }
 
 /**
@@ -243,23 +195,15 @@ export async function getKPIActionPlans(kpiId: number): Promise<KPIActionPlan[]>
     .orderBy(kpiActionPlans.dueDate, desc(kpiActionPlans.updatedAt));
 }
 
-export async function getActionPlanCountsByKPIIds(kpiIds: number[]): Promise<Map<number, number>> {
-  const counts = new Map<number, number>();
-  if (kpiIds.length === 0) return counts;
-
-  const uniqueIds = [...new Set(kpiIds)];
-  const chunkSize = 100 - activeActionPlanStatuses.length;
-  for (let offset = 0; offset < uniqueIds.length; offset += chunkSize) {
-    const actions = await db
-      .select({ kpiId: kpiActionPlans.kpiId })
-      .from(kpiActionPlans)
-      .where(and(inArray(kpiActionPlans.kpiId, uniqueIds.slice(offset, offset + chunkSize)), inArray(kpiActionPlans.status, activeActionPlanStatuses)));
-
-    for (const action of actions) {
-      counts.set(action.kpiId, (counts.get(action.kpiId) ?? 0) + 1);
-    }
-  }
-  return counts;
+/** Count of open action plans per KPI, one grouped query; scoped to a domain when given. */
+export async function getActionPlanCounts(domainId?: number): Promise<Map<number, number>> {
+  const rows = await db
+    .select({ kpiId: kpiActionPlans.kpiId, total: sql<number>`count(*)` })
+    .from(kpiActionPlans)
+    .innerJoin(kpis, eq(kpis.id, kpiActionPlans.kpiId))
+    .where(and(inArray(kpiActionPlans.status, activeActionPlanStatuses), domainId ? eq(kpis.domainId, domainId) : undefined))
+    .groupBy(kpiActionPlans.kpiId);
+  return new Map(rows.map((row) => [row.kpiId, row.total]));
 }
 
 export async function getAllActionPlansWithKPI() {

@@ -1,7 +1,7 @@
 export type MonthlyMutationRejection = { status: 403 | 415; error: string };
 
 /** Host is the browser's destination; forwarded-host is intentionally never trusted. */
-export function checkMonthlyMutationRequest(request: Request, configuredAuthUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL): MonthlyMutationRejection | null {
+export function checkMonthlyMutationRequest(request: Request, configuredAuthUrl = process.env.AUTH_URL): MonthlyMutationRejection | null {
   const origin = request.headers.get("origin");
   let expected: string;
   try {

@@ -9,15 +9,6 @@ export async function getAllTimelineProjects() {
     .orderBy(asc(timelineProjects.sortOrder), asc(timelineProjects.startDate));
 }
 
-export async function getTimelineProjectById(id: number) {
-  const rows = await db
-    .select()
-    .from(timelineProjects)
-    .where(eq(timelineProjects.id, id))
-    .limit(1);
-  return rows[0] ?? null;
-}
-
 export async function getProjectLogs(projectId: number) {
   return db
     .select()

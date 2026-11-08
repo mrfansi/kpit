@@ -2,12 +2,14 @@
 
 import { db } from "@/lib/db";
 import { kpis, kpiTargets } from "@/lib/db/schema";
+import { checkThresholdCoherence } from "@/lib/kpi-coherence";
 import { and, eq, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { parseCSV } from "@/lib/csv-parser";
 import { requireAdmin, requireAuth } from "@/lib/auth-utils";
 import { logAudit } from "@/lib/db/audit";
-import { validatePeriodDate, buildRowError, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
+import { parsePlainNumber, kpiNameLookup, MAX_IMPORT_ROWS } from "@/lib/csv-import-utils";
+import { isValidCalendarDate } from "@/lib/date-utils";
 import { z } from "zod";
 
 export interface TargetImportRow {
@@ -26,15 +28,16 @@ export interface TargetImportRow {
 // directly via RPC, bypassing resolveTargetCSVRows. Re-validate every row.
 const TargetRowSchema = z.object({
   kpiId: z.number().int().positive(),
-  periodDate: z.string().refine(validatePeriodDate, "period_date tidak valid"),
+  periodDate: z.string().refine(isValidCalendarDate, "period_date tidak valid")
+    .refine((d) => d.endsWith("-01"), "period_date harus tanggal 01 (target berlaku per bulan)"),
   target: z.number().finite().positive(),
   thresholdGreen: z.number().finite().positive(),
   thresholdYellow: z.number().finite().positive(),
 });
 
 function parsePositiveFloat(raw: string | undefined): number {
-  const n = parseFloat(raw ?? "");
-  return Number.isFinite(n) && n > 0 ? n : NaN;
+  const n = parsePlainNumber(raw);
+  return n > 0 ? n : NaN;
 }
 
 export async function resolveTargetCSVRows(text: string): Promise<{
@@ -58,32 +61,33 @@ export async function resolveTargetCSVRows(text: string): Promise<{
   if (!headers.includes("period_date")) return { resolved: [], errors: [{ row: 0, message: "Header wajib mengandung 'period_date'" }] };
   if (!headers.includes("target")) return { resolved: [], errors: [{ row: 0, message: "Header wajib mengandung 'target'" }] };
 
-  const allKPIs = await db.select({ id: kpis.id, name: kpis.name }).from(kpis);
-  const kpiByName = new Map(allKPIs.map((k) => [k.name.toLowerCase(), k]));
-  const kpiById = new Map(allKPIs.map((k) => [k.id, k.name]));
+  const allKPIs = await db
+    .select({ id: kpis.id, name: kpis.name, direction: kpis.direction, isActive: kpis.isActive })
+    .from(kpis);
+  const findByName = kpiNameLookup(allKPIs);
+  const kpiById = new Map(allKPIs.map((k) => [k.id, k]));
   const idx = (col: string) => headers.indexOf(col);
+  const seen = new Map<string, number>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const rowNum = i + 2;
 
-    let kpiId: number | undefined;
-    let kpiName = "";
-
+    let kpi: (typeof allKPIs)[number] | undefined;
     if (hasId) {
       const raw = row[idx("kpi_id")];
-      kpiId = Number(raw);
-      if (isNaN(kpiId) || !kpiById.has(kpiId)) { errors.push({ row: rowNum, message: `KPI id "${raw}" tidak valid/ditemukan` }); continue; }
-      kpiName = kpiById.get(kpiId)!;
+      kpi = kpiById.get(Number(raw));
+      if (!kpi) { errors.push({ row: rowNum, message: `KPI id "${raw}" tidak valid/ditemukan` }); continue; }
     } else {
-      kpiName = row[idx("kpi_name")] ?? "";
-      const found = kpiByName.get(kpiName.toLowerCase());
-      if (!found) { errors.push({ row: rowNum, message: `KPI "${kpiName}" tidak ditemukan` }); continue; }
-      kpiId = found.id;
+      const found = findByName(row[idx("kpi_name")] ?? "");
+      if ("error" in found) { errors.push({ row: rowNum, message: found.error }); continue; }
+      kpi = found.kpi;
     }
+    const { id: kpiId, name: kpiName, direction } = kpi;
 
     const periodDate = row[idx("period_date")] ?? "";
-    if (!validatePeriodDate(periodDate)) { errors.push(buildRowError(rowNum, `period_date tidak valid: "${periodDate}"`)); continue; }
+    if (!isValidCalendarDate(periodDate)) { errors.push({ row: rowNum, message: `period_date tidak valid: "${periodDate}"` }); continue; }
+    if (!periodDate.endsWith("-01")) { errors.push({ row: rowNum, message: `period_date harus tanggal 01 (target berlaku per bulan): "${periodDate}"` }); continue; }
 
     const target = parsePositiveFloat(row[idx("target")]);
     if (isNaN(target)) { errors.push({ row: rowNum, message: `target tidak valid (harus angka positif): "${row[idx("target")]}"` }); continue; }
@@ -91,19 +95,31 @@ export async function resolveTargetCSVRows(text: string): Promise<{
     const tgIdx = idx("threshold_green");
     const tyIdx = idx("threshold_yellow");
 
+    // Default ambang mengikuti arah KPI: untuk lower_better, hijau/kuning ada di
+    // ATAS target (kalau tidak, nilai tepat di target malah merah).
     // When a threshold column is present but the cell is non-numeric/non-positive,
     // reject the row instead of silently coercing to a default.
-    let thresholdGreen = target * 0.9;
+    const lowerBetter = direction === "lower_better";
+    let thresholdGreen = target * (lowerBetter ? 1.1 : 0.9);
     if (tgIdx >= 0 && (row[tgIdx] ?? "").trim() !== "") {
       thresholdGreen = parsePositiveFloat(row[tgIdx]);
       if (isNaN(thresholdGreen)) { errors.push({ row: rowNum, message: `threshold_green tidak valid: "${row[tgIdx]}"` }); continue; }
     }
 
-    let thresholdYellow = target * 0.7;
+    let thresholdYellow = target * (lowerBetter ? 1.3 : 0.7);
     if (tyIdx >= 0 && (row[tyIdx] ?? "").trim() !== "") {
       thresholdYellow = parsePositiveFloat(row[tyIdx]);
       if (isNaN(thresholdYellow)) { errors.push({ row: rowNum, message: `threshold_yellow tidak valid: "${row[tyIdx]}"` }); continue; }
     }
+
+    const incoherent = checkThresholdCoherence({ direction, target, thresholdGreen, thresholdYellow })
+      .find((issue) => issue.level === "error");
+    if (incoherent) { errors.push({ row: rowNum, message: `${kpiName}: ${incoherent.message}` }); continue; }
+
+    const key = `${kpiId}:${periodDate}`;
+    const firstRow = seen.get(key);
+    if (firstRow !== undefined) { errors.push({ row: rowNum, message: `Duplikat KPI dan periode yang sama dengan baris ${firstRow}` }); continue; }
+    seen.set(key, rowNum);
 
     resolved.push({ rowIndex: rowNum, kpiId, kpiName, periodDate, target, thresholdGreen, thresholdYellow });
   }
@@ -140,7 +156,10 @@ export async function importTargetRows(rows: TargetImportRow[]): Promise<{ impor
 
   // Verify KPI existence against the DB (FK is also enforced, this gives a
   // clean per-row error instead of a constraint failure).
-  const existingKpiIds = new Set((await db.select({ id: kpis.id }).from(kpis)).map((k) => k.id));
+  const directionById = new Map(
+    (await db.select({ id: kpis.id, direction: kpis.direction }).from(kpis)).map((k) => [k.id, k.direction]),
+  );
+  const seen = new Set<string>();
 
   try {
     const statements = [];
@@ -151,12 +170,23 @@ export async function importTargetRows(rows: TargetImportRow[]): Promise<{ impor
           errors.push({ row: rowNum, message: parsed.error.issues[0]?.message ?? "Baris tidak valid" });
           continue;
         }
-        if (!existingKpiIds.has(parsed.data.kpiId)) {
-          errors.push({ row: rowNum, message: `KPI id ${parsed.data.kpiId} tidak ditemukan` });
+        const { kpiId, periodDate, target, thresholdGreen, thresholdYellow } = parsed.data;
+        const direction = directionById.get(kpiId);
+        if (!direction) {
+          errors.push({ row: rowNum, message: `KPI id ${kpiId} tidak ditemukan` });
           continue;
         }
-
-        const { kpiId, periodDate, target, thresholdGreen, thresholdYellow } = parsed.data;
+        const incoherent = checkThresholdCoherence({ direction, target, thresholdGreen, thresholdYellow })
+          .find((issue) => issue.level === "error");
+        if (incoherent) {
+          errors.push({ row: rowNum, message: incoherent.message });
+          continue;
+        }
+        if (seen.has(`${kpiId}:${periodDate}`)) {
+          errors.push({ row: rowNum, message: "Duplikat KPI dan periode yang sama dalam satu import" });
+          continue;
+        }
+        seen.add(`${kpiId}:${periodDate}`);
         const data = { target, thresholdGreen, thresholdYellow };
 
         statements.push(db.insert(kpiTargets).values({ kpiId, periodDate, ...data })
@@ -169,7 +199,8 @@ export async function importTargetRows(rows: TargetImportRow[]): Promise<{ impor
     if (first) await db.batch([first, ...rest]);
     imported = statements.length;
   } catch (err) {
-    errors.push({ row: 0, message: err instanceof Error ? err.message : "Gagal menyimpan" });
+    console.error("importTargetRows batch failed", err);
+    errors.push({ row: 0, message: "Gagal menyimpan ke database" });
     imported = 0;
   }
 

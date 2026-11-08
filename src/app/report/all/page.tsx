@@ -14,6 +14,8 @@ import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isAdminUser } from "@/lib/auth-utils";
+import { db } from "@/lib/db";
+import { kpiTargets, type KPI } from "@/lib/db/schema";
 
 export const metadata: Metadata = { title: "Executive Report: Semua Domain" };
 
@@ -36,19 +38,27 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       })()
     : null;
 
-  const [domains, allKPIsWithEntries, actionPlanRows, isAdmin] = await Promise.all([
+  const [domains, allKPIsWithEntries, actionPlanRows, isAdmin, targetRows] = await Promise.all([
     getAllDomains(),
     getKPIsWithLatestEntry(undefined, selectedPeriod),
     getReportActionPlansWithKPI(),
     isAdminUser(),
+    db.select().from(kpiTargets),
   ]);
+
+  // Previous-month status must use that month's override, not the current one (one query, resolved in memory).
+  const overrides = new Map(targetRows.map((row) => [`${row.kpiId}:${row.periodDate}`, row]));
+  const prevTargetOf = (kpi: KPI, periodDate: string) => {
+    const { target, thresholdGreen, thresholdYellow } = overrides.get(`${kpi.id}:${periodDate}`) ?? kpi;
+    return { target, thresholdGreen, thresholdYellow };
+  };
 
   const kpiIds = allKPIsWithEntries.map(({ kpi }) => kpi.id);
   const comparisonMap = selectedPeriod
     ? await getBatchPeriodComparison(kpiIds, selectedPeriod)
     : new Map();
 
-  const printDate = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const printDate = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
 
   // Global summary
   let totalGreen = 0, totalYellow = 0, totalRed = 0, totalNoData = 0;
@@ -78,10 +88,11 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
 
     if (prevEntry) {
       prevTotal++;
-      const prevStatus = getKPIStatus(prevEntry.value, kpi);
+      const prevStatus = getKPIStatus(prevEntry.value, { ...kpi, ...prevTargetOf(kpi, prevEntry.periodDate) });
       if (prevStatus === "green") prevGreen++;
 
-      const prevAch = getAchievementPct(prevEntry.value, kpi.target, kpi.direction);
+      const prevTarget = prevTargetOf(kpi, prevEntry.periodDate);
+      const prevAch = getAchievementPct(prevEntry.value, prevTarget.target, kpi.direction);
       if (prevAch !== null) { prevTotalAchievement += prevAch; prevAchievementCount++; }
 
       const statusOrder: Record<string, number> = { "green": 3, "yellow": 2, "red": 1, "no-data": 0 };
@@ -107,7 +118,7 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       const status = getKPIStatus(latestEntry?.value, { ...kpi, ...effectiveTarget });
       const comparison = comparisonMap.get(kpi.id);
       const prevEntry = comparison?.prevMonth ?? null;
-      const prevStatus = prevEntry ? getKPIStatus(prevEntry.value, kpi) : null;
+      const prevStatus = prevEntry ? getKPIStatus(prevEntry.value, { ...kpi, ...prevTargetOf(kpi, prevEntry.periodDate) }) : null;
       const statusOrder: Record<string, number> = { "green": 3, "yellow": 2, "red": 1, "no-data": 0 };
       const statusDeclined = prevStatus !== null && statusOrder[status] < statusOrder[prevStatus];
       return { kpi, latestEntry, prevEntry, status, statusDeclined, effectiveTarget };
@@ -294,7 +305,14 @@ export default async function ExecutiveReportPage({ searchParams }: Props) {
       </header>
 
       {/* Executive Summary: AI Narrative or static fallback */}
-      <ReportAINarrative staticSummary={executiveSummary} requestData={aiRequestData} />
+      {isAdmin ? (
+        <ReportAINarrative staticSummary={executiveSummary} requestData={aiRequestData} />
+      ) : (
+        <section aria-labelledby="report-summary-heading" className="space-y-3 break-inside-avoid-page">
+          <h2 id="report-summary-heading" className="text-lg font-semibold">Ringkasan</h2>
+          <p className="max-w-[65ch] text-base text-foreground">{executiveSummary}</p>
+        </section>
+      )}
 
       {selectedPeriod && (
         <ReportActionPlans rows={actionPlanRows} periodDate={selectedPeriod} />

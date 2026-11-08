@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getActionPlanCountsByKPIIds, getAllDomains, getAllKPIs, getEntriesForPeriod, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getActionPlanCounts, getAllDomains, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPITable } from "@/components/kpi-table";
 import { SummaryStrip } from "@/components/summary-strip";
 import { AttentionBar } from "@/components/attention-bar";
@@ -25,14 +25,13 @@ export default async function OverviewPage({ searchParams }: Props) {
   const { period, q, status } = await searchParams;
   const selectedPeriod = period ?? defaultReportingPeriod();
 
-  const [domains, allKPIsWithEntries, allKPIs, entriesForPeriod, canEdit] = await Promise.all([
+  const [domains, allKPIsWithEntries, actionCounts, canEdit] = await Promise.all([
     getAllDomains(),
     getKPIsWithLatestEntry(undefined, selectedPeriod),
-    getAllKPIs(),
-    getEntriesForPeriod(selectedPeriod ?? ""),
+    getActionPlanCounts(),
     isAdminUser(),
   ]);
-  const actionCounts = await getActionPlanCountsByKPIIds(allKPIsWithEntries.map(({ kpi }) => kpi.id));
+  const allKPIs = allKPIsWithEntries.map(({ kpi }) => kpi);
 
   // Filter by search query and status
   const filtered = allKPIsWithEntries.filter(({ kpi, latestEntry, effectiveTarget }) => {
@@ -62,9 +61,10 @@ export default async function OverviewPage({ searchParams }: Props) {
   for (const { kpi, latestEntry } of allKPIsWithEntries) {
     if (latestEntry) kpiLatestPeriods[kpi.id] = latestEntry.periodDate;
   }
-  // KPI yang belum punya entry untuk periode terpilih.
-  const entryKpiIds = new Set(entriesForPeriod.map((e) => e.kpiId));
-  const missingKPIs = allKPIs.filter((k) => !entryKpiIds.has(k.id));
+  // KPI yang belum punya entry untuk periode terpilih (latestEntry adalah entry terbaru <= periode).
+  const missingKPIs = allKPIsWithEntries
+    .filter(({ latestEntry }) => latestEntry?.periodDate !== selectedPeriod)
+    .map(({ kpi }) => kpi);
 
   const redKPIs = allKPIsWithEntries
     .filter(({ kpi, latestEntry, effectiveTarget }) => {

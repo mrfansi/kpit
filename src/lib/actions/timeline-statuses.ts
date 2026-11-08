@@ -47,30 +47,6 @@ export async function createStatus(formData: FormData) {
   revalidateAll();
 }
 
-export async function updateStatus(id: number, formData: FormData) {
-  const session = await requireAdmin();
-  const raw = Object.fromEntries(formData);
-  const parsed = statusSchema.safeParse(raw);
-  if (!parsed.success) throw new Error(parsed.error.issues[0].message);
-
-  const slug = slugify(parsed.data.name);
-
-  await db.batch([
-    db.update(timelineProjectStatuses)
-      .set({ name: parsed.data.name, slug, color: parsed.data.color })
-      .where(eq(timelineProjectStatuses.id, id)),
-    auditInsert({
-      userId: session.user.id,
-      userEmail: session.user.email ?? undefined,
-      action: "update",
-      entity: "timeline_project_status",
-      entityId: String(id),
-      detail: parsed.data.name,
-    }),
-  ]);
-  revalidateAll();
-}
-
 export async function deleteStatus(id: number) {
   const session = await requireAdmin();
 

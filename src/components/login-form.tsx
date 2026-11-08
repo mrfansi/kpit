@@ -11,7 +11,8 @@ import { Loader2 } from "lucide-react";
 function LoginFormInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/admin/kpi";
+  const requested = searchParams.get("callbackUrl");
+  const callbackUrl = requested && /^\/(?![/\\])/.test(requested) ? requested : "/admin/kpi";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

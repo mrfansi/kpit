@@ -1,7 +1,13 @@
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import { toJakartaDateOnly } from "@/lib/date-utils";
 
 export type PeriodType = "monthly" | "quarterly" | "yearly";
+
+/** Today's Asia/Jakarta calendar date as a local-midnight Date, so date-fns month math follows WIB. */
+function jakartaToday(now: Date): Date {
+  return parseISO(toJakartaDateOnly(now));
+}
 
 /**
  * Periode yang dipilih dashboard kalau pengguna tidak menyebut apa-apa.
@@ -20,28 +26,25 @@ export type PeriodType = "monthly" | "quarterly" | "yearly";
  * mingguan (schema: period = daily|weekly|monthly) ia memang sah diisi. Yang
  * diperbaiki di sini hanya pilihan default-nya.
  */
-export function defaultReportingPeriod(): string {
-  return format(subMonths(startOfMonth(new Date()), 1), "yyyy-MM-dd");
+export function defaultReportingPeriod(now: Date = new Date()): string {
+  return format(subMonths(startOfMonth(jakartaToday(now)), 1), "yyyy-MM-dd");
 }
 
 export function formatPeriodDate(dateStr: string, fmt = "MMM yyyy"): string {
   return format(parseISO(dateStr), fmt, { locale: localeId });
 }
 
-export function getPeriodRange(months: number): { from: string; to: string } {
-  const now = new Date();
+export function getPeriodRange(months: number, now: Date = new Date()): { from: string; to: string } {
+  const today = jakartaToday(now);
   return {
-    from: format(startOfMonth(subMonths(now, months - 1)), "yyyy-MM-dd"),
-    to: format(endOfMonth(now), "yyyy-MM-dd"),
+    from: format(startOfMonth(subMonths(today, months - 1)), "yyyy-MM-dd"),
+    to: format(endOfMonth(today), "yyyy-MM-dd"),
   };
 }
 
-export function listLastNMonths(n: number): { label: string; value: string }[] {
-  const now = new Date();
-  return eachMonthOfInterval({
-    start: subMonths(startOfMonth(now), n - 1),
-    end: startOfMonth(now),
-  })
+export function listLastNMonths(n: number, now: Date = new Date()): { label: string; value: string }[] {
+  const start = startOfMonth(jakartaToday(now));
+  return eachMonthOfInterval({ start: subMonths(start, n - 1), end: start })
     .reverse()
     .map((d) => ({
       label: format(d, "MMMM yyyy", { locale: localeId }),

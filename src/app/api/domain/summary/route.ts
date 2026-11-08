@@ -1,28 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
 import { requireAuth, handleAIError } from "@/lib/ai/api-helpers";
 import { createAICacheKey, getCachedAIResponse, setCachedAIResponse } from "@/lib/ai/cache";
 import { enforceAIRateLimit } from "@/lib/ai/rate-limit";
 
-interface DomainKPIItem {
-  name: string;
-  actual: string;
-  target: string;
-  achievement: string;
-  status: string;
-  trend: string;
-}
-
-interface DomainSummaryRequest {
-  domainName: string;
-  domainDescription: string;
-  period: string;
-  healthyCount: number;
-  warningCount: number;
-  criticalCount: number;
-  noDataCount: number;
-  kpis: DomainKPIItem[];
-}
+const summarySchema = z.object({
+  domainName: z.string().min(1).max(200),
+  domainDescription: z.string().max(500).optional().default(""),
+  period: z.string().max(50),
+  healthyCount: z.number().int().min(0),
+  warningCount: z.number().int().min(0),
+  criticalCount: z.number().int().min(0),
+  noDataCount: z.number().int().min(0),
+  kpis: z
+    .array(
+      z.object({
+        name: z.string().max(200),
+        actual: z.string().max(50),
+        target: z.string().max(50),
+        achievement: z.string().max(50),
+        status: z.string().max(50),
+        trend: z.string().max(50),
+      })
+    )
+    .min(1)
+    .max(500),
+});
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth();
@@ -30,32 +34,21 @@ export async function POST(request: NextRequest) {
   const limited = enforceAIRateLimit(authResult.session.user.id, "domain-summary");
   if (limited) return limited;
 
-  let body: DomainSummaryRequest;
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Request body tidak valid." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Request body tidak valid." }, { status: 400 });
   }
 
-  if (!body.domainName || typeof body.domainName !== "string") {
-    return NextResponse.json(
-      { error: "Nama domain harus diisi." },
-      { status: 400 }
-    );
+  const parsed = summarySchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Data domain atau KPI tidak valid." }, { status: 400 });
   }
-
-  if (!Array.isArray(body.kpis) || body.kpis.length === 0) {
-    return NextResponse.json(
-      { error: "Data KPI tidak boleh kosong." },
-      { status: 400 }
-    );
-  }
+  const body = parsed.data;
 
   const domainName = sanitizeInput(body.domainName, 100);
-  const domainDesc = sanitizeInput(body.domainDescription || "", 200);
+  const domainDesc = sanitizeInput(body.domainDescription, 200);
   const cacheKey = createAICacheKey("domain-summary", {
     userId: authResult.session.user.id,
     ...body,
@@ -70,11 +63,11 @@ export async function POST(request: NextRequest) {
   const kpiList = body.kpis
     .map(
       (k) =>
-        `- ${k.name}: aktual ${k.actual}, target ${k.target}, pencapaian ${k.achievement}, status ${k.status}, tren ${k.trend}`
+        `- ${sanitizeInput(k.name, 200)}: aktual ${k.actual}, target ${k.target}, pencapaian ${k.achievement}, status ${k.status}, tren ${k.trend}`
     )
     .join("\n");
 
-  const prompt = `Kamu adalah analis KPI senior. Tulis ringkasan performa domain "${domainName}" periode ${body.period} dalam Bahasa Indonesia.
+  const prompt = `Kamu adalah analis KPI senior. Tulis ringkasan performa domain "${domainName}" periode ${sanitizeInput(body.period, 50)} dalam Bahasa Indonesia.
 
 ${domainDesc ? `Deskripsi domain: ${domainDesc}\n` : ""}Statistik:
 - KPI sehat (hijau): ${body.healthyCount}
