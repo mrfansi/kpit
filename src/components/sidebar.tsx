@@ -105,6 +105,7 @@ export function Sidebar({ domains, user }: SidebarProps) {
             <AIChat />
             <Link
               href="/admin/account"
+              prefetch={false}
               aria-current={pathname === "/admin/account" ? "page" : undefined}
               className="flex h-9 items-center rounded-md px-2.5 text-sm text-muted-foreground transition-colors duration-[var(--dur-micro)] hover:bg-sidebar-accent hover:text-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-foreground"
             >
@@ -147,6 +148,7 @@ function NavItem({
   return (
     <Link
       href={href}
+      prefetch={false}
       aria-current={active ? "page" : undefined}
       className={cn(
         // Item aktif ditandai rail kiri bertinta + permukaan, bukan blok primary solid,
