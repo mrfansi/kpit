@@ -1,6 +1,6 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import type { Metadata } from "next";
-import { Archivo, JetBrains_Mono } from "next/font/google";
+import { IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { MobileHeader } from "@/components/mobile-header";
@@ -10,8 +10,8 @@ import { Suspense } from "react";
 import { ToastHandler } from "@/components/toast-handler";
 import { auth } from "@/auth";
 
-// Satu keluarga variabel (berat + lebar): teks, judul dan angka readout semuanya Archivo.
-const archivo = Archivo({ variable: "--font-archivo", subsets: ["latin"], axes: ["wdth"], display: "swap" });
+// Satu keluarga variabel: teks, judul dan angka readout semuanya IBM Plex Sans.
+const plexSans = IBM_Plex_Sans({ variable: "--font-plex-sans", subsets: ["latin"], display: "swap" });
 // Outlier dengan satu peran: kode.
 const jetbrainsMono = JetBrains_Mono({ variable: "--font-jetbrains-mono", subsets: ["latin"], weight: ["400"], display: "swap" });
 
@@ -28,8 +28,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     // Variabel font di <html>, bukan <body>: token --font-body dideklarasikan di :root dan
-    // harus bisa me-resolve var(--font-archivo) di elemen yang sama.
-    <html lang="id" className={`${archivo.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    // harus bisa me-resolve var(--font-plex-sans) di elemen yang sama.
+    <html lang="id" className={`${plexSans.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <body className="antialiased">
         <ThemeProvider>
         <a

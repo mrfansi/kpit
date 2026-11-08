@@ -18,7 +18,7 @@ The locked system. Every Hallmark run reads this first and screens share it. Cha
   --color-edge: oklch(64% 0 0);  /* field edges, 3:1 */
   --color-accent: oklch(20% 0 0);  --color-accent-ink: oklch(99% 0 0);  --color-focus: oklch(40% 0 0);
   --success / --warning / --danger (+ -soft, -fill): the only hues, KPI status only, always via statusConfig.
-  --font-display: Archivo;  --font-body: Archivo;  --font-outlier: JetBrains Mono (code only);
+  --font-display: IBM Plex Sans;  --font-body: IBM Plex Sans;  --font-outlier: JetBrains Mono (code only);
   --radius-card: 6px (surfaces);  controls 4px;  chips 2px;  --shadow-card: none;  --rule-hair: 1px;
 }
 ```
@@ -26,8 +26,8 @@ Hue enters only as KPI status (`src/lib/kpi-status.ts`) or a domain/project iden
 The spacing scale, the type scale, the easings and the durations are the scaffold's and live in `tokens.css`.
 
 ## Type
-- One family, Archivo variable (wght + wdth). Weights 400 and 600; 800 only for the wordmark (Archivo at 125% width).
-- Figures: the `num` utility, Archivo at 87.5% width with tabular lining numerals. The one figure a region is about is the readout (`text-readout` or `text-3xl`, 600).
+- One family, IBM Plex Sans (variable). Weights 400 and 600; the wordmark is 600 like every head.
+- Figures: the `num` utility, tabular lining numerals. The one figure a region is about is the readout (`text-readout` or `text-3xl`, 600).
 - Screen title `text-2xl` 600; section head `text-lg` 600; item title `text-base` 600; body 16px; table cells, controls and meta 14px. Labels are sentence case, never tracked capitals, never mono.
 
 ## Controls
