@@ -129,6 +129,10 @@ maps the shadcn variable names onto them, so components keep using `bg-backgroun
 
 ## Authentication
 
+Every page and every API route (including `/uploads/*`) requires a signed-in session;
+only `/login`, `/api/auth/*` and static build assets are public. `/admin/*` stays
+admin-only except `/admin/account`.
+
 Sign-in uses [better-auth](https://better-auth.com) with email + password
 (`src/auth.ts`, handler at `src/app/api/auth/[...all]/route.ts`, client in
 `src/lib/auth-client.ts`, route guard in `src/proxy.ts`). Sessions are stored in

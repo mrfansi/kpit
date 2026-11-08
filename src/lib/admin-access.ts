@@ -20,6 +20,20 @@ export function decodePathname(pathname: string): string {
   }
 }
 
+/** Paths reachable without a session: the login page, better-auth endpoints and static build assets. Judge the decoded path. */
+export function isPublicPath(pathname: string): boolean {
+  // A `..` segment could smuggle a private path under a public prefix once decoded.
+  if (/(^|\/)\.\.(\/|$)|\\/.test(pathname)) return false;
+  return (
+    pathname === "/login" ||
+    pathname === "/favicon.ico" ||
+    pathname === "/api/auth" ||
+    pathname.startsWith("/api/auth/") ||
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/assets/")
+  );
+}
+
 /** Fold `Set-Cookie` values into a request `Cookie` header so the render sees a session the proxy just refreshed. */
 export function mergeSetCookies(cookieHeader: string | null, setCookies: string[]): string {
   const jar = new Map<string, string>();
