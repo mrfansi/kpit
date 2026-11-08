@@ -36,16 +36,14 @@ Use a random `AUTH_SECRET` of at least 32 characters, `AUTH_URL` equal to the
 canonical HTTPS application origin, and `AUTH_TRUST_HOST=true` on the
 trusted Workers deployment (better-auth then accepts the request's own origin).
 The names are unchanged from the next-auth setup, so no new secret is needed.
-`NEXTAUTH_URL` is only a legacy fallback for the monthly mutation origin check,
-which prefers `AUTH_URL`.
 
-Optional runtime settings (secrets via `wrangler secret put <NAME> --name kpit`):
+Optional runtime settings (secrets via `wrangler secret put <NAME> --name kpit`, except
+`DEEPSEEK_MODEL`, which is a plain variable set in `cloudflare.config.ts`):
 
-- `NOTIFY_WEBHOOK_URL`: leave unset to disable notifications.
 - `DEEPSEEK_API_KEY`: enables the AI features through the DeepSeek API
   (`https://api.deepseek.com`); not required for manual reports or HTML export.
-- `DEEPSEEK_MODEL`: optional model override, default `deepseek-flash` (see
-  `.env.example`).
+- `DEEPSEEK_MODEL`: model name, `deepseek-flash` in `cloudflare.config.ts` (edit it there
+  and redeploy; `.env.example` covers local use).
 
 Secrets are not committed. `.env.example` lists the seed/AI settings; copy the
 runtime values you need to an ignored `.dev.vars` for local development (declared secrets

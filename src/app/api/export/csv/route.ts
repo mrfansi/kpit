@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDomainBySlug, getKPIsByDomain, getAllKPIs, getAllKPIEntriesBatch } from "@/lib/queries";
 import { formatPeriodDate } from "@/lib/period";
 import { auth } from "@/auth";
+import { inArray } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { kpiTargets } from "@/lib/db/schema";
 
 function csvCell(value: string | number) {
-  const raw = String(value);
+  // Numbers are never formula-injection vectors; keep negatives unquoted and unprefixed.
+  if (typeof value === "number") return String(value);
+  const raw = value;
   // Neutralize spreadsheet formula injection. Spreadsheets strip leading
   // whitespace and still evaluate tab/CR-prefixed cells, so test the cell with
   // leading whitespace removed AND the raw leading char (tab/CR/LF) too.
@@ -43,6 +48,14 @@ export async function GET(req: NextRequest) {
     entriesByKpi.get(e.kpiId)!.push(e);
   }
 
+  // Per-period target overrides, preloaded once (chunked for D1's bound-parameter limit).
+  const overrideTarget = new Map<string, number>();
+  for (let i = 0; i < kpiIds.length; i += 90) {
+    for (const t of await db.select().from(kpiTargets).where(inArray(kpiTargets.kpiId, kpiIds.slice(i, i + 90)))) {
+      overrideTarget.set(`${t.kpiId}:${t.periodDate}`, t.target);
+    }
+  }
+
   for (const kpi of kpis) {
     const entries = entriesByKpi.get(kpi.id) ?? [];
     for (const entry of entries) {
@@ -50,7 +63,7 @@ export async function GET(req: NextRequest) {
         csvCell(kpi.name),
         csvCell(formatPeriodDate(entry.periodDate, "MMMM yyyy")),
         csvCell(entry.value),
-        csvCell(kpi.target),
+        csvCell(overrideTarget.get(`${kpi.id}:${entry.periodDate}`) ?? kpi.target),
         csvCell(kpi.unit),
       ].join(","));
     }

@@ -10,20 +10,27 @@ import Link from "next/link";
 import { DeleteEntryButton } from "@/components/delete-entry-button";
 import { EditEntryDialog } from "@/components/edit-entry-dialog";
 import { EmptyState } from "@/components/empty-state";
-import { getKPITargets, getPeriodComparisonEntries, getKPIComments, getDomainById, getKPIsWithLatestEntry, getKPIActionPlans } from "@/lib/queries";
+import { getKPITargets, getKPIComments, getDomainById, getKPIsWithLatestEntry, getKPIActionPlans } from "@/lib/queries";
 import { PeriodComparison } from "@/components/period-comparison";
 import { KPIComments } from "@/components/kpi-comments";
 import { KPIActionPlans } from "@/components/kpi-action-plans";
 import { KPIEarlyWarning } from "@/components/kpi-early-warning";
 import { computeForecast } from "@/lib/forecast";
 import { KPIAIAnalysis } from "@/components/kpi-ai-analysis";
-import { isAdminUser } from "@/lib/auth-utils";
+import { auth } from "@/auth";
+import { canAccessAdminRoute } from "@/lib/admin-access";
 import { KPITargetSuggestion } from "@/components/kpi-target-suggestion";
 import { getKPIEarlyWarning } from "@/lib/kpi-warning";
 
 interface Props {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ range?: string; forecast?: string; page?: string }>;
+}
+
+/** Awal bulan, digeser `months` bulan dari periodDate (YYYY-MM-DD). */
+function shiftMonth(periodDate: string, months: number) {
+  const [y, m] = periodDate.split("-").map(Number);
+  return `${new Date(Date.UTC(y, m - 1 + months, 1)).toISOString().slice(0, 8)}01`;
 }
 
 const RANGE_OPTIONS = [
@@ -47,26 +54,25 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
   const currentPage = Math.max(1, Number(page ?? "1"));
 
   const { from, to } = getPeriodRange(validRange);
-  // Fetch all entries once; derive range entries and latest from this
-  const [allEntries, allTargetOverrides, comments, actionPlans, canEdit] = await Promise.all([
+  // Everything below depends only on kpiId / kpi.domainId, so it runs in one round trip.
+  const [allEntries, allTargetOverrides, comments, actionPlans, session, domain, siblingKPIs] = await Promise.all([
     getKPIEntries(kpiId),
     getKPITargets(kpiId),
     getKPIComments(kpiId),
     getKPIActionPlans(kpiId),
-    isAdminUser(),
-  ]);
-
-  // Fetch domain and sibling KPIs for AI analysis
-  const [domain, siblingKPIs] = await Promise.all([
+    auth(),
     getDomainById(kpi.domainId),
     getKPIsWithLatestEntry(kpi.domainId),
   ]);
+  const canEdit = canAccessAdminRoute(session?.user?.role);
 
   const entries = allEntries.filter((e) => e.periodDate >= from && e.periodDate <= to);
   const latestEntry = allEntries.length > 0 ? allEntries[allEntries.length - 1] : null;
 
+  // MoM / YoY: tepat bulan sebelumnya dan tahun sebelumnya, dari entry yang sudah dimuat.
+  const entryAt = (periodDate: string) => allEntries.find((e) => e.periodDate === periodDate) ?? null;
   const comparison = latestEntry
-    ? await getPeriodComparisonEntries(kpiId, latestEntry.periodDate)
+    ? { prevMonth: entryAt(shiftMonth(latestEntry.periodDate, -1)), prevYear: entryAt(shiftMonth(latestEntry.periodDate, -12)) }
     : { prevMonth: null, prevYear: null };
   const previousEntryForWarning = allEntries.length >= 2 ? allEntries[allEntries.length - 2] : null;
 
@@ -292,6 +298,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                 <Th className="hidden text-right sm:table-cell">Target</Th>
                 <Th className="text-right">Pencapaian</Th>
                 <Th className="hidden text-left sm:table-cell">Status</Th>
+                <Th className="hidden text-left md:table-cell">Catatan</Th>
                 {canEdit && (
                   <Th className="relative w-20 print:hidden">
                     <span className="sr-only">Aksi</span>
@@ -302,7 +309,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
             <tbody>
               {pagedEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <EmptyState compact title="Belum ada data" />
                   </td>
                 </tr>
@@ -335,6 +342,13 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
                         <span className={cn("inline-flex rounded-sm px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap", c.bg, c.color)}>
                           {c.label}
                         </span>
+                      </td>
+                      <td className="hidden max-w-64 py-2.5 pr-4 md:table-cell">
+                        {entry.note ? (
+                          <span className="block truncate text-muted-foreground" title={entry.note}>{entry.note}</span>
+                        ) : (
+                          <Empty />
+                        )}
                       </td>
                       {canEdit && (
                         <td className="py-1.5 print:hidden">
@@ -396,8 +410,8 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
 
       {/* Analisis AI + saran target AI */}
       <section className="space-y-4">
-        <KPIAIAnalysis requestData={analysisRequestData} />
-        <KPITargetSuggestion
+        {session?.user && <KPIAIAnalysis requestData={analysisRequestData} />}
+        {canEdit && <KPITargetSuggestion
           kpiName={kpi.name}
           unit={kpi.unit}
           direction={kpi.direction}
@@ -415,7 +429,7 @@ export default async function KPIDetailPage({ params, searchParams }: Props) {
               achievementPct: pct ?? 0,
             };
           })}
-        />
+        />}
       </section>
 
       {/* Komentar */}

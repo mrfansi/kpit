@@ -77,9 +77,9 @@ export default async function ReportPage({ params, searchParams }: Props) {
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <ReportPeriodSelector months={listLastNMonths(24)} selectedPeriod={selectedPeriod} />
           <PrintButton />
-          <Button variant="outline" size="sm" asChild>
+          {session.user.role === "admin" && <Button variant="outline" size="sm" asChild>
             <Link href={`/admin/reports/monthly/${domain}?period=${selectedPeriod}`}><Pencil aria-hidden />Edit laporan</Link>
-          </Button>
+          </Button>}
         </div>
       </div>
 

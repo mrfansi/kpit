@@ -3,7 +3,9 @@ import { requireAuth } from "@/lib/ai/api-helpers";
 import { isValidCalendarDate } from "@/lib/date-utils";
 import { format, parseISO } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { getAllDomains, getAllKPIEntriesBatch, getBatchPeriodComparison, getEffectiveTarget, getKPIsWithLatestEntry, getReportActionPlansWithKPI } from "@/lib/queries";
+import { getAllDomains, getAllKPIEntriesBatch, getBatchPeriodComparison, getKPIsWithLatestEntry, getReportActionPlansWithKPI } from "@/lib/queries";
+import { db } from "@/lib/db";
+import { kpiTargets, type KPI } from "@/lib/db/schema";
 import { getAllTimelineProjects } from "@/lib/queries/timeline";
 import { getAllStatuses } from "@/lib/queries/timeline-statuses";
 import { getActionFocusItems, getReportActionPlans, isActionPlanOverdue } from "@/lib/action-plan";
@@ -36,13 +38,25 @@ function formatEnglishPeriod(period: string) {
   return format(parseISO(period), "MMMM yyyy", { locale: enUS });
 }
 
+type TargetResolver = (kpi: KPI, periodDate: string) => { target: number; thresholdGreen: number; thresholdYellow: number };
+
+/** One query for every target override; resolves per KPI/period in memory (same fallback as getEffectiveTarget). */
+async function loadTargetResolver(): Promise<TargetResolver> {
+  const overrides = new Map((await db.select().from(kpiTargets)).map((row) => [`${row.kpiId}:${row.periodDate}`, row]));
+  return (kpi, periodDate) => {
+    const { target, thresholdGreen, thresholdYellow } = overrides.get(`${kpi.id}:${periodDate}`) ?? kpi;
+    return { target, thresholdGreen, thresholdYellow };
+  };
+}
+
 async function buildUnifiedMarkdownReportData(period: string, scope: "selected" | "all"): Promise<UnifiedMarkdownReportData> {
-  const [domains, allKPIsWithEntries, actionPlanRows, projects, statuses] = await Promise.all([
+  const [domains, allKPIsWithEntries, actionPlanRows, projects, statuses, resolveTarget] = await Promise.all([
     getAllDomains(),
     getKPIsWithLatestEntry(undefined, period),
     getReportActionPlansWithKPI(),
     getAllTimelineProjects(),
     getAllStatuses(),
+    loadTargetResolver(),
   ]);
 
   const kpiIds = allKPIsWithEntries.map(({ kpi }) => kpi.id);
@@ -78,13 +92,14 @@ async function buildUnifiedMarkdownReportData(period: string, scope: "selected" 
     }
 
     if (prevEntry) {
-      const prevStatus = getKPIStatus(prevEntry.value, kpi);
+      const prevTarget = resolveTarget(kpi, prevEntry.periodDate);
+      const prevStatus = getKPIStatus(prevEntry.value, { ...kpi, ...prevTarget });
       const diff = statusOrder[status] - statusOrder[prevStatus];
       if (diff > 0) improved++;
       else if (diff < 0) declined++;
       else stable++;
 
-      const prevAchievementPct = getAchievementPct(prevEntry.value, kpi.target, kpi.direction);
+      const prevAchievementPct = getAchievementPct(prevEntry.value, prevTarget.target, kpi.direction);
       if (prevAchievementPct !== null) {
         previousAchievement += prevAchievementPct;
         previousAchievementCount++;
@@ -128,7 +143,7 @@ async function buildUnifiedMarkdownReportData(period: string, scope: "selected" 
     }));
 
   const historicalDomains = scope === "all"
-    ? await buildHistoricalDomains(domains, allKPIsWithEntries.map(({ kpi }) => kpi))
+    ? await buildHistoricalDomains(domains, allKPIsWithEntries.map(({ kpi }) => kpi), resolveTarget)
     : undefined;
 
   return {
@@ -195,7 +210,8 @@ async function buildUnifiedMarkdownReportData(period: string, scope: "selected" 
 
 async function buildHistoricalDomains(
   domains: Awaited<ReturnType<typeof getAllDomains>>,
-  allKPIs: Awaited<ReturnType<typeof getKPIsWithLatestEntry>>[number]["kpi"][]
+  allKPIs: KPI[],
+  resolveTarget: TargetResolver
 ): Promise<UnifiedMarkdownReportData["historicalDomains"]> {
   const entries = await getAllKPIEntriesBatch(allKPIs.map((kpi) => kpi.id));
   const entriesByKpi = new Map<number, typeof entries>();
@@ -206,10 +222,10 @@ async function buildHistoricalDomains(
     entriesByKpi.set(entry.kpiId, kpiEntries);
   }
 
-  const kpisWithHistory = await Promise.all(allKPIs.map(async (kpi) => {
+  const kpisWithHistory = allKPIs.map((kpi) => {
     const kpiEntries = entriesByKpi.get(kpi.id) ?? [];
-    const historicalEntries = await Promise.all(kpiEntries.map(async (entry) => {
-      const target = await getEffectiveTarget(kpi, entry.periodDate);
+    const historicalEntries = kpiEntries.map((entry) => {
+      const target = resolveTarget(kpi, entry.periodDate);
       const achievement = getAchievementPct(entry.value, target.target, kpi.direction);
       const status = getKPIStatus(entry.value, { ...kpi, ...target });
       return {
@@ -220,7 +236,7 @@ async function buildHistoricalDomains(
         status: statusConfig[status].label,
         note: entry.note,
       };
-    }));
+    });
 
     return {
       kpi,
@@ -232,7 +248,7 @@ async function buildHistoricalDomains(
         entries: historicalEntries,
       },
     };
-  }));
+  });
 
   return domains
     .map((domain) => ({
@@ -298,7 +314,8 @@ export async function GET(request: NextRequest) {
   let data: UnifiedMarkdownReportData;
   try {
     data = await buildUnifiedMarkdownReportData(period, scope);
-  } catch {
+  } catch (error) {
+    console.error("Markdown report export failed:", error);
     return NextResponse.json(
       { error: "Gagal membuat laporan." },
       { status: 500 }

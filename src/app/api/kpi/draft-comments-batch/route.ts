@@ -13,9 +13,10 @@ const batchSchema = z.object({
 /**
  * Batas jumlah KPI per klik. Bukan soal performa — panggilannya paralel — tapi
  * soal biaya: satu klik yang memicu 200 panggilan model adalah kecelakaan yang
- * menunggu terjadi.
+ * menunggu terjadi. Sama dengan jendela per menit di rate-limit.ts (15): angka
+ * di atasnya tidak akan pernah lolos kuota.
  */
-const MAX_BATCH = 25;
+const MAX_BATCH = 15;
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth();
@@ -44,8 +45,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Tidak ada KPI untuk diproses." }, { status: 404 });
   }
 
-  const selected = rows.slice(0, MAX_BATCH);
-  const skippedForCap = rows.length - selected.length;
+  // KPI tanpa entri periode ini tidak bisa didrafkan; jangan menagih kuota untuknya.
+  const eligible = rows.filter((r) => r.latestEntry?.periodDate === periodDate);
+  const selected = eligible.slice(0, MAX_BATCH);
+  const skippedForCap = eligible.length - selected.length;
 
   // Kuota dihitung PER KPI, bukan per klik. Satu batch = N panggilan model, jadi
   // menagihnya sebagai satu akan membuat plafon harian di rate-limit.ts tidak

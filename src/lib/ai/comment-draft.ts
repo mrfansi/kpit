@@ -1,4 +1,5 @@
 import { getAIService, sanitizeInput, cleanAIOutput } from "@/lib/ai";
+import { AIServiceError } from "@/lib/ai/types";
 import {
   getKPIActionPlans,
   getKPIById,
@@ -141,6 +142,7 @@ Instruksi:
     const result = await ai.generateText(prompt, { temperature: 0.4 });
     return { ok: true, kpiId, kpiName: kpi.name, draft: cleanAIOutput(result.text) };
   } catch (error) {
+    console.error("AI draft error:", error instanceof AIServiceError ? [error.code, error.cause] : error);
     return {
       ok: false,
       kpiId,

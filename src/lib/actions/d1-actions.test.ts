@@ -31,7 +31,7 @@ test("server actions persist atomically against local D1", async (t) => {
     }
   });
   // tsx loads these CommonJS actions after their request-only auth/cache imports are stubbed.
-  const { createKPI, reorderKPI, bulkReorderKPIs } = load("./kpi") as typeof KPIActions;
+  const { createKPI, bulkReorderKPIs } = load("./kpi") as typeof KPIActions;
   const { createStatus, deleteStatus } = load("./timeline-statuses") as typeof TimelineStatusActions;
   const environment = await createTestD1();
   t.after(() => environment.dispose());
@@ -77,7 +77,7 @@ test("server actions persist atomically against local D1", async (t) => {
     assert.equal(audits.length, 4);
   });
 
-  await t.test("reorder normalizes and swaps once; bulk reorder handles more than 100 IDs", async () => {
+  await t.test("bulk reorder handles more than 100 IDs", async () => {
     const [domain] = await db.insert(domains).values({ name: "D1 reorder", slug: "d1-reorder" }).returning();
     const inserts = Array.from({ length: 105 }, (_, index) => db.insert(kpis).values({
       domainId: domain.id,
@@ -89,11 +89,6 @@ test("server actions persist atomically against local D1", async (t) => {
     }).returning({ id: kpis.id }));
     const inserted = await db.batch([inserts[0], ...inserts.slice(1)]);
     const ids = inserted.map((rows) => rows[0].id);
-    await reorderKPI(ids[1], "up");
-    const moved = await db.select({ id: kpis.id, sortOrder: kpis.sortOrder }).from(kpis)
-      .where(eq(kpis.domainId, domain.id)).orderBy(kpis.sortOrder);
-    assert.deepEqual(moved.map((row) => row.id), [ids[1], ids[0], ...ids.slice(2)]);
-    assert.deepEqual(moved.map((row) => row.sortOrder), ids.map((_, index) => index));
     const reversed = [...ids].reverse();
     await bulkReorderKPIs(reversed.map((id, sortOrder) => ({ id, sortOrder })));
     assert.deepEqual(

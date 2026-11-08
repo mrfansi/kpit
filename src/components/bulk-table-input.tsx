@@ -11,16 +11,28 @@ import { CheckCircle2, Save } from "lucide-react";
 import { formatValue, listLastNMonths } from "@/lib/period";
 import { bulkCreateEntries } from "@/lib/actions/entry";
 import { DataEntryValidator } from "@/components/data-entry-validator";
+import { getKPIStatus, statusConfig } from "@/lib/kpi-status";
+import { cn } from "@/lib/utils";
 import type { KPI, KPIEntry, Domain } from "@/lib/db/schema";
+
+interface TargetOverride {
+  target: number;
+  thresholdGreen: number;
+  thresholdYellow: number;
+}
 
 interface BulkTableInputProps {
   kpis: KPI[];
   domains: Domain[];
   initialPeriod: string;
   existingEntries: KPIEntry[];
+  /** Target override per KPI id for this period; KPIs without one use their default. */
+  overrides: Record<number, TargetOverride>;
+  /** Value of the month before this period, per KPI id. */
+  previousValues: Record<number, number>;
 }
 
-export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }: BulkTableInputProps) {
+export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries, overrides, previousValues }: BulkTableInputProps) {
   const months = listLastNMonths(12);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -61,9 +73,17 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
     }
 
     startTransition(async () => {
-      const result = await bulkCreateEntries(rows);
-      toast.success(`${result.saved} data berhasil disimpan`);
-      setSavedAt(new Date().toLocaleTimeString("id-ID"));
+      try {
+        const result = await bulkCreateEntries(rows);
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
+        toast.success(`${result.saved} data berhasil disimpan`);
+        setSavedAt(new Date().toLocaleTimeString("id-ID"));
+      } catch {
+        toast.error("Gagal menyimpan data");
+      }
     });
   }
 
@@ -98,7 +118,9 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
             <TableHead className="hidden md:table-cell">Domain</TableHead>
             <TableHead className="hidden md:table-cell">Unit</TableHead>
             <TableHead className="hidden text-right sm:table-cell">Target</TableHead>
+            <TableHead className="hidden text-right md:table-cell">Bulan lalu</TableHead>
             <TableHead className="w-36 text-right">Nilai aktual</TableHead>
+            <TableHead className="hidden sm:table-cell">Status</TableHead>
             <TableHead className="hidden w-56 pr-0 sm:table-cell">Catatan</TableHead>
           </TableRow>
         </TableHeader>
@@ -106,6 +128,12 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
           {kpis.map((kpi) => {
             const domain = domainMap[kpi.domainId];
             const isEmpty = values[kpi.id] === undefined || values[kpi.id] === "";
+            const override = overrides[kpi.id];
+            const effective = override ?? kpi;
+            const parsed = isEmpty ? NaN : parseFloat(values[kpi.id]);
+            const status = getKPIStatus(isNaN(parsed) ? null : parsed, { ...kpi, ...effective });
+            const chip = statusConfig[status];
+            const previous = previousValues[kpi.id];
             return (
               <TableRow key={kpi.id}>
                 <TableCell className="py-2 pl-0 whitespace-normal">
@@ -131,7 +159,11 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
                 </TableCell>
                 <TableCell className="hidden text-muted-foreground md:table-cell">{kpi.unit}</TableCell>
                 <TableCell className="num hidden text-right text-muted-foreground sm:table-cell">
-                  {formatValue(kpi.target, kpi.unit)}
+                  {formatValue(effective.target, kpi.unit)}
+                  {override && <span className="ml-1 text-xs text-foreground" title="Target khusus periode ini">*</span>}
+                </TableCell>
+                <TableCell className="num hidden text-right text-muted-foreground md:table-cell">
+                  {previous !== undefined ? formatValue(previous, kpi.unit) : "-"}
                 </TableCell>
                 <TableCell className="align-top sm:align-middle">
                   <Input
@@ -145,6 +177,13 @@ export function BulkTableInput({ kpis, domains, initialPeriod, existingEntries }
                     value={values[kpi.id] ?? ""}
                     onChange={(e) => setValues((prev) => ({ ...prev, [kpi.id]: e.target.value }))}
                   />
+                </TableCell>
+                <TableCell className="hidden sm:table-cell">
+                  {status !== "no-data" && (
+                    <span className={cn("inline-flex rounded-sm px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap", chip.bg, chip.color)}>
+                      {chip.label}
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="hidden pr-0 sm:table-cell">
                   <Input

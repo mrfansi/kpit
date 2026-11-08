@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createTestD1 } from "./test-d1";
-import { getMonthlyReportBundle, saveMonthlyReport, MonthlyReportError } from "./monthly-report-store";
+import { getMonthlyReportBundle, getMonthlyReportImport, saveMonthlyReport, MonthlyReportError } from "./monthly-report-store";
+import { refreshFromEntries } from "./monthly-report-import";
 import type { MonthlyReportBundle } from "./monthly-report-types";
 
 test("monthly drafts are scoped to their domain and reject stale revisions or foreign KPI IDs", async () => {
@@ -162,6 +163,49 @@ test("monthly snapshots read entries and targets beyond D1's statement parameter
       const current = metric.observations.find((row) => row.month === "2026-12-01");
       return current?.actual === metric.kpiId && current.target === 200;
     }));
+  } finally {
+    await dispose();
+  }
+});
+
+test("new reports prefill from comments and action plans; saved reports flag stale entries until refreshed", async () => {
+  const { env, dispose } = await createTestD1();
+  try {
+    const october = Math.floor(Date.UTC(2026, 9, 15) / 1000);
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO domains (id,name,slug) VALUES (1,'Finance','finance')"),
+      env.DB.prepare("INSERT INTO kpis (id,domain_id,name,unit,target,threshold_green,threshold_yellow,created_at) VALUES (10,1,'Cash','Rp',100,90,80,0)"),
+      env.DB.prepare("INSERT INTO kpi_entries (kpi_id,value,period_date,note,created_at) VALUES (10,60,'2026-10-01','Dari sheet',1)"),
+      env.DB.prepare("INSERT INTO kpi_comments (kpi_id,period_date,content,created_at) VALUES (10,'2026-10-01','<p>lama</p>',1),(10,'2026-10-01','<p>Vendor <b>naik</b> &amp; telat bayar</p>',2),(10,'2026-09-01','<p>bulan lain</p>',3)"),
+      env.DB.prepare("INSERT INTO kpi_action_plans (kpi_id,title,owner,due_date,status,created_at,updated_at) VALUES (10,'Renegosiasi vendor','Sari','2026-11-15','open',0,0),(10,'Sudah lewat','Sari','2026-10-20','open',0,0),(10,'Selesai','Sari','2026-12-01','done',0,0)"),
+      env.DB.prepare("INSERT INTO timeline_projects (id,name,start_date,end_date,progress,created_at,updated_at) VALUES (3,'Rilis app','2026-09-01','2026-11-30',70,0,0),(4,'Proyek lama','2026-01-01','2026-03-01',100,0,0)"),
+      env.DB.prepare("INSERT INTO timeline_project_logs (project_id,content,progress_before,progress_after,created_at) VALUES (3,'a',40,55,?),(3,'b',55,70,?)").bind(october, october + 60),
+    ]);
+    const fresh = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.ok(fresh);
+    assert.equal(fresh.content.metrics[0].deviationCause, "Vendor naik & telat bayar");
+    assert.deepEqual(fresh.content.actions, [{ action: "Renegosiasi vendor", pic: "Sari", deadline: "2026-11-15" }]);
+    assert.equal(fresh.content.metrics[0].observations.find((o) => o.month === "2026-10-01")?.source, "Entri KPI Okt 2026: Dari sheet");
+    assert.ok(!fresh.questions.some((q) => q.path.endsWith(".entry")));
+
+    const saved = await saveMonthlyReport("finance", "2026-10-01", fresh.content, 0, { id: "admin" });
+    await env.DB.prepare("INSERT INTO kpi_entries (kpi_id,value,period_date,created_at) VALUES (10,75,'2026-10-01',2)").run();
+    const stale = await getMonthlyReportBundle("finance", "2026-10-01");
+    assert.ok(stale?.questions.some((q) => q.path === "metrics.0.observations.2026-10-01.entry"));
+
+    const pulled = await getMonthlyReportImport("finance", "2026-10-01", "entries");
+    assert.ok(pulled && "entries" in pulled);
+    const refreshed = refreshFromEntries(saved.content, pulled.entries);
+    assert.equal(refreshed.changes.length, 1);
+    const resaved = await saveMonthlyReport("finance", "2026-10-01", refreshed.content, saved.revision, { id: "admin" });
+    assert.equal(resaved.content.metrics[0].observations.find((o) => o.month === "2026-10-01")?.actual, 75);
+    assert.ok(!resaved.questions.some((q) => q.path.endsWith(".entry")));
+
+    const timeline = await getMonthlyReportImport("finance", "2026-10-01", "timeline");
+    assert.deepEqual(timeline, { lines: [{ id: 3, text: "Rilis app: progress 40%→70%, tanpa status, selesai 2026-11-30 (sumber: Timeline project #3)" }] });
+
+    await env.DB.prepare("UPDATE kpis SET is_active = 0 WHERE id = 10").run();
+    assert.deepEqual(await getMonthlyReportImport("finance", "2026-10-01", "entries"), { entries: [] });
   } finally {
     await dispose();
   }

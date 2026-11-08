@@ -1,5 +1,3 @@
-import { format } from "date-fns";
-
 /**
  * True only for a real calendar date in strict YYYY-MM-DD form.
  * Rejects shape-valid but impossible dates like 2026-13-45, 2026-00-00, 2026-02-30.
@@ -15,11 +13,12 @@ export function isValidCalendarDate(value: string): boolean {
   );
 }
 
+const jakartaDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" });
+
 /**
- * Calendar day (YYYY-MM-DD) in the server's local timezone.
- * Avoids the UTC off-by-one that `Date.toISOString().slice(0,10)` produces
- * for timezones ahead of UTC (e.g. Asia/Jakarta, UTC+7).
+ * Calendar day (YYYY-MM-DD) in Asia/Jakarta, independent of the runtime clock
+ * (Workers run in UTC, so 00:00-07:00 WIB would otherwise still be "yesterday").
  */
-export function toLocalDateOnly(value: Date = new Date()): string {
-  return format(value, "yyyy-MM-dd");
+export function toJakartaDateOnly(value: Date = new Date()): string {
+  return jakartaDay.format(value);
 }

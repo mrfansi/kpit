@@ -62,7 +62,8 @@ test("batch queries preserve results and global date order above D1's parameter 
     const comparisons = await queries.getBatchPeriodComparison([...ids, 1], "2026-02-01");
     assert.equal(comparisons.size, ids.length);
     assert.ok(ids.every((id) => comparisons.get(id)?.prevMonth?.value === id - 1));
-    const counts = await queries.getActionPlanCountsByKPIIds([...ids, 1]);
+    const counts = await queries.getActionPlanCounts(1);
+    assert.equal(counts.size, ids.length);
     assert.ok(ids.every((id) => counts.get(id) === 1));
     const entries = await queries.getAllKPIEntriesBatch([...ids, 1], "2026-01-01", "2026-02-01");
     assert.equal(entries.length, ids.length * 2);

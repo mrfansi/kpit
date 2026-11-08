@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAIService,
@@ -11,73 +12,38 @@ const MAX_DESCRIPTION_LENGTH = 200;
 
 const VALID_DIRECTIONS = ["higher_better", "lower_better"] as const;
 
-interface GenerateDescriptionRequest {
-  name: string;
-  unit: string;
-  target: number;
-  direction: string;
-  domain: string;
-}
+const generateSchema = z.object({
+  name: z.string().trim().min(3).max(200),
+  unit: z.string().trim().min(1).max(50),
+  target: z.number().finite(),
+  direction: z.enum(VALID_DIRECTIONS),
+  domain: z.string().trim().min(1).max(200),
+});
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth();
   if (authResult.error) return authResult.error;
+  if (authResult.session.user.role !== "admin") {
+    return NextResponse.json({ error: "Akses ditolak." }, { status: 403 });
+  }
   const limited = enforceAIRateLimit(authResult.session.user.id, "generate-description");
   if (limited) return limited;
 
-  let body: GenerateDescriptionRequest;
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Request body tidak valid." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Request body tidak valid." }, { status: 400 });
   }
 
-  if (
-    typeof body.name !== "string" ||
-    typeof body.unit !== "string" ||
-    typeof body.direction !== "string" ||
-    typeof body.domain !== "string"
-  ) {
+  const parsed = generateSchema.safeParse(raw);
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Field name, unit, direction, dan domain harus berupa string." },
+      { error: "Data KPI tidak valid: nama minimal 3 karakter, satuan, domain, target, dan arah harus diisi." },
       { status: 400 }
     );
   }
-
-  if (!body.name || body.name.trim().length < 3) {
-    return NextResponse.json(
-      { error: "Nama KPI harus minimal 3 karakter." },
-      { status: 400 }
-    );
-  }
-
-  if (
-    !VALID_DIRECTIONS.includes(
-      body.direction as (typeof VALID_DIRECTIONS)[number]
-    )
-  ) {
-    return NextResponse.json(
-      { error: "Direction harus 'higher_better' atau 'lower_better'." },
-      { status: 400 }
-    );
-  }
-
-  if (!body.unit.trim() || !body.domain.trim()) {
-    return NextResponse.json(
-      { error: "Field unit dan domain tidak boleh kosong." },
-      { status: 400 }
-    );
-  }
-
-  if (typeof body.target !== "number" || !isFinite(body.target)) {
-    return NextResponse.json(
-      { error: "Target harus berupa angka yang valid." },
-      { status: 400 }
-    );
-  }
+  const body = parsed.data;
 
   const name = sanitizeInput(body.name, 100);
   const unit = sanitizeInput(body.unit, 50);

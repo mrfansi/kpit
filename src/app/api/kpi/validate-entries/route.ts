@@ -13,13 +13,20 @@ const validateEntriesSchema = z.object({
         kpiName: z.string().max(200),
         unit: z.string().max(50).optional().default(""),
         inputValue: z.number(),
-        recentValues: z.array(z.number().finite()).optional().default([]),
+        recentValues: z.array(z.number().finite()).max(24).optional().default([]),
         target: z.number(),
         direction: z.string().max(50).optional().default(""),
       })
     )
-    .min(1),
+    .min(1)
+    .max(500),
 });
+
+const BAD_FORMAT = "AI tidak menghasilkan format yang valid. Coba lagi.";
+
+function badFormat() {
+  return NextResponse.json({ error: BAD_FORMAT }, { status: 502 });
+}
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth();
@@ -92,15 +99,11 @@ Instruksi:
     const cleaned = cleanAIOutput(result.text);
 
     const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      return NextResponse.json({ flags: [] });
-    }
+    if (!jsonMatch) return badFormat();
 
     const parsedFlags = JSON.parse(jsonMatch[0]);
 
-    if (!Array.isArray(parsedFlags)) {
-      return NextResponse.json({ flags: [] });
-    }
+    if (!Array.isArray(parsedFlags)) return badFormat();
 
     const flags = parsedFlags
       .filter(
@@ -117,9 +120,7 @@ Instruksi:
 
     return NextResponse.json({ flags });
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      return NextResponse.json({ flags: [] });
-    }
+    if (error instanceof SyntaxError) return badFormat();
     return handleAIError(error);
   }
 }

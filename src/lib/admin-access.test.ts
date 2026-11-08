@@ -15,3 +15,13 @@ test("keeps unauthenticated admin users on login flow and redirects authenticate
   assert.equal(getAdminDeniedRedirectPath(false), "/login");
   assert.equal(getAdminDeniedRedirectPath(true), "/");
 });
+
+test("lets viewers reach only /admin/account", async () => {
+  const { canAccessAdminPath } = await import("./admin-access");
+  assert.equal(canAccessAdminPath("viewer", "/admin/account"), true);
+  assert.equal(canAccessAdminPath("viewer", "/admin/account/"), true);
+  assert.equal(canAccessAdminPath("viewer", "/admin/account/x"), false);
+  assert.equal(canAccessAdminPath("viewer", "/admin/kpi"), false);
+  assert.equal(canAccessAdminPath(undefined, "/admin/account"), false);
+  assert.equal(canAccessAdminPath("admin", "/admin/kpi"), true);
+});

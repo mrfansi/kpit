@@ -8,6 +8,7 @@
     "build": "vite build",
     "test": "node --import ./src/testing/register.ts --import tsx --test",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit -p .",
     "db:generate": "drizzle-kit generate",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "preview": "vite build && vite preview",

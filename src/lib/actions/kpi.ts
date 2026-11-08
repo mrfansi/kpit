@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { kpis, domains, type NewKPI } from "@/lib/db/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { kpis, kpiTargets, domains, type NewKPI } from "@/lib/db/schema";
+import { count, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-utils";
@@ -13,6 +13,7 @@ import {
   checkBoundsOrder,
   checkTargetWithinBounds,
 } from "@/lib/validations/kpi";
+import { checkThresholdCoherence } from "@/lib/kpi-coherence";
 
 async function assertDomainExists(domainId: number) {
   const domain = await db.select({ id: domains.id }).from(domains).where(eq(domains.id, domainId)).get();
@@ -24,6 +25,8 @@ export async function createKPI(data: Omit<NewKPI, "createdAt">) {
 
   // Server-side validation: kpiSchema is otherwise only enforced client-side.
   const parsed = kpiSchema.parse(data);
+  const orderError = checkThresholdCoherence(parsed).find((issue) => issue.level === "error");
+  if (orderError) throw new Error(orderError.message);
   await assertDomainExists(parsed.domainId);
 
   await db.batch([
@@ -53,7 +56,14 @@ export async function updateKPI(id: number, data: Partial<Omit<NewKPI, "id" | "c
   // Menaikkan minValue sendirian bisa membuatnya melewati maxValue lama, dan
   // memeriksa hanya field yang dikirim tidak akan pernah melihat itu.
   const existing = await db
-    .select({ target: kpis.target, minValue: kpis.minValue, maxValue: kpis.maxValue })
+    .select({
+      target: kpis.target,
+      minValue: kpis.minValue,
+      maxValue: kpis.maxValue,
+      direction: kpis.direction,
+      thresholdGreen: kpis.thresholdGreen,
+      thresholdYellow: kpis.thresholdYellow,
+    })
     .from(kpis)
     .where(eq(kpis.id, id))
     .get();
@@ -63,9 +73,23 @@ export async function updateKPI(id: number, data: Partial<Omit<NewKPI, "id" | "c
     target: parsed.target ?? existing.target,
     minValue: parsed.minValue !== undefined ? parsed.minValue : existing.minValue,
     maxValue: parsed.maxValue !== undefined ? parsed.maxValue : existing.maxValue,
+    direction: parsed.direction ?? existing.direction,
+    thresholdGreen: parsed.thresholdGreen ?? existing.thresholdGreen,
+    thresholdYellow: parsed.thresholdYellow ?? existing.thresholdYellow,
   };
-  const coherenceError = checkBoundsOrder(merged) ?? checkTargetWithinBounds(merged);
+  const coherenceError = checkBoundsOrder(merged)
+    ?? checkTargetWithinBounds(merged)
+    ?? checkThresholdCoherence(merged).find((issue) => issue.level === "error")?.message;
   if (coherenceError) throw new Error(coherenceError);
+
+  // Mengubah arah membalik makna semua target per periode yang sudah ada;
+  // tolak daripada diam-diam membuat statusnya terbalik.
+  if (parsed.direction !== undefined && parsed.direction !== existing.direction) {
+    const overrides = await db.select({ n: count() }).from(kpiTargets).where(eq(kpiTargets.kpiId, id)).get();
+    if (overrides && overrides.n > 0) {
+      throw new Error("Arah KPI tidak bisa diubah selama masih ada target per periode. Hapus target periodenya dulu.");
+    }
+  }
 
   await db.batch([
     db.update(kpis).set(parsed).where(eq(kpis.id, id)),
@@ -95,16 +119,6 @@ export async function restoreKPI(id: number) {
   ]);
   revalidatePath("/");
   revalidatePath("/admin/kpi");
-  revalidatePath("/admin/kpi/archived");
-}
-
-export async function hardDeleteKPI(id: number) {
-  const session = await requireAdmin();
-  await db.batch([
-    db.delete(kpis).where(eq(kpis.id, id)),
-    auditInsert({ userId: session.user.id, userEmail: session.user.email ?? undefined, action: "delete", entity: "kpi", entityId: String(id) }),
-  ]);
-  revalidatePath("/");
   revalidatePath("/admin/kpi/archived");
 }
 
@@ -138,32 +152,6 @@ async function updateSortOrders(items: {
           OR current.is_active != json_extract(expected.value, '$.isActive')
       )`),
   ]);
-}
-
-/** Geser sortOrder KPI ke atas atau bawah dalam domain yang sama */
-export async function reorderKPI(id: number, direction: "up" | "down") {
-  await requireAdmin();
-  const [kpi] = await db.select().from(kpis).where(eq(kpis.id, id)).limit(1);
-  if (!kpi) return;
-
-  const siblings = await db
-    .select({ id: kpis.id, sortOrder: kpis.sortOrder, domainId: kpis.domainId, isActive: kpis.isActive })
-    .from(kpis)
-    .where(and(eq(kpis.domainId, kpi.domainId), eq(kpis.isActive, true)))
-    .orderBy(kpis.sortOrder, kpis.name);
-  const position = siblings.findIndex((item) => item.id === id);
-  const next = direction === "up" ? position - 1 : position + 1;
-  const reordered = [...siblings];
-  if (position >= 0 && next >= 0 && next < reordered.length) {
-    [reordered[position], reordered[next]] = [reordered[next], reordered[position]];
-  }
-
-  await updateSortOrders(reordered.map((item, sortOrder) => ({
-    ...item, previousSortOrder: item.sortOrder, sortOrder,
-  })));
-
-  revalidatePath("/");
-  revalidatePath("/admin/kpi");
 }
 
 /** Bulk update sortOrder setelah drag-and-drop */

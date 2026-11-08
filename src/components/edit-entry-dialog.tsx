@@ -32,7 +32,11 @@ export function EditEntryDialog({ id, currentValue, currentNote, unit, period }:
     }
     startTransition(async () => {
       try {
-        await updateEntry(id, num, note || undefined);
+        const result = await updateEntry(id, num, note);
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
         toast.success("Data berhasil diperbarui");
         setOpen(false);
       } catch {

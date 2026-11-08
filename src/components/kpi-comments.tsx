@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { createComment, deleteComment } from "@/lib/actions/comment";
 import type { KPIComment } from "@/lib/db/schema";
@@ -17,10 +18,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RichTextEditor } from "@/components/rich-text-editor";
 import { EmptyState } from "@/components/empty-state";
 import { Trash2, Send, Sparkles, Loader2 } from "lucide-react";
 import { isEmptyHtml, textToHtml } from "@/lib/html-utils";
+
+// Tiptap/ProseMirror are heavy and only admins ever see the editor; the editor renders nothing before mount anyway.
+const RichTextEditor = dynamic(() => import("@/components/rich-text-editor").then((m) => m.RichTextEditor), { ssr: false });
 
 // Ringkasan teks polos dari HTML komentar, untuk ditampilkan di dialog konfirmasi hapus.
 function excerptFromHtml(html: string, maxLength = 60) {

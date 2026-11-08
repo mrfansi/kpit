@@ -1,5 +1,5 @@
 import { getSessionFromHeaders } from "@/auth";
-import { canAccessAdminRoute, getAdminDeniedRedirectPath } from "@/lib/admin-access";
+import { canAccessAdminPath, getAdminDeniedRedirectPath } from "@/lib/admin-access";
 import { NextResponse, type NextRequest } from "next/server";
 
 export default async function proxy(req: NextRequest) {
@@ -9,7 +9,7 @@ export default async function proxy(req: NextRequest) {
   const isAuthenticated = !!session;
   const role = session?.user.role;
 
-  if (isAdminRoute && !canAccessAdminRoute(role)) {
+  if (isAdminRoute && !canAccessAdminPath(role, req.nextUrl.pathname)) {
     const redirectUrl = new URL(getAdminDeniedRedirectPath(isAuthenticated), req.nextUrl.origin);
     if (!isAuthenticated) {
       redirectUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);

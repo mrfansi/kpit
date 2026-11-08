@@ -17,13 +17,10 @@ interface ActionPlanLike {
   updatedAt?: Date;
 }
 
-import { toLocalDateOnly } from "@/lib/date-utils";
+import { toJakartaDateOnly } from "@/lib/date-utils";
 
-function toDateOnly(value: Date) {
-  // Local-timezone calendar day. Using UTC here caused off-by-one overdue/period
-  // bucketing for timezones ahead of UTC (e.g. Asia/Jakarta).
-  return toLocalDateOnly(value);
-}
+// Asia/Jakarta calendar day: overdue/period bucketing must not follow the Worker's UTC clock.
+const toDateOnly = toJakartaDateOnly;
 
 export function isActionPlanOverdue(action: Pick<ActionPlanLike, "status" | "dueDate">, today = new Date()) {
   return activeActionPlanStatuses.includes(action.status) && action.dueDate < toDateOnly(today);

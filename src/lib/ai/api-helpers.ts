@@ -24,6 +24,8 @@ export async function requireAuth(): Promise<
  */
 export function handleAIError(error: unknown): NextResponse {
   if (error instanceof AIServiceError) {
+    // Pesan ke klien sengaja generik; penyebab asli (mis. saldo habis) hanya di log.
+    console.error("AI error:", error.code, error.cause);
     if (error.code === "no_api_key") {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getActionPlanCountsByKPIIds, getAllDomains, getDomainBySlug, getEntriesForPeriod, getKPIsWithLatestEntry } from "@/lib/queries";
+import { getActionPlanCounts, getAllDomains, getKPIsWithLatestEntry } from "@/lib/queries";
 import { KPITable } from "@/components/kpi-table";
 import { SummaryStrip } from "@/components/summary-strip";
 import { AttentionBar } from "@/components/attention-bar";
@@ -18,7 +18,8 @@ import { getKPIStatus, getAchievementPct, statusConfig } from "@/lib/kpi-status"
 import { formatValue } from "@/lib/period";
 import { DomainAISummary } from "@/components/domain/domain-ai-summary";
 import { BatchCommentDraft } from "@/components/batch-comment-draft";
-import { isAdminUser } from "@/lib/auth-utils";
+import { auth } from "@/auth";
+import { canAccessAdminRoute } from "@/lib/admin-access";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -29,21 +30,22 @@ export default async function DomainPage({ params, searchParams }: Props) {
   const [{ slug }, { period, q, status }] = await Promise.all([params, searchParams]);
   const selectedPeriod = period ?? defaultReportingPeriod();
 
-  const [domain, domains] = await Promise.all([getDomainBySlug(slug), getAllDomains()]);
+  // Domain list is tiny and already loaded by the layout (cached), so no separate slug lookup.
+  const domains = await getAllDomains();
+  const domain = domains.find((d) => d.slug === slug);
   if (!domain) notFound();
 
-  const [kpisWithEntries, entriesForPeriod, canEdit] = await Promise.all([
+  const [kpisWithEntries, actionCounts, session] = await Promise.all([
     getKPIsWithLatestEntry(domain.id, selectedPeriod),
-    getEntriesForPeriod(selectedPeriod ?? ""),
-    isAdminUser(),
+    getActionPlanCounts(domain.id),
+    auth(),
   ]);
-  const actionCounts = await getActionPlanCountsByKPIIds(kpisWithEntries.map(({ kpi }) => kpi.id));
+  const canEdit = canAccessAdminRoute(session?.user?.role);
 
-  // KPI domain ini yang off track / belum diisi untuk periode terpilih.
-  const entryKpiIds = new Set(entriesForPeriod.map((e) => e.kpiId));
+  // KPI domain ini yang belum diisi untuk periode terpilih (latestEntry adalah entry terbaru <= periode).
   const missingKPIs = kpisWithEntries
-    .map(({ kpi }) => kpi)
-    .filter((kpi) => !entryKpiIds.has(kpi.id));
+    .filter(({ latestEntry }) => latestEntry?.periodDate !== selectedPeriod)
+    .map(({ kpi }) => kpi);
 
   const redKPIs = kpisWithEntries
     .filter(({ kpi, latestEntry, effectiveTarget }) => {
@@ -130,7 +132,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
             <Button variant="outline" size="sm" asChild>
               <Link href={`/report/${slug}${selectedPeriod ? `?period=${selectedPeriod}` : ""}`}>
                 <FileText aria-hidden />
-                Scorecard PDF
+                Laporan bulanan
               </Link>
             </Button>
             <ExportButtons domainSlug={slug} />
@@ -145,7 +147,7 @@ export default async function DomainPage({ params, searchParams }: Props) {
 
         <SummaryStrip kpisWithEntries={kpisWithEntries} />
 
-        <DomainAISummary requestData={domainSummaryData} />
+        {session?.user && <DomainAISummary requestData={domainSummaryData} />}
 
         {!isFiltered && (
           <AttentionBar

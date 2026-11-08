@@ -4,7 +4,7 @@ import { Clock, ListChecks, Minus, TrendingDown, TrendingUp } from "lucide-react
 import { getAchievementPct, getKPIStatus, statusConfig, trendColor } from "@/lib/kpi-status";
 import { formatPeriodDate, formatValue } from "@/lib/period";
 import { cn } from "@/lib/utils";
-import { Sparkline } from "@/components/sparkline";
+import { ReportSparkline } from "@/components/report/report-sparkline";
 import { PinKPIButton } from "@/components/pin-kpi-button";
 import { EmptyState } from "@/components/empty-state";
 import type { KPI, KPIEntry } from "@/lib/db/schema";
@@ -189,11 +189,10 @@ export function KPITable({
                 </td>
 
                 <td className="hidden py-2 pr-2 lg:table-cell">
-                  {/* Lebar eksplisit: ResponsiveContainer tidak punya lebar
-                      intrinsik, jadi di kolom tabel auto-width ia runtuh. */}
+                  {/* Dekoratif: angka yang dibandingkan sudah tertulis di sel sebelahnya. */}
                   <div className="w-28">
                     {sparklineEntries.length >= 2 ? (
-                      <Sparkline entries={sparklineEntries} status={status} height={28} />
+                      <ReportSparkline entries={sparklineEntries} status={status} width={112} height={28} />
                     ) : null}
                   </div>
                 </td>

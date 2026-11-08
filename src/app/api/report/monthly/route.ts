@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { auth } from "@/auth";
-import { getMonthlyReportBundle, MonthlyReportError, saveMonthlyReport } from "@/lib/monthly-report-store";
+import { getMonthlyReportBundle, getMonthlyReportImport, MonthlyReportError, saveMonthlyReport } from "@/lib/monthly-report-store";
 import { checkMonthlyMutationRequest } from "@/lib/monthly-report-request";
 
 export const runtime = "nodejs";
@@ -24,6 +24,14 @@ export async function GET(request: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { domain, period } = params(request);
+    // ?refresh=1 (alias of ?import=entries), ?import=notes or ?import=timeline return raw source data for the editor's pull buttons.
+    const search = request.nextUrl.searchParams;
+    const kind = search.get("refresh") === "1" ? "entries" : search.get("import");
+    if (kind) {
+      if (kind !== "entries" && kind !== "notes" && kind !== "timeline") throw new MonthlyReportError(400, "Unknown import kind");
+      const data = await getMonthlyReportImport(domain, period, kind);
+      return data ? NextResponse.json(data) : NextResponse.json({ error: "Domain not found" }, { status: 404 });
+    }
     const bundle = await getMonthlyReportBundle(domain, period);
     return bundle ? NextResponse.json(bundle) : NextResponse.json({ error: "Domain not found" }, { status: 404 });
   } catch (error) { return errorResponse(error); }
